@@ -115,6 +115,7 @@ export function TicketDetailDrawer({
   }
 
   const canWrite = can(userTier, "tickets.write");
+  const ticketOpen = data ? isTicketOpen(data.ticket.active) : false;
 
   const body = (
     <>
@@ -148,16 +149,18 @@ export function TicketDetailDrawer({
               {data && (
                 <>
                   <div className="flex flex-wrap gap-2">
-                    <a
-                      href={data.discordUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <Button variant="primary">
-                        <ExternalLink className="h-4 w-4" />
-                        Open in Discord
-                      </Button>
-                    </a>
+                    {ticketOpen && (
+                      <a
+                        href={data.discordUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Button variant="primary">
+                          <ExternalLink className="h-4 w-4" />
+                          Open in Discord
+                        </Button>
+                      </a>
+                    )}
                     <Button
                       variant="secondary"
                       size="sm"
@@ -174,7 +177,7 @@ export function TicketDetailDrawer({
                       <Copy className="h-4 w-4" />
                       Owner ID
                     </Button>
-                    {canWrite && isTicketOpen(data.ticket.active) && (
+                    {canWrite && ticketOpen && (
                       <Button
                         variant="danger"
                         size="sm"
@@ -245,62 +248,66 @@ export function TicketDetailDrawer({
                     </div>
                   )}
 
-                  <section>
-                    <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-accent-light">
-                      <ClipboardList className="h-4 w-4" />
-                      Intake information
-                    </h3>
-                    {data.enrichment?.enrichmentError ? (
-                      <p className="text-sm text-red-400">
-                        {data.enrichment.enrichmentError}
-                      </p>
-                    ) : data.enrichment?.intake ? (
-                      <div className="space-y-3 rounded-xl bg-surface-hover/50 p-4">
-                        {data.enrichment.intake.intro && (
-                          <p className="text-sm text-muted whitespace-pre-wrap">
-                            {data.enrichment.intake.intro}
-                          </p>
-                        )}
-                        {data.enrichment.intake.fields.map((f) => (
-                          <div key={f.label}>
-                            <p className="text-xs font-medium text-accent-light">
-                              {f.label}
-                            </p>
-                            <p className="mt-1 text-sm text-white whitespace-pre-wrap">
-                              {f.value}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted">
-                        No intake embed found (user may not have submitted the form yet).
-                      </p>
-                    )}
-                  </section>
-
-                  <section>
-                    <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-accent-light">
-                      <MessageSquare className="h-4 w-4" />
-                      Last owner message
-                    </h3>
-                    {data.enrichment?.lastOwnerMessage ? (
-                      <div className="rounded-xl bg-surface-hover/50 p-4">
-                        <p className="text-sm text-white whitespace-pre-wrap">
-                          {data.enrichment.lastOwnerMessage.content}
+                  {ticketOpen && (
+                    <section>
+                      <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-accent-light">
+                        <ClipboardList className="h-4 w-4" />
+                        Intake information
+                      </h3>
+                      {data.enrichment?.enrichmentError ? (
+                        <p className="text-sm text-red-400">
+                          {data.enrichment.enrichmentError}
                         </p>
-                        <p className="mt-2 text-xs text-muted">
-                          {formatRelativeTime(
-                            data.enrichment.lastOwnerMessage.timestamp
+                      ) : data.enrichment?.intake ? (
+                        <div className="space-y-3 rounded-xl bg-surface-hover/50 p-4">
+                          {data.enrichment.intake.intro && (
+                            <p className="text-sm text-muted whitespace-pre-wrap">
+                              {data.enrichment.intake.intro}
+                            </p>
                           )}
+                          {data.enrichment.intake.fields.map((f) => (
+                            <div key={f.label}>
+                              <p className="text-xs font-medium text-accent-light">
+                                {f.label}
+                              </p>
+                              <p className="mt-1 text-sm text-white whitespace-pre-wrap">
+                                {f.value}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted">
+                          No intake embed found (user may not have submitted the form yet).
                         </p>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-amber-400">
-                        No messages from the ticket owner yet.
-                      </p>
-                    )}
-                  </section>
+                      )}
+                    </section>
+                  )}
+
+                  {ticketOpen && (
+                    <section>
+                      <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-accent-light">
+                        <MessageSquare className="h-4 w-4" />
+                        Last owner message
+                      </h3>
+                      {data.enrichment?.lastOwnerMessage ? (
+                        <div className="rounded-xl bg-surface-hover/50 p-4">
+                          <p className="text-sm text-white whitespace-pre-wrap">
+                            {data.enrichment.lastOwnerMessage.content}
+                          </p>
+                          <p className="mt-2 text-xs text-muted">
+                            {formatRelativeTime(
+                              data.enrichment.lastOwnerMessage.timestamp
+                            )}
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-amber-400">
+                          No messages from the ticket owner yet.
+                        </p>
+                      )}
+                    </section>
+                  )}
 
                   <section>
                     <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-accent-light">
@@ -314,10 +321,7 @@ export function TicketDetailDrawer({
                         ["Type", data.ticket.type],
                         ["Name", data.ticket.name?.trim() || "—"],
                         ["Number", data.ticket.number],
-                        [
-                          "Status",
-                          isTicketOpen(data.ticket.active) ? "Open" : "Closed",
-                        ],
+                        ["Status", ticketOpen ? "Open" : "Closed"],
                         [
                           "Opened",
                           formatRelativeTime(

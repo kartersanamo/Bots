@@ -1,5 +1,6 @@
 "use client";
 
+import { ClosedByStaffFilter } from "@/components/analytics/ticketlogs/ClosedByStaffFilter";
 import { Button } from "@/components/ui/Button";
 import type { TicketlogsSearchState } from "@/hooks/useTicketlogsSearch";
 import { cn } from "@/lib/utils";
@@ -9,6 +10,7 @@ import { useState } from "react";
 interface TicketlogsFiltersProps {
   state: TicketlogsSearchState;
   types: string[];
+  closedByStaff: string[];
   onChange: (
     updates: Partial<TicketlogsSearchState>,
     opts?: { debounce?: boolean }
@@ -21,6 +23,7 @@ interface TicketlogsFiltersProps {
 export function TicketlogsFilters({
   state,
   types,
+  closedByStaff,
   onChange,
   onRefresh,
   loading,
@@ -112,16 +115,11 @@ export function TicketlogsFilters({
               className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-white"
             />
           </label>
-          <label className="block text-xs text-muted">
-            Closed by (staff ID)
-            <input
-              value={state.closedBy}
-              onChange={(e) =>
-                onChange({ closedBy: e.target.value, page: 1 }, { debounce: true })
-              }
-              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-white font-mono"
-            />
-          </label>
+          <ClosedByStaffFilter
+            value={state.closedBy}
+            staffIds={closedByStaff}
+            onChange={(closedBy) => onChange({ closedBy, page: 1 })}
+          />
           <label className="block text-xs text-muted">
             Transcript
             <select

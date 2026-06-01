@@ -27,6 +27,7 @@ export function TicketlogsWorkspace({ userTier }: TicketlogsWorkspaceProps) {
     tickets,
     total,
     types,
+    closedByStaff,
     loading,
     configured,
     refresh,
@@ -57,6 +58,7 @@ export function TicketlogsWorkspace({ userTier }: TicketlogsWorkspaceProps) {
       <TicketlogsFilters
         state={state}
         types={types}
+        closedByStaff={closedByStaff}
         onChange={setParams}
         onRefresh={refresh}
         loading={loading}

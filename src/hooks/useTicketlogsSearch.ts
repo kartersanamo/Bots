@@ -1,8 +1,20 @@
 "use client";
 
+import { snowflakeString } from "@/lib/games/snowflake";
+import type { TicketRow } from "@/lib/tickets/types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { TicketRow } from "@/lib/tickets/types";
+
+function collectClosedByIds(tickets: TicketRow[]): string[] {
+  const ids: string[] = [];
+  for (const t of tickets) {
+    const raw = t.closed_by?.trim();
+    if (!raw) continue;
+    const id = snowflakeString(raw);
+    if (/^\d{15,22}$/.test(id)) ids.push(id);
+  }
+  return ids;
+}
 
 export interface TicketlogsSearchState {
   sort: string;
@@ -90,10 +102,12 @@ export function useTicketlogsSearch() {
   const [tickets, setTickets] = useState<TicketRow[]>([]);
   const [total, setTotal] = useState(0);
   const [types, setTypes] = useState<string[]>([]);
+  const [closedByStaff, setClosedByStaff] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [configured, setConfigured] = useState(true);
   const abortRef = useRef<AbortController | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closedByStaffRef = useRef(new Set<string>());
 
   const setParams = useCallback(
     (updates: Partial<TicketlogsSearchState>, opts?: { debounce?: boolean }) => {
@@ -157,10 +171,31 @@ export function useTicketlogsSearch() {
         const data = await res.json();
         if (controller.signal.aborted) return;
         if (res.ok) {
-          setTickets(data.tickets || []);
+          const rows = (data.tickets || []) as TicketRow[];
+          setTickets(rows);
           setTotal(data.total || 0);
           setTypes(data.types || []);
           setConfigured(data.configured !== false);
+
+          let staffChanged = false;
+          for (const id of collectClosedByIds(rows)) {
+            if (!closedByStaffRef.current.has(id)) {
+              closedByStaffRef.current.add(id);
+              staffChanged = true;
+            }
+          }
+          const activeClosedBy = snowflakeString(state.closedBy.trim());
+          if (
+            activeClosedBy &&
+            /^\d{15,22}$/.test(activeClosedBy) &&
+            !closedByStaffRef.current.has(activeClosedBy)
+          ) {
+            closedByStaffRef.current.add(activeClosedBy);
+            staffChanged = true;
+          }
+          if (staffChanged) {
+            setClosedByStaff([...closedByStaffRef.current].sort());
+          }
         }
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
@@ -207,6 +242,7 @@ export function useTicketlogsSearch() {
     tickets,
     total,
     types,
+    closedByStaff,
     loading,
     configured,
     refresh,
