@@ -1,3 +1,4 @@
+import { ChunkLoadRecovery } from "@/components/ChunkLoadRecovery";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import type { ReactNode } from "react";
@@ -26,7 +27,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.variable} font-sans`}>{children}</body>
+      <body className={`${inter.variable} font-sans`}>
+        {children}
+        <ChunkLoadRecovery />
+      </body>
     </html>
   );
 }

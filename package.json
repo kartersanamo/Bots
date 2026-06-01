@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build --webpack",
+    "deploy": "bash scripts/deploy.sh",
     "start": "next start",
     "lint": "eslint .",
     "control-api": "cd control-api && .venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8787",

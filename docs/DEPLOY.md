@@ -32,6 +32,26 @@ Static files are served from disk at `/_next/static/` (see `/etc/nginx/sites-ava
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
+## One-command deploy
+
+```bash
+cd /root/Websites/Bots
+npm run deploy
+```
+
 ## Console noise from browser extensions
 
 `contentScript.bundle.js` + `chrome-extension://…` CSP errors are from a **Chrome extension**, not this app. Test in incognito with extensions disabled to confirm.
+
+## `ERR_HTTP2_PROTOCOL_ERROR` on `/_next/static/chunks/*.js`
+
+Usually **Cloudflare + many parallel chunk downloads** or **stale cache** after deploy.
+
+1. Purge Cloudflare cache (entire zone or `/_next/static/*`).
+2. Hard refresh (`Ctrl+Shift+R`).
+3. In Cloudflare dashboard, try disabling for this zone:
+   - **Speed → HTTP/3 (QUIC)**
+   - **Speed → Optimization → Rocket Loader**
+   - **Auto Minify → JavaScript**
+   - **Speculation Rules** (if enabled)
+4. The app auto-reloads once on chunk failure; use the banner if it persists.
