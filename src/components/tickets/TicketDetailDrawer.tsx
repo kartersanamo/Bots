@@ -24,6 +24,8 @@ interface TicketDetailDrawerProps {
   onClose: () => void;
   userTier: PermissionTier;
   onClosed?: () => void;
+  /** Render inside a column (no overlay) for split layouts */
+  embedded?: boolean;
 }
 
 interface DetailData {
@@ -49,6 +51,7 @@ export function TicketDetailDrawer({
   onClose,
   userTier,
   onClosed,
+  embedded = false,
 }: TicketDetailDrawerProps) {
   const [data, setData] = useState<DetailData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -113,38 +116,24 @@ export function TicketDetailDrawer({
 
   const canWrite = can(userTier, "tickets.write");
 
-  return (
-    <AnimatePresence>
-      {channelId && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
-            onClick={onClose}
-          />
-          <motion.aside
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 28, stiffness: 280 }}
-            className="fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col border-l border-border bg-surface shadow-2xl"
-          >
-            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+  const body = (
+    <>
+            <div className="flex items-center justify-between border-b border-border px-5 py-4 shrink-0">
               <h2 className="text-lg font-semibold text-white">
                 Ticket #{data?.ticket.number ?? "…"}
               </h2>
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-lg p-2 text-muted hover:bg-surface-hover hover:text-white"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              {!embedded && (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="rounded-lg p-2 text-muted hover:bg-surface-hover hover:text-white"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              )}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-5 space-y-6">
+            <div className="flex-1 overflow-y-auto p-5 space-y-6 min-h-0">
               {loading && (
                 <div className="space-y-3">
                   {[1, 2, 3].map((i) => (
@@ -367,6 +356,42 @@ export function TicketDetailDrawer({
                 </>
               )}
             </div>
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <div className="flex h-full min-h-[480px] flex-col overflow-hidden rounded-lg border border-border bg-surface">
+        {!channelId ? (
+          <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-muted">
+            Select a ticket from the queue to view details and resolve it.
+          </div>
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col">{body}</div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <AnimatePresence>
+      {channelId && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+            onClick={onClose}
+          />
+          <motion.aside
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ type: "spring", damping: 28, stiffness: 280 }}
+            className="fixed inset-y-0 right-0 z-50 flex w-full max-w-lg flex-col border-l border-border bg-surface shadow-2xl"
+          >
+            {body}
           </motion.aside>
         </>
       )}

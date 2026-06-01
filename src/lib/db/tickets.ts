@@ -27,6 +27,10 @@ export interface ListTicketsParams {
   number?: string;
   privated?: string;
   q?: string;
+  closedAfter?: number;
+  closedBefore?: number;
+  closedBy?: string;
+  hasTranscript?: boolean;
   viewerTier: PermissionTier;
 }
 
@@ -106,12 +110,37 @@ export async function listTickets(
     conditions.push("number = ?");
     values.push(params.number);
   }
+  if (params.closedAfter != null) {
+    conditions.push(
+      "TRIM(closed_at) != '' AND CAST(closed_at AS UNSIGNED) >= ?"
+    );
+    values.push(params.closedAfter);
+  }
+  if (params.closedBefore != null) {
+    conditions.push(
+      "TRIM(closed_at) != '' AND CAST(closed_at AS UNSIGNED) <= ?"
+    );
+    values.push(params.closedBefore);
+  }
+  if (params.closedBy?.trim()) {
+    conditions.push("closed_by = ?");
+    values.push(params.closedBy.trim());
+  }
+  if (params.hasTranscript === true) {
+    conditions.push(
+      "TRIM(transcript) != '' AND transcript LIKE 'http%'"
+    );
+  } else if (params.hasTranscript === false) {
+    conditions.push(
+      "(transcript IS NULL OR TRIM(transcript) = '' OR transcript NOT LIKE 'http%')"
+    );
+  }
   if (params.q?.trim()) {
     const q = `%${params.q.trim()}%`;
     conditions.push(
-      "(channelID LIKE ? OR ownerID LIKE ? OR number LIKE ? OR type LIKE ? OR name LIKE ?)"
+      "(channelID LIKE ? OR ownerID LIKE ? OR number LIKE ? OR type LIKE ? OR name LIKE ? OR reason LIKE ? OR closed_by LIKE ?)"
     );
-    values.push(q, q, q, q, q);
+    values.push(q, q, q, q, q, q, q);
   }
 
   const where = conditions.join(" AND ");

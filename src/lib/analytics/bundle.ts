@@ -16,7 +16,7 @@ import type {
 import type { PermissionTier } from "@/lib/permissions";
 
 export type AnalyticsTab =
-  | "tickets"
+  | "metrics"
   | "games"
   | "staff"
   | "moderation"
@@ -25,7 +25,7 @@ export type AnalyticsTab =
 export interface AnalyticsBundle {
   range: AnalyticsRange;
   summary: AnalyticsSummary;
-  tickets?: TicketAnalytics | null;
+  metrics?: TicketAnalytics | null;
   games?: GamesAnalytics | null;
   staff?: StaffAnalytics | null;
   moderation?: ModerationAnalytics | null;
@@ -41,7 +41,7 @@ export async function getAnalyticsBundle(
   const summary = await getAnalyticsSummaryLight(tier, range);
 
   const loaders: Record<AnalyticsTab, () => Promise<unknown>> = {
-    tickets: () => getTicketAnalytics(tier, range),
+    metrics: () => getTicketAnalytics(tier, range),
     games: () => getGamesAnalytics(range),
     staff: () => getStaffAnalytics(),
     moderation: () => getModerationAnalytics(range),
@@ -58,8 +58,8 @@ export async function getAnalyticsBundle(
   const bundle = { range, summary } as AnalyticsBundle;
   for (const [tab, data] of entries) {
     switch (tab) {
-      case "tickets":
-        bundle.tickets = data as TicketAnalytics | null;
+      case "metrics":
+        bundle.metrics = data as TicketAnalytics | null;
         break;
       case "games":
         bundle.games = data as GamesAnalytics | null;

@@ -11,7 +11,7 @@ import {
 import { NextResponse } from "next/server";
 
 const VALID_TABS = new Set<AnalyticsTab>([
-  "tickets",
+  "metrics",
   "games",
   "staff",
   "moderation",
@@ -21,7 +21,8 @@ const VALID_TABS = new Set<AnalyticsTab>([
 export const GET = handleApiRoute(async (request) => {
   const { session, range } = await requireAnalytics(request);
   const url = new URL(request.url);
-  const tabParam = url.searchParams.get("tabs") ?? "tickets";
+  const tabParam =
+    url.searchParams.get("tabs") ?? "metrics,games,staff,moderation,audit";
   const tabs = tabParam
     .split(",")
     .map((t) => t.trim())
