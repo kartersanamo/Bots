@@ -3,8 +3,6 @@ import type {
   AnalyticsRange,
   DailyCount,
   EngagementAnalytics,
-  NamedCount,
-  UserCountRow,
 } from "@/lib/analytics/types";
 import { isDbConfigured, query, queryOne } from "@/lib/db/pool";
 
@@ -18,13 +16,21 @@ function mapDaily(rows: { date: string | Date; count: number }[]): DailyCount[] 
   }));
 }
 
+const TABLE_EXISTS_TTL_MS = 5 * 60_000;
+const tableExistsCache = new Map<string, { ok: boolean; at: number }>();
+
 async function tableExists(name: string): Promise<boolean> {
+  const hit = tableExistsCache.get(name);
+  if (hit && Date.now() - hit.at < TABLE_EXISTS_TTL_MS) return hit.ok;
+
   const row = await queryOne<{ ok: number }>(
     `SELECT COUNT(*) AS ok FROM information_schema.tables
      WHERE table_schema = DATABASE() AND table_name = ?`,
     [name]
   );
-  return Number(row?.ok ?? 0) > 0;
+  const ok = Number(row?.ok ?? 0) > 0;
+  tableExistsCache.set(name, { ok, at: Date.now() });
+  return ok;
 }
 
 export async function getEngagementAnalytics(

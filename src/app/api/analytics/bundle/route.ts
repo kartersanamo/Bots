@@ -8,7 +8,7 @@ import {
   ANALYTICS_CACHE_MS,
   cachedAnalytics,
 } from "@/lib/analytics/inflight-cache";
-import { NextResponse } from "next/server";
+import { jsonCached } from "@/lib/http/json-cache";
 
 const VALID_TABS = new Set<AnalyticsTab>([
   "metrics",
@@ -16,26 +16,31 @@ const VALID_TABS = new Set<AnalyticsTab>([
   "staff",
   "moderation",
   "audit",
+  "engagement",
 ]);
 
 export const GET = handleApiRoute(async (request) => {
   const { session, range } = await requireAnalytics(request);
   const url = new URL(request.url);
-  const tabParam =
-    url.searchParams.get("tabs") ?? "metrics,games,staff,moderation,audit";
+  const tabParam = url.searchParams.get("tabs") ?? "metrics";
+  const includeSummary = url.searchParams.get("summary") !== "0";
+
   const tabs = tabParam
     .split(",")
     .map((t) => t.trim())
     .filter((t): t is AnalyticsTab => VALID_TABS.has(t as AnalyticsTab));
 
   if (!tabs.length) {
-    return NextResponse.json({ error: "No valid tabs" }, { status: 400 });
+    return Response.json({ error: "No valid tabs" }, { status: 400 });
   }
 
-  const cacheKey = `analytics:bundle:${range}:${session.tier}:${tabs.sort().join(",")}`;
+  const cacheKey = `analytics:bundle:${range}:${session.tier}:${includeSummary}:${tabs.sort().join(",")}`;
   const bundle = await cachedAnalytics(cacheKey, ANALYTICS_CACHE_MS, () =>
-    getAnalyticsBundle(session.tier, range, tabs)
+    getAnalyticsBundle(session.tier, range, tabs, { includeSummary })
   );
 
-  return NextResponse.json({ configured: true, ...bundle });
+  return jsonCached({ configured: true, ...bundle }, 120, {
+    staleWhileRevalidate: 300,
+    private: true,
+  });
 });

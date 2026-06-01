@@ -1,8 +1,9 @@
+import { handleApiRoute } from "@/lib/api/helpers";
 import { requireSession } from "@/lib/auth/session";
 import { getOverviewStats } from "@/lib/db/queries";
 import { isDbConfigured } from "@/lib/db/pool";
+import { jsonCached } from "@/lib/http/json-cache";
 import { cached } from "@/lib/server-cache";
-import { NextResponse } from "next/server";
 
 const OVERVIEW_CACHE_MS = 45_000;
 
@@ -16,22 +17,20 @@ const EMPTY_STATS = {
   ticketsToday: 0,
 };
 
-export async function GET() {
-  try {
-    await requireSession();
-    const configured = isDbConfigured();
-    const stats = configured
-      ? await cached("db:overview-stats", OVERVIEW_CACHE_MS, getOverviewStats)
-      : null;
+export const GET = handleApiRoute(async () => {
+  await requireSession();
+  const configured = isDbConfigured();
+  const stats = configured
+    ? await cached("db:overview-stats", OVERVIEW_CACHE_MS, getOverviewStats)
+    : null;
 
-    return NextResponse.json({
+  return jsonCached(
+    {
       stats: stats ?? EMPTY_STATS,
       configured,
       connected: stats !== null,
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Error";
-    const status = message === "Unauthorized" ? 401 : 403;
-    return NextResponse.json({ error: message }, { status });
-  }
-}
+    },
+    45,
+    { staleWhileRevalidate: 90, private: true }
+  );
+});

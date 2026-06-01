@@ -9,12 +9,33 @@ import type { AnalyticsRange, AuditAnalytics, DailyCount, NamedCount } from "@/l
 
 const AUDIT_FILE = path.join(process.cwd(), "data", "audit", "audit.jsonl");
 const TAIL_BYTES = 4 * 1024 * 1024;
+const AUDIT_AGG_TTL_MS = 5 * 60_000;
+
+type AuditAggregate = Awaited<ReturnType<typeof aggregateAuditTail>>;
+const auditAggregateCache = new Map<
+  string,
+  { expires: number; data: AuditAggregate }
+>();
+
+async function getAuditAggregate(
+  sinceMs: number | null
+): Promise<AuditAggregate> {
+  const key = sinceMs == null ? "all" : String(sinceMs);
+  const hit = auditAggregateCache.get(key);
+  if (hit && hit.expires > Date.now()) return hit.data;
+  const data = await aggregateAuditTail(sinceMs);
+  auditAggregateCache.set(key, {
+    expires: Date.now() + AUDIT_AGG_TTL_MS,
+    data,
+  });
+  return data;
+}
 
 export async function getAuditSummaryInRange(
   range: AnalyticsRange
 ): Promise<{ total: number; fleetRestarts: number }> {
   const sinceMs = rangeSinceUnix(range);
-  const agg = await aggregateAuditTail(sinceMs != null ? sinceMs * 1000 : null);
+  const agg = await getAuditAggregate(sinceMs != null ? sinceMs * 1000 : null);
   return { total: agg.total, fleetRestarts: agg.fleetRestarts };
 }
 
@@ -28,9 +49,7 @@ export async function getAuditAnalytics(
   range: AnalyticsRange
 ): Promise<AuditAnalytics> {
   const sinceMs = rangeSinceUnix(range);
-  const agg = await aggregateAuditTail(
-    sinceMs != null ? sinceMs * 1000 : null
-  );
+  const agg = await getAuditAggregate(sinceMs != null ? sinceMs * 1000 : null);
 
   const actionsPerDay: DailyCount[] = [...agg.byDay.entries()]
     .sort(([a], [b]) => a.localeCompare(b))

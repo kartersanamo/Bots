@@ -29,4 +29,5 @@ export async function cachedAnalytics<T>(
   return promise;
 }
 
-export const ANALYTICS_CACHE_MS = 5 * 60_000;
+export const ANALYTICS_CACHE_MS = 10 * 60_000;
+export const ANALYTICS_SUMMARY_CACHE_MS = 2 * 60_000;

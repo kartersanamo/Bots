@@ -39,10 +39,14 @@ export interface AnalyticsBundle {
 export async function getAnalyticsBundle(
   tier: PermissionTier,
   range: AnalyticsRange,
-  tabs: AnalyticsTab[]
+  tabs: AnalyticsTab[],
+  opts?: { includeSummary?: boolean }
 ): Promise<AnalyticsBundle> {
   const uniqueTabs = [...new Set(tabs)];
-  const summary = await getAnalyticsSummaryLight(tier, range);
+  const includeSummary = opts?.includeSummary !== false;
+  const summary = includeSummary
+    ? await getAnalyticsSummaryLight(tier, range)
+    : undefined;
 
   const loaders: Record<AnalyticsTab, () => Promise<unknown>> = {
     metrics: () => getTicketAnalytics(tier, range),
@@ -60,7 +64,30 @@ export async function getAnalyticsBundle(
     })
   );
 
-  const bundle = { range, summary } as AnalyticsBundle;
+  const bundle = {
+    range,
+    summary:
+      summary ??
+      ({
+        range,
+        tickets: {
+          openCount: 0,
+          openedInRange: 0,
+          closedInRange: 0,
+          avgPerDay: 0,
+          closeRatePercent: null,
+        },
+        games: {
+          activePlayers: 0,
+          everPlayed: 0,
+          xpInRange: 0,
+          xpEventsInRange: 0,
+        },
+        moderation: { activeBans: 0, blacklists: 0, polls: 0 },
+        staff: { totalMessages: 0, totalTicketsClosed: 0 },
+        audit: { actionsInRange: 0, fleetRestarts: 0 },
+      } satisfies AnalyticsSummary),
+  } as AnalyticsBundle;
   for (const [tab, data] of entries) {
     switch (tab) {
       case "metrics":

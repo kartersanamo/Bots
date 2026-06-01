@@ -51,79 +51,35 @@ export function DashboardOverview() {
   const [tickets, setTickets] = useState<RecentTicket[]>([]);
   const [guild, setGuild] = useState<GuildInfo | null>(null);
   const [botRows, setBotRows] = useState<BotStatusRow[]>([]);
-  const [coreLoading, setCoreLoading] = useState(true);
-  const [secondaryLoading, setSecondaryLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [dbConfigured, setDbConfigured] = useState(true);
   const [dbConnected, setDbConnected] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadCore() {
+    async function load() {
       try {
-        const [statsRes, ticketsRes] = await Promise.all([
-          fetch("/api/stats/overview"),
-          fetch("/api/tickets/recent?limit=5"),
-        ]);
-
-        if (cancelled) return;
-
-        if (statsRes.ok) {
-          const data = await statsRes.json();
-          setStats(data.stats);
-          setDbConfigured(data.configured !== false);
-          setDbConnected(data.connected !== false);
-        }
-
-        if (ticketsRes.ok) {
-          const data = await ticketsRes.json();
-          setTickets(data.tickets);
-        }
+        const res = await fetch("/api/dashboard/home");
+        if (cancelled || !res.ok) return;
+        const data = await res.json();
+        setStats(data.stats);
+        setTickets(data.tickets ?? []);
+        setDbConfigured(data.configured !== false);
+        setDbConnected(data.connected !== false);
+        if (data.guild) setGuild(data.guild);
+        setBotRows(data.bots ?? []);
       } finally {
-        if (!cancelled) setCoreLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
-    async function loadSecondary() {
-      try {
-        const [serverRes, botsRes] = await Promise.all([
-          fetch("/api/server/info"),
-          fetch("/api/bots"),
-        ]);
-
-        if (cancelled) return;
-
-        if (serverRes.ok) {
-          const data = await serverRes.json();
-          if (data.guild) setGuild(data.guild);
-        }
-
-        if (botsRes.ok) {
-          const data = await botsRes.json();
-          setBotRows(
-            (data.bots || []).map(
-              (b: { id: string; shortName: string; status: string }) => ({
-                id: b.id,
-                shortName: b.shortName,
-                status: b.status,
-              })
-            )
-          );
-        }
-      } finally {
-        if (!cancelled) setSecondaryLoading(false);
-      }
-    }
-
-    loadCore();
-    loadSecondary();
-
+    load();
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const loading = coreLoading;
   const onlineCount = botRows.filter((b) => b.status === "online").length;
 
   return (
@@ -144,9 +100,9 @@ export function DashboardOverview() {
         />
         <StatCard
           label="Members"
-          value={guild?.memberCount ?? (secondaryLoading ? "—" : "—")}
+          value={guild?.memberCount ?? "—"}
           icon={Users}
-          loading={secondaryLoading && !guild}
+          loading={loading && !guild}
           trend={
             guild?.approximatePresenceCount
               ? `${guild.approximatePresenceCount} online`
@@ -223,12 +179,12 @@ export function DashboardOverview() {
             </Link>
           </div>
           <p className="mb-3 text-xs text-muted">
-            {secondaryLoading
+            {loading
               ? "Loading…"
               : `${onlineCount} of ${botRows.length} online`}
           </p>
           <div className="grid grid-cols-2 gap-1.5">
-            {secondaryLoading && botRows.length === 0
+            {loading && botRows.length === 0
               ? [...Array(4)].map((_, i) => (
                   <div
                     key={i}
