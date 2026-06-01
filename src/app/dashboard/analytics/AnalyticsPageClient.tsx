@@ -6,6 +6,7 @@ import { AnalyticsRangeSelector } from "@/components/analytics/AnalyticsRangeSel
 import { GamesAnalyticsSection } from "@/components/analytics/GamesAnalyticsSection";
 import { ModerationAnalyticsSection } from "@/components/analytics/ModerationAnalyticsSection";
 import { StaffAnalyticsSection } from "@/components/analytics/StaffAnalyticsSection";
+import { EngagementAnalyticsSection } from "@/components/analytics/EngagementAnalyticsSection";
 import { OverviewAnalyticsSection } from "@/components/analytics/OverviewAnalyticsSection";
 import { TicketsAnalytics } from "@/components/analytics/TicketsAnalytics";
 import { GamesDiscordUsersProvider } from "@/components/games/GamesDiscordUsersProvider";
@@ -21,10 +22,18 @@ import { cn, formatNumber } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-type TabId = "overview" | "metrics" | "games" | "staff" | "moderation" | "audit";
+type TabId =
+  | "overview"
+  | "metrics"
+  | "games"
+  | "staff"
+  | "moderation"
+  | "audit"
+  | "engagement";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "overview", label: "Overview" },
+  { id: "engagement", label: "Engagement" },
   { id: "metrics", label: "Ticket metrics" },
   { id: "games", label: "Games" },
   { id: "staff", label: "Staff" },
@@ -32,7 +41,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "audit", label: "Dashboard audit" },
 ];
 
-const BUNDLE_TABS = "metrics,games,staff,moderation,audit";
+const BUNDLE_TABS = "metrics,games,staff,moderation,audit,engagement";
 
 interface AnalyticsPageClientProps {
   userTier: PermissionTier;
@@ -57,7 +66,8 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
     tabParam === "games" ||
     tabParam === "staff" ||
     tabParam === "moderation" ||
-    tabParam === "audit"
+    tabParam === "audit" ||
+    tabParam === "engagement"
       ? tabParam
       : "overview";
 
@@ -240,6 +250,18 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
             )}
             {tab === "audit" && bundle?.audit && (
               <AuditAnalyticsSection data={bundle.audit} range={range} />
+            )}
+            {tab === "engagement" && bundle?.engagement && (
+              <EngagementAnalyticsSection
+                data={bundle.engagement}
+                range={range}
+              />
+            )}
+            {tab === "engagement" && hydrated && !bundle?.engagement && (
+              <p className="text-muted">
+                Engagement tracking tables are not available yet. Run the analytics
+                migration and restart bots.
+              </p>
             )}
           </>
         )}

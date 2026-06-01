@@ -85,7 +85,13 @@ export const BOT_REGISTRY: BotDefinition[] = [
       "/ticket-count",
     ],
     configFiles: ["Assets/config.json", "Assets/tickets.json"],
-    databaseTables: ["tickets", "blacklists", "statistics"],
+    databaseTables: [
+      "tickets",
+      "blacklists",
+      "statistics",
+      "analytics_ticket_messages_daily",
+      "analytics_staff_messages_daily",
+    ],
   },
   {
     id: "management",

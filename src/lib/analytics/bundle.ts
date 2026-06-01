@@ -1,4 +1,5 @@
 import { getAuditAnalytics } from "@/lib/analytics/audit-data";
+import { getEngagementAnalytics } from "@/lib/analytics/engagement";
 import { getGamesAnalytics } from "@/lib/analytics/games";
 import { getModerationAnalytics } from "@/lib/analytics/moderation";
 import { getAnalyticsSummaryLight } from "@/lib/analytics/summary-light";
@@ -8,6 +9,7 @@ import type {
   AnalyticsRange,
   AnalyticsSummary,
   AuditAnalytics,
+  EngagementAnalytics,
   GamesAnalytics,
   ModerationAnalytics,
   StaffAnalytics,
@@ -20,7 +22,8 @@ export type AnalyticsTab =
   | "games"
   | "staff"
   | "moderation"
-  | "audit";
+  | "audit"
+  | "engagement";
 
 export interface AnalyticsBundle {
   range: AnalyticsRange;
@@ -30,6 +33,7 @@ export interface AnalyticsBundle {
   staff?: StaffAnalytics | null;
   moderation?: ModerationAnalytics | null;
   audit?: AuditAnalytics | null;
+  engagement?: EngagementAnalytics | null;
 }
 
 export async function getAnalyticsBundle(
@@ -46,6 +50,7 @@ export async function getAnalyticsBundle(
     staff: () => getStaffAnalytics(),
     moderation: () => getModerationAnalytics(range),
     audit: () => getAuditAnalytics(range),
+    engagement: () => getEngagementAnalytics(range),
   };
 
   const entries = await Promise.all(
@@ -72,6 +77,9 @@ export async function getAnalyticsBundle(
         break;
       case "audit":
         bundle.audit = data as AuditAnalytics | null;
+        break;
+      case "engagement":
+        bundle.engagement = data as EngagementAnalytics | null;
         break;
     }
   }

@@ -172,6 +172,46 @@ export interface AuditAnalytics {
   successRatePercent: number;
 }
 
+export interface EngagementAnalytics {
+  range: AnalyticsRange;
+  tablesReady: Record<string, boolean>;
+  kpis: {
+    staffMessagesInRange: number;
+    ticketStaffMessages: number;
+    ticketOwnerMessages: number;
+    memberJoins: number;
+    memberLeaves: number;
+    voiceSecondsInRange: number;
+    commandInvocations: number;
+    modActions: number;
+    pollVotes: number;
+    gameSessionsEnded: number;
+  };
+  staffMessagesPerDay: DailyCount[];
+  topStaffByMessages: UserCountRow[];
+  ticketStaffMessagesPerDay: DailyCount[];
+  ticketOwnerMessagesPerDay: DailyCount[];
+  memberJoinsPerDay: DailyCount[];
+  memberLeavesPerDay: DailyCount[];
+  voiceSecondsPerDay: DailyCount[];
+  topVoiceUsers: UserCountRow[];
+  commandsPerDay: DailyCount[];
+  topCommands: NamedCount[];
+  modActionsPerDay: DailyCount[];
+  modActionsByType: NamedCount[];
+  topModActors: UserCountRow[];
+  pollVotesPerDay: DailyCount[];
+  gameOutcomesPerDay: DailyCount[];
+  gameOutcomesByType: NamedCount[];
+  serverSnapshots: {
+    date: string;
+    members: number;
+    online: number;
+    boostTier: number;
+  }[];
+  blacklistsCreatedPerDay: DailyCount[];
+}
+
 export interface AnalyticsSummary {
   range: AnalyticsRange;
   tickets: {

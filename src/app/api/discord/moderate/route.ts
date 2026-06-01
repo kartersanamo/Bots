@@ -11,6 +11,7 @@ import {
   unbanMember,
   guildId,
 } from "@/lib/discord/actions";
+import { recordModAction } from "@/lib/db/analytics-tracking";
 import { setBanAppeal, removeBanRecord } from "@/lib/db/mutations";
 
 export const POST = handleApiRoute(async (request) => {
@@ -22,6 +23,15 @@ export const POST = handleApiRoute(async (request) => {
   if (!userId || !action) {
     return Response.json({ error: "action and userId required" }, { status: 400 });
   }
+
+  const modActionMap: Record<string, string> = {
+    timeout: "timeout",
+    untimeout: "untimeout",
+    kick: "kick",
+    ban: "ban",
+    unban: "unban",
+    set_appeal: "set_appeal",
+  };
 
   const result = await withAudit(
     request,
@@ -56,6 +66,22 @@ export const POST = handleApiRoute(async (request) => {
     },
     { before: { action, userId } }
   );
+
+  const modType = modActionMap[action];
+  if (modType) {
+    try {
+      await recordModAction({
+        actionType: modType,
+        actorId: session.id,
+        targetId: userId,
+        reason: typeof reason === "string" ? reason : undefined,
+        durationSeconds:
+          action === "timeout" ? durationSeconds || 3600 : undefined,
+      });
+    } catch {
+      /* analytics tables may not exist yet */
+    }
+  }
 
   return Response.json({ ok: true, result });
 });
