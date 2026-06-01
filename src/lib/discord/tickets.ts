@@ -242,7 +242,7 @@ export async function fetchDiscordUser(userId: string): Promise<{
 } | null> {
   const res = await fetch(`${DISCORD_API}/users/${userId}`, {
     headers: botHeaders(),
-    next: { revalidate: 300 },
+    cache: "no-store",
   });
   if (!res.ok) return null;
   const u = await res.json();

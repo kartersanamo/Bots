@@ -1,6 +1,11 @@
 import { handleApiRoute, requireAction } from "@/lib/api/helpers";
-import { resolveDiscordUsers } from "@/lib/discord/users";
+import {
+  isDiscordBotConfigured,
+  resolveDiscordUsers,
+} from "@/lib/discord/users";
 import { collectSnowflakeIds } from "@/lib/games/discord-enrich";
+
+export const dynamic = "force-dynamic";
 
 export const GET = handleApiRoute(async (request) => {
   await requireAction("games.read");
@@ -11,6 +16,17 @@ export const GET = handleApiRoute(async (request) => {
     return Response.json({ users: {} });
   }
 
+  if (!isDiscordBotConfigured()) {
+    return Response.json({
+      users: {},
+      error: "DISCORD_BOT_TOKEN is not set on the server",
+    });
+  }
+
   const users = await resolveDiscordUsers(ids);
-  return Response.json({ users });
+  return Response.json({
+    users,
+    resolved: Object.keys(users).length,
+    requested: ids.length,
+  });
 });
