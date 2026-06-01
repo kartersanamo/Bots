@@ -2,6 +2,10 @@
 
 import { Card } from "@/components/ui/Card";
 import { DiscordUserChip } from "@/components/games/DiscordUserChip";
+import {
+  useMergeDiscordUsersFromApi,
+  type DiscordUserProfile,
+} from "@/components/games/GamesDiscordUsersProvider";
 import { can, type PermissionTier } from "@/lib/permissions";
 import { formatUnixTimestamp } from "@/lib/utils";
 import { useEffect, useState } from "react";
@@ -10,11 +14,18 @@ export function GamesDailySection({ userTier }: { userTier: PermissionTier }) {
   const [rows, setRows] = useState<
     { user_id: string; streak: number; last_claimed: string | null }[]
   >([]);
+  const [apiUsers, setApiUsers] = useState<Record<string, DiscordUserProfile>>(
+    {}
+  );
+  useMergeDiscordUsersFromApi(apiUsers);
 
   useEffect(() => {
     fetch("/api/games/daily?limit=100")
       .then((r) => r.json())
-      .then((d) => setRows(d.rows || []));
+      .then((d) => {
+        setRows(d.rows || []);
+        setApiUsers(d.users || {});
+      });
   }, []);
 
   return (

@@ -58,16 +58,17 @@ export function formatRelativeTime(date: Date | string): string {
 }
 
 export function discordAvatarUrl(
-  userId: string,
+  userId: string | number,
   avatarHash: string | null,
   size = 128
 ): string {
+  const id = String(userId);
   if (avatarHash) {
     const ext = avatarHash.startsWith("a_") ? "gif" : "png";
-    return `https://cdn.discordapp.com/avatars/${userId}/${avatarHash}.${ext}?size=${size}`;
+    return `https://cdn.discordapp.com/avatars/${id}/${avatarHash}.${ext}?size=${size}`;
   }
 
-  const numeric = Number.parseInt(userId.slice(-4), 10);
+  const numeric = Number.parseInt(id.slice(-4), 10);
   const defaultIndex = Number.isNaN(numeric) ? 0 : numeric % 6;
   return `https://cdn.discordapp.com/embed/avatars/${defaultIndex}.png`;
 }

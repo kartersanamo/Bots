@@ -3,6 +3,8 @@
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { DiscordUserChip } from "@/components/games/DiscordUserChip";
+import { useMergeDiscordUsersFromApi } from "@/components/games/GamesDiscordUsersProvider";
+import type { ResolvedDiscordUser } from "@/lib/discord/users";
 import { can, type PermissionTier } from "@/lib/permissions";
 import { useEffect, useState } from "react";
 
@@ -16,6 +18,8 @@ export function GamesCountingSection({ userTier }: { userTier: PermissionTier })
     { user_id: string; total_counts: number; mistakes: number }[]
   >([]);
   const [msg, setMsg] = useState<string | null>(null);
+  const [apiUsers, setApiUsers] = useState<Record<string, ResolvedDiscordUser>>({});
+  useMergeDiscordUsersFromApi(apiUsers);
 
   function load() {
     fetch("/api/games/counting")
@@ -23,6 +27,7 @@ export function GamesCountingSection({ userTier }: { userTier: PermissionTier })
       .then((d) => {
         setServer(d.server);
         setUsers(d.users || []);
+        if (d.discordUsers) setApiUsers(d.discordUsers);
       });
   }
 

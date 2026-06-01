@@ -3,6 +3,7 @@ import { getAllTimeLeaderboard } from "@/lib/db/games";
 import type { AllTimeLeaderboardType } from "@/lib/games/types";
 import { ALL_TIME_LEADERBOARD_TYPES } from "@/lib/games/types";
 import { isDbConfigured } from "@/lib/db/pool";
+import { discordUsersForIds, snowflakeString } from "@/lib/games/discord-enrich";
 
 export const GET = handleApiRoute(async (request) => {
   await requireAction("games.read");
@@ -20,6 +21,11 @@ export const GET = handleApiRoute(async (request) => {
     return Response.json({ entries: [], configured: false });
   }
 
-  const entries = await getAllTimeLeaderboard(type, limit);
-  return Response.json({ entries, type, configured: true });
+  const entriesRaw = await getAllTimeLeaderboard(type, limit);
+  const entries = entriesRaw.map((e) => ({
+    ...e,
+    userId: snowflakeString(e.userId),
+  }));
+  const users = await discordUsersForIds(entries.map((e) => e.userId));
+  return Response.json({ entries, users, type, configured: true });
 });

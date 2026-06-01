@@ -3,6 +3,10 @@
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { DiscordUserChip } from "@/components/games/DiscordUserChip";
+import {
+  useMergeDiscordUsersFromApi,
+  type DiscordUserProfile,
+} from "@/components/games/GamesDiscordUsersProvider";
 import { formatUnixTimestamp } from "@/lib/utils";
 import { useEffect, useState } from "react";
 
@@ -19,6 +23,10 @@ export function GamesXpLogsSection() {
   const [page, setPage] = useState(1);
   const [userId, setUserId] = useState("");
   const [total, setTotal] = useState(0);
+  const [apiUsers, setApiUsers] = useState<Record<string, DiscordUserProfile>>(
+    {}
+  );
+  useMergeDiscordUsersFromApi(apiUsers);
 
   useEffect(() => {
     const params = new URLSearchParams({ page: String(page), limit: "50" });
@@ -28,6 +36,7 @@ export function GamesXpLogsSection() {
       .then((d) => {
         setRows(d.rows || []);
         setTotal(d.total || 0);
+        setApiUsers(d.users || {});
       });
   }, [page, userId]);
 

@@ -2,6 +2,10 @@
 
 import { Card } from "@/components/ui/Card";
 import { DiscordUserChip } from "@/components/games/DiscordUserChip";
+import {
+  useMergeDiscordUsersFromApi,
+  type DiscordUserProfile,
+} from "@/components/games/GamesDiscordUsersProvider";
 import { can, type PermissionTier } from "@/lib/permissions";
 import { formatUnixTimestamp } from "@/lib/utils";
 import { useEffect, useState } from "react";
@@ -14,11 +18,18 @@ export function GamesAchievementsSection({
   const [grants, setGrants] = useState<
     { user_id: string; achievement_id: string; earned_at: string | null }[]
   >([]);
+  const [apiUsers, setApiUsers] = useState<Record<string, DiscordUserProfile>>(
+    {}
+  );
+  useMergeDiscordUsersFromApi(apiUsers);
 
   useEffect(() => {
     fetch("/api/games/achievements")
       .then((r) => r.json())
-      .then((d) => setGrants(d.grants || []));
+      .then((d) => {
+        setGrants(d.grants || []);
+        setApiUsers(d.users || {});
+      });
   }, []);
 
   return (

@@ -3,7 +3,12 @@
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { DiscordUserChip } from "@/components/games/DiscordUserChip";
+import {
+  useMergeDiscordUsersFromApi,
+  type DiscordUserProfile,
+} from "@/components/games/GamesDiscordUsersProvider";
 import { GamesUserDrawer } from "@/components/games/GamesUserDrawer";
+import { snowflakeString } from "@/lib/games/discord-enrich";
 import { can, type PermissionTier } from "@/lib/permissions";
 import { formatBoolFlag } from "@/lib/utils";
 import { useEffect, useState } from "react";
@@ -22,6 +27,8 @@ export function GamesMonthlySection({ userTier }: { userTier: PermissionTier }) 
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [apiUsers, setApiUsers] = useState<Record<string, DiscordUserProfile>>({});
+  useMergeDiscordUsersFromApi(apiUsers);
 
   useEffect(() => {
     setLoading(true);
@@ -35,6 +42,7 @@ export function GamesMonthlySection({ userTier }: { userTier: PermissionTier }) 
       .then((d) => {
         setRows(d.rows || []);
         setTotal(d.total || 0);
+        setApiUsers(d.users || {});
       })
       .finally(() => setLoading(false));
   }, [page, search]);
@@ -74,7 +82,7 @@ export function GamesMonthlySection({ userTier }: { userTier: PermissionTier }) 
                 <tr
                   key={r.user_id}
                   className="cursor-pointer border-b border-border/50 hover:bg-surface-hover"
-                  onClick={() => setSelectedUser(r.user_id)}
+                  onClick={() => setSelectedUser(snowflakeString(r.user_id))}
                 >
                   <td className="py-2 pr-4 text-muted">
                     {(page - 1) * 50 + i + 1}

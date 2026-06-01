@@ -19,11 +19,19 @@ export function setCached<T>(key: string, value: T, ttlMs: number): T {
 export async function cached<T>(
   key: string,
   ttlMs: number,
-  fn: () => Promise<T>
+  fn: () => Promise<T>,
+  opts?: { cacheNull?: boolean }
 ): Promise<T> {
-  const hit = getCached<T>(key);
-  if (hit !== undefined) return hit;
+  const hit = getCached<T | null>(key);
+  if (hit !== undefined) {
+    if (hit !== null || opts?.cacheNull !== false) {
+      return hit as T;
+    }
+  }
   const value = await fn();
+  if (value === null && opts?.cacheNull === false) {
+    return value;
+  }
   return setCached(key, value, ttlMs);
 }
 

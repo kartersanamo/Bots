@@ -2,6 +2,7 @@ import { handleApiRoute, requireAction, withAudit } from "@/lib/api/helpers";
 import { getBotConfig, isControlApiConfigured } from "@/lib/control-api/client";
 import { grantAchievement, revokeAchievement } from "@/lib/db/mutations";
 import { query, isDbConfigured } from "@/lib/db/pool";
+import { discordUsersForIds, snowflakeString } from "@/lib/games/discord-enrich";
 
 export const GET = handleApiRoute(async () => {
   await requireAction("games.read");
@@ -24,7 +25,19 @@ export const GET = handleApiRoute(async () => {
     );
   }
 
-  return Response.json({ definitions, grants, configured: isDbConfigured() });
+  const grantsNormalized = grants.map((g) => ({
+    ...g,
+    user_id: snowflakeString(g.user_id),
+  }));
+  const users = await discordUsersForIds(
+    grantsNormalized.map((g) => g.user_id)
+  );
+  return Response.json({
+    definitions,
+    grants: grantsNormalized,
+    users,
+    configured: isDbConfigured(),
+  });
 });
 
 export const POST = handleApiRoute(async (request) => {

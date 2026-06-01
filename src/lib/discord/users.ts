@@ -54,32 +54,38 @@ export async function resolveDiscordUser(
 ): Promise<ResolvedDiscordUser | null> {
   if (!userId || !/^\d+$/.test(userId)) return null;
 
-  return cached(`discord-user:${userId}`, USER_CACHE_TTL_MS, async () => {
-    const member = await fetchGuildMemberRaw(userId);
-    if (member?.user) {
-      const u = member.user;
-      const username = String(u.username ?? "unknown");
-      const globalName = u.global_name ?? null;
-      const nick = member.nick ?? null;
-      return {
-        id: String(u.id),
-        username,
-        displayName: nick || globalName || username,
-        avatar: u.avatar ?? null,
-        nick,
-      };
-    }
+  const result = await cached(
+    `discord-user:${userId}`,
+    USER_CACHE_TTL_MS,
+    async () => {
+      const member = await fetchGuildMemberRaw(userId);
+      if (member?.user) {
+        const u = member.user;
+        const username = String(u.username ?? "unknown");
+        const globalName = u.global_name ?? null;
+        const nick = member.nick ?? null;
+        return {
+          id: String(u.id),
+          username,
+          displayName: nick || globalName || username,
+          avatar: u.avatar ?? null,
+          nick,
+        };
+      }
 
-    const user = await fetchDiscordUserRaw(userId);
-    if (!user) return null;
-    return {
-      id: user.id,
-      username: user.username,
-      displayName: user.global_name || user.username,
-      avatar: user.avatar,
-      nick: null,
-    };
-  });
+      const user = await fetchDiscordUserRaw(userId);
+      if (!user) return null;
+      return {
+        id: user.id,
+        username: user.username,
+        displayName: user.global_name || user.username,
+        avatar: user.avatar,
+        nick: null,
+      };
+    },
+    { cacheNull: false }
+  );
+  return result ?? null;
 }
 
 export async function resolveDiscordUsers(

@@ -2,6 +2,10 @@
 
 import { Card } from "@/components/ui/Card";
 import { DiscordUserChip } from "@/components/games/DiscordUserChip";
+import {
+  useMergeDiscordUsersFromApi,
+  type DiscordUserProfile,
+} from "@/components/games/GamesDiscordUsersProvider";
 import { ALL_TIME_LEADERBOARD_TYPES } from "@/lib/games/types";
 import { useEffect, useState } from "react";
 
@@ -11,12 +15,19 @@ export function GamesAllTimeSection() {
     { userId: string; value: number; rank: number }[]
   >([]);
   const [loading, setLoading] = useState(true);
+  const [apiUsers, setApiUsers] = useState<Record<string, DiscordUserProfile>>(
+    {}
+  );
+  useMergeDiscordUsersFromApi(apiUsers);
 
   useEffect(() => {
     setLoading(true);
     fetch(`/api/games/leaderboard/all-time?type=${type}&limit=100`)
       .then((r) => r.json())
-      .then((d) => setEntries(d.entries || []))
+      .then((d) => {
+        setEntries(d.entries || []);
+        setApiUsers(d.users || {});
+      })
       .finally(() => setLoading(false));
   }, [type]);
 

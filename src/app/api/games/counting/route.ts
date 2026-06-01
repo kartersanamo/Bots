@@ -1,6 +1,7 @@
 import { handleApiRoute, requireAction } from "@/lib/api/helpers";
 import { getCountingData } from "@/lib/db/games";
 import { isDbConfigured } from "@/lib/db/pool";
+import { discordUsersForIds, snowflakeString } from "@/lib/games/discord-enrich";
 
 export const GET = handleApiRoute(async () => {
   await requireAction("games.read");
@@ -14,5 +15,15 @@ export const GET = handleApiRoute(async () => {
   }
 
   const data = await getCountingData(guildId);
-  return Response.json({ ...data, configured: true });
+  const users = data.users.map((u) => ({
+    ...u,
+    user_id: snowflakeString(u.user_id),
+  }));
+  const discordUsers = await discordUsersForIds(users.map((u) => u.user_id));
+  return Response.json({
+    server: data.server,
+    users,
+    discordUsers,
+    configured: true,
+  });
 });

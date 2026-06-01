@@ -5,6 +5,10 @@ import { StatCard } from "@/components/ui/StatCard";
 import { can, type PermissionTier } from "@/lib/permissions";
 import { BarChart3, Gamepad2, Users, Zap } from "lucide-react";
 import { DiscordUserChip } from "@/components/games/DiscordUserChip";
+import {
+  useMergeDiscordUsersFromApi,
+  type DiscordUserProfile,
+} from "@/components/games/GamesDiscordUsersProvider";
 import { useEffect, useState } from "react";
 
 export function GamesOverviewSection({ userTier }: { userTier: PermissionTier }) {
@@ -18,11 +22,18 @@ export function GamesOverviewSection({ userTier }: { userTier: PermissionTier })
     recentLogs: { user_id: string; xp: number; source: string | null }[];
     botStatus: { chatGamesRunning: boolean; dmGamesRunning: boolean } | null;
   } | null>(null);
+  const [apiUsers, setApiUsers] = useState<Record<string, DiscordUserProfile>>(
+    {}
+  );
+  useMergeDiscordUsersFromApi(apiUsers);
 
   useEffect(() => {
     fetch("/api/games/overview")
       .then((r) => r.json())
-      .then(setData);
+      .then((d) => {
+        setData(d);
+        setApiUsers(d.users || {});
+      });
   }, []);
 
   const o = data?.overview;

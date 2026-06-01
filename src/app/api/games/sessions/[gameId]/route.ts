@@ -6,6 +6,7 @@ import {
   isGamesBotApiConfigured,
 } from "@/lib/games-bot/client";
 import { isDbConfigured } from "@/lib/db/pool";
+import { discordUsersForIds, snowflakeString } from "@/lib/games/discord-enrich";
 
 export const GET = handleApiRoute(async (_request, ctx) => {
   await requireAction("games.read");
@@ -45,11 +46,28 @@ export const GET = handleApiRoute(async (_request, ctx) => {
     }
   }
 
+  const xpLogs = detail.xpLogs.map((l) => ({
+    ...l,
+    user_id: snowflakeString(l.user_id),
+  }));
+  const dmEntriesNormalized = dmEntries.map((e) => ({
+    ...e,
+    user_id: snowflakeString(e.user_id),
+  }));
+  const winnerIds =
+    live?.winners?.map((w) => snowflakeString(w.user_id)).filter(Boolean) ?? [];
+  const users = await discordUsersForIds([
+    ...xpLogs.map((l) => l.user_id),
+    ...dmEntriesNormalized.map((e) => e.user_id),
+    ...winnerIds,
+  ]);
+
   return Response.json({
     game: detail.game,
-    xpLogs: detail.xpLogs,
-    dmEntries,
+    xpLogs,
+    dmEntries: dmEntriesNormalized,
     dmMeta,
     live,
+    users,
   });
 });

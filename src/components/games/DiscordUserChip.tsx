@@ -2,6 +2,7 @@
 
 import { Avatar } from "@/components/ui/Avatar";
 import { useGamesDiscordUsers, useResolveDiscordUsers } from "@/components/games/GamesDiscordUsersProvider";
+import { snowflakeString } from "@/lib/games/discord-enrich";
 import { cn } from "@/lib/utils";
 
 interface DiscordUserChipProps {
@@ -17,14 +18,15 @@ export function DiscordUserChip({
   showId = false,
   onClick,
 }: DiscordUserChipProps) {
-  useResolveDiscordUsers([userId]);
+  const id = snowflakeString(userId);
+  useResolveDiscordUsers([id]);
   const { users } = useGamesDiscordUsers();
-  const user = users[userId];
+  const user = id ? users[id] : undefined;
 
   const inner = (
     <>
       <Avatar
-        userId={userId}
+        userId={id}
         avatarHash={user?.avatar ?? null}
         size={24}
         className="shrink-0"
@@ -34,11 +36,11 @@ export function DiscordUserChip({
           <>
             <span className="text-white">{user.displayName}</span>
             {showId && (
-              <span className="ml-1 font-mono text-xs text-muted">{userId}</span>
+              <span className="ml-1 font-mono text-xs text-muted">{id}</span>
             )}
           </>
         ) : (
-          <span className="font-mono text-xs text-muted">{userId}</span>
+          <span className="font-mono text-xs text-muted">{id}</span>
         )}
       </span>
     </>

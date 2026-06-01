@@ -1,6 +1,7 @@
 import { handleApiRoute, requireAction } from "@/lib/api/helpers";
 import { listXpLogs } from "@/lib/db/games";
 import { isDbConfigured } from "@/lib/db/pool";
+import { discordUsersForIds, snowflakeString } from "@/lib/games/discord-enrich";
 
 export const GET = handleApiRoute(async (request) => {
   await requireAction("games.read");
@@ -18,5 +19,10 @@ export const GET = handleApiRoute(async (request) => {
     gameId: url.searchParams.get("gameId") || undefined,
   });
 
-  return Response.json({ ...result, configured: true });
+  const rows = result.rows.map((r) => ({
+    ...r,
+    user_id: snowflakeString(r.user_id),
+  }));
+  const users = await discordUsersForIds(rows.map((r) => r.user_id));
+  return Response.json({ ...result, rows, users, configured: true });
 });

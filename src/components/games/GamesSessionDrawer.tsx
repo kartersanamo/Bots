@@ -4,7 +4,12 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { DiscordUserChip } from "@/components/games/DiscordUserChip";
-import { useResolveDiscordUsers } from "@/components/games/GamesDiscordUsersProvider";
+import {
+  useMergeDiscordUsersFromApi,
+  useResolveDiscordUsers,
+} from "@/components/games/GamesDiscordUsersProvider";
+import { snowflakeString } from "@/lib/games/discord-enrich";
+import type { ResolvedDiscordUser } from "@/lib/discord/users";
 import { formatBoolFlag, formatUnixTimestamp } from "@/lib/utils";
 import { can, type PermissionTier } from "@/lib/permissions";
 import { X } from "lucide-react";
@@ -52,6 +57,8 @@ export function GamesSessionDrawer({
   const [msg, setMsg] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<string | null>(null);
   const [editFields, setEditFields] = useState<Record<string, string>>({});
+  const [apiUsers, setApiUsers] = useState<Record<string, ResolvedDiscordUser>>({});
+  useMergeDiscordUsersFromApi(apiUsers);
 
   const canControl = can(userTier, "games.control");
   const canWrite = can(userTier, "games.write");
@@ -63,6 +70,7 @@ export function GamesSessionDrawer({
       .then((d) => {
         if (d.error) throw new Error(d.error);
         setDetail(d);
+        if (d.users) setApiUsers(d.users);
       })
       .catch((e) => setMsg(e.message))
       .finally(() => setLoading(false));
@@ -73,9 +81,11 @@ export function GamesSessionDrawer({
   }, [load]);
 
   const userIds = [
-    ...(detail?.xpLogs.map((l) => l.user_id) || []),
-    ...(detail?.dmEntries.map((e) => String(e.user_id)) || []),
-    ...(detail?.live?.winners?.map((w) => w.user_id).filter(Boolean) as string[]) || [],
+    ...(detail?.xpLogs.map((l) => snowflakeString(l.user_id)) ?? []),
+    ...(detail?.dmEntries.map((e) => snowflakeString(e.user_id)) ?? []),
+    ...(detail?.live?.winners
+      ?.map((w) => snowflakeString(w.user_id))
+      .filter((id) => id.length > 0) ?? []),
   ];
   useResolveDiscordUsers(userIds);
 
@@ -201,8 +211,8 @@ export function GamesSessionDrawer({
                     <div className="mt-2">
                       <p className="text-xs text-muted mb-1">Winners (live)</p>
                       {detail.live.winners.map((w, i) =>
-                        w.user_id ? (
-                          <DiscordUserChip key={i} userId={w.user_id} className="mb-1" />
+                        w.user_id != null ? (
+                          <DiscordUserChip key={i} userId={String(w.user_id)} className="mb-1" />
                         ) : null
                       )}
                     </div>
@@ -325,7 +335,7 @@ export function GamesSessionDrawer({
                         key={i}
                         className="flex items-center justify-between gap-2 border-b border-border/40 pb-2"
                       >
-                        <DiscordUserChip userId={log.user_id} />
+                        <DiscordUserChip userId={String(log.user_id)} />
                         <span className="shrink-0 text-muted">
                           +{log.xp} {log.source || ""}{" "}
                           <span className="text-xs">
