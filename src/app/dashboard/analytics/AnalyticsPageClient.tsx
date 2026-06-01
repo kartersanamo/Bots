@@ -6,6 +6,7 @@ import { AnalyticsRangeSelector } from "@/components/analytics/AnalyticsRangeSel
 import { GamesAnalyticsSection } from "@/components/analytics/GamesAnalyticsSection";
 import { ModerationAnalyticsSection } from "@/components/analytics/ModerationAnalyticsSection";
 import { StaffAnalyticsSection } from "@/components/analytics/StaffAnalyticsSection";
+import { OverviewAnalyticsSection } from "@/components/analytics/OverviewAnalyticsSection";
 import { TicketsAnalytics } from "@/components/analytics/TicketsAnalytics";
 import { GamesDiscordUsersProvider } from "@/components/games/GamesDiscordUsersProvider";
 import type { AnalyticsBundle } from "@/lib/analytics/bundle";
@@ -20,9 +21,10 @@ import { cn, formatNumber } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-type TabId = "metrics" | "games" | "staff" | "moderation" | "audit";
+type TabId = "overview" | "metrics" | "games" | "staff" | "moderation" | "audit";
 
 const TABS: { id: TabId; label: string }[] = [
+  { id: "overview", label: "Overview" },
   { id: "metrics", label: "Ticket metrics" },
   { id: "games", label: "Games" },
   { id: "staff", label: "Staff" },
@@ -50,12 +52,14 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
     }
   }, [tabParam, router]);
   const tab: TabId =
+    tabParam === "overview" ||
+    tabParam === "metrics" ||
     tabParam === "games" ||
     tabParam === "staff" ||
     tabParam === "moderation" ||
     tabParam === "audit"
       ? tabParam
-      : "metrics";
+      : "overview";
 
   const [bundle, setBundle] = useState<AnalyticsBundle | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -153,30 +157,23 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
               />
             ))}
           </div>
-        ) : summary ? (
+        ) : summary && tab !== "overview" ? (
           <AnalyticsKpiGrid
             items={[
               { label: "Open tickets", value: summary.tickets.openCount },
+              { label: "Opened (range)", value: summary.tickets.openedInRange },
+              { label: "Closed (range)", value: summary.tickets.closedInRange },
               {
-                label: "Opened (range)",
-                value: summary.tickets.openedInRange,
+                label: "Close rate",
+                value:
+                  summary.tickets.closeRatePercent != null
+                    ? `${summary.tickets.closeRatePercent}%`
+                    : "—",
               },
-              {
-                label: "Avg tickets / day",
-                value: summary.tickets.avgPerDay.toFixed(2),
-              },
-              {
-                label: "Active game players",
-                value: summary.games.activePlayers,
-              },
-              {
-                label: "XP in range",
-                value: formatNumber(summary.games.xpInRange),
-              },
-              {
-                label: "Dashboard actions",
-                value: summary.audit.actionsInRange,
-              },
+              { label: "Active players", value: summary.games.activePlayers },
+              { label: "XP in range", value: formatNumber(summary.games.xpInRange) },
+              { label: "Active bans", value: summary.moderation.activeBans },
+              { label: "Dashboard actions", value: summary.audit.actionsInRange },
             ]}
           />
         ) : null}
@@ -211,6 +208,9 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
           </div>
         ) : (
           <>
+            {tab === "overview" && bundle && (
+              <OverviewAnalyticsSection bundle={bundle} range={range} />
+            )}
             {tab === "metrics" && bundle?.metrics && (
               <TicketsAnalytics data={bundle.metrics} range={range} />
             )}

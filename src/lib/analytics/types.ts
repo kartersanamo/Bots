@@ -10,6 +10,11 @@ export interface NamedCount {
   count: number;
 }
 
+export interface UserCountRow {
+  userId: string;
+  count: number;
+}
+
 export interface TicketOpenerRow {
   ownerId: string;
   count: number;
@@ -39,6 +44,12 @@ export interface TicketGapRow {
   gapSeconds: number;
 }
 
+export interface CloseTimeByTypeRow {
+  type: string;
+  medianSeconds: number;
+  count: number;
+}
+
 export interface TicketAnalytics {
   range: AnalyticsRange;
   kpis: {
@@ -50,17 +61,33 @@ export interface TicketAnalytics {
     openedInRange: number;
     medianCloseSeconds: number | null;
     p90CloseSeconds: number | null;
+    closeRatePercent: number | null;
+    withTranscriptCount: number;
+    backlogDelta: number;
   };
   openedPerDay: DailyCount[];
   closedPerDay: DailyCount[];
+  netQueuePerDay: DailyCount[];
   byType: NamedCount[];
+  byTypeClosed: NamedCount[];
   byHour: NamedCount[];
+  byHourClosed: NamedCount[];
   byDayOfWeek: NamedCount[];
+  byDayOfWeekClosed: NamedCount[];
+  visibilitySplit: NamedCount[];
   topOpenersInRange: TicketOpenerRow[];
   topOpenersAllTime: TicketOpenerRow[];
+  topClosersInRange: UserCountRow[];
+  topCloseReasons: NamedCount[];
   mostTicketsInOneDay: MostTicketsInDayRow[];
   longestOpenTickets: LongestTicketRow[];
+  closeTimeByType: CloseTimeByTypeRow[];
   longestGap: TicketGapRow | null;
+}
+
+export interface GamesLeaderboardRow {
+  userId: string;
+  value: number;
 }
 
 export interface GamesAnalytics {
@@ -71,11 +98,26 @@ export interface GamesAnalytics {
     openSessions: number;
     totalXpInRange: number;
     xpLogEventsInRange: number;
+    avgXpPerEvent: number;
+    totalAchievements: number;
+    achievementsInRange: number;
+    dailyClaimUsers: number;
+    claimsInRange: number;
+    countingUsers: number;
+    countingTotalCounts: number;
+    countingMistakes: number;
   };
   xpPerDay: DailyCount[];
   sessionsPerDay: DailyCount[];
   topXpSources: NamedCount[];
   newPlayersPerDay: DailyCount[];
+  topXpEarners: GamesLeaderboardRow[];
+  levelDistribution: NamedCount[];
+  dailyClaimsPerDay: DailyCount[];
+  achievementsPerDay: DailyCount[];
+  sessionsByGame: NamedCount[];
+  sessionModeSplit: NamedCount[];
+  topStreaks: { userId: string; streak: number }[];
 }
 
 export interface StaffLeaderboardRow {
@@ -88,6 +130,16 @@ export interface StaffLeaderboardRow {
 
 export interface StaffAnalytics {
   leaderboard: StaffLeaderboardRow[];
+  topByMessages: StaffLeaderboardRow[];
+  topByWarnings: StaffLeaderboardRow[];
+  topByScreenshares: StaffLeaderboardRow[];
+  totals: {
+    ticketsClosed: number;
+    messages: number;
+    warnings: number;
+    screenshares: number;
+    staffCount: number;
+  };
   duplicateStatisticsUsers: { userId: string; count: number }[];
   strikeReportsTotal: number | null;
 }
@@ -99,8 +151,11 @@ export interface ModerationAnalytics {
     totalBlacklists: number;
     activePolls: number;
     totalPolls: number;
+    mediaEntries: number;
+    blacklistsWithExpiry: number;
   };
   blacklistsPerDay: DailyCount[];
+  blacklistsByStaff: UserCountRow[];
   pollsCreatedPerDay: DailyCount[];
 }
 
@@ -109,8 +164,12 @@ export interface AuditAnalytics {
   actionsPerDay: DailyCount[];
   topActors: { actorId: string; count: number }[];
   topActions: NamedCount[];
+  topTargets: NamedCount[];
+  byHour: NamedCount[];
   fleetRestarts: number;
   totalInRange: number;
+  failedActions: number;
+  successRatePercent: number;
 }
 
 export interface AnalyticsSummary {
@@ -118,17 +177,27 @@ export interface AnalyticsSummary {
   tickets: {
     openCount: number;
     openedInRange: number;
+    closedInRange: number;
     avgPerDay: number;
+    closeRatePercent: number | null;
   };
   games: {
     activePlayers: number;
+    everPlayed: number;
     xpInRange: number;
+    xpEventsInRange: number;
   };
   moderation: {
     activeBans: number;
     blacklists: number;
+    polls: number;
+  };
+  staff: {
+    totalMessages: number;
+    totalTicketsClosed: number;
   };
   audit: {
     actionsInRange: number;
+    fleetRestarts: number;
   };
 }

@@ -2,7 +2,8 @@
 
 import { AnalyticsChartCard } from "@/components/analytics/AnalyticsChartCard";
 import { AnalyticsKpiGrid } from "@/components/analytics/AnalyticsKpiGrid";
-import { DailyLineChart } from "@/components/analytics/charts";
+import { AnalyticsUserCountTable } from "@/components/analytics/AnalyticsUserCountTable";
+import { DailyLineChart, NamedBarChart } from "@/components/analytics/charts";
 import type { AnalyticsRange, ModerationAnalytics } from "@/lib/analytics/types";
 
 interface ModerationAnalyticsSectionProps {
@@ -22,22 +23,74 @@ export function ModerationAnalyticsSection({
         items={[
           { label: "Active bans", value: kpis.activeBans },
           { label: "Blacklist entries", value: kpis.totalBlacklists },
-          { label: "Open polls", value: kpis.activePolls, hint: "Rows in polls table" },
-          { label: "Total polls", value: kpis.totalPolls },
+          {
+            label: "Blacklists with expiry",
+            value: kpis.blacklistsWithExpiry,
+          },
+          { label: "Poll rows", value: kpis.totalPolls },
+          { label: "Media entries", value: kpis.mediaEntries },
         ]}
       />
 
-      <AnalyticsChartCard
-        title="Blacklists by expiry date (bucketed)"
-        exportHeaders={["date", "count"]}
-        exportFilename={`blacklists-${range}.csv`}
-        exportRows={data.blacklistsPerDay.map((r) => ({
-          date: r.date,
-          count: r.count,
-        }))}
-      >
-        <DailyLineChart data={data.blacklistsPerDay} color="#ef4444" />
-      </AnalyticsChartCard>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <AnalyticsChartCard
+          title="Blacklist expirations by date"
+          exportHeaders={["date", "count"]}
+          exportFilename={`blacklists-expiry-${range}.csv`}
+          exportRows={data.blacklistsPerDay.map((r) => ({
+            date: r.date,
+            count: r.count,
+          }))}
+        >
+          <p className="mb-2 text-xs text-muted">
+            Buckets by scheduled unblacklist time (whenToUnbl), not necessarily
+            when the entry was created.
+          </p>
+          <DailyLineChart data={data.blacklistsPerDay} color="#ef4444" />
+        </AnalyticsChartCard>
+
+        {data.pollsCreatedPerDay.length > 0 && (
+          <AnalyticsChartCard
+            title="Polls created per day"
+            exportHeaders={["date", "polls"]}
+            exportFilename={`polls-created-${range}.csv`}
+            exportRows={data.pollsCreatedPerDay.map((r) => ({
+              date: r.date,
+              polls: r.count,
+            }))}
+          >
+            <DailyLineChart data={data.pollsCreatedPerDay} color="#a78bfa" />
+          </AnalyticsChartCard>
+        )}
+      </div>
+
+      {data.blacklistsByStaff.length > 0 && (
+        <>
+          <AnalyticsUserCountTable
+            title="Blacklists by staff member"
+            rows={data.blacklistsByStaff}
+            exportFilename="blacklists-by-staff.csv"
+            countLabel="Entries"
+          />
+          <AnalyticsChartCard
+            title="Blacklists issued by staff"
+            exportHeaders={["staffId", "count"]}
+            exportFilename="blacklists-by-staff-chart.csv"
+            exportRows={data.blacklistsByStaff.map((r) => ({
+              staffId: r.userId,
+              count: r.count,
+            }))}
+          >
+            <NamedBarChart
+              data={data.blacklistsByStaff.map((r) => ({
+                name: r.userId.slice(-6),
+                count: r.count,
+              }))}
+              color="#ef4444"
+            />
+          </AnalyticsChartCard>
+        </>
+      )}
     </div>
   );
 }

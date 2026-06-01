@@ -26,6 +26,11 @@ export function AuditAnalyticsSection({
         items={[
           { label: "Dashboard actions (range)", value: data.totalInRange },
           { label: "Fleet restarts (range)", value: data.fleetRestarts },
+          { label: "Failed actions", value: data.failedActions },
+          {
+            label: "Success rate",
+            value: `${data.successRatePercent}%`,
+          },
         ]}
       />
 
@@ -43,6 +48,18 @@ export function AuditAnalyticsSection({
 
       <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsChartCard
+          title="Actions by hour (UTC, combined)"
+          exportHeaders={["hour", "actions"]}
+          exportFilename={`audit-by-hour-${range}.csv`}
+          exportRows={data.byHour.map((r) => ({
+            hour: r.name,
+            actions: r.count,
+          }))}
+        >
+          <NamedBarChart data={data.byHour} compactLabels color="#94a3b8" />
+        </AnalyticsChartCard>
+
+        <AnalyticsChartCard
           title="Top action types"
           exportHeaders={["action", "count"]}
           exportFilename={`audit-actions-types-${range}.csv`}
@@ -53,7 +70,9 @@ export function AuditAnalyticsSection({
         >
           <NamedBarChart data={data.topActions} />
         </AnalyticsChartCard>
+      </div>
 
+      <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsDataTable
           title="Top dashboard actors"
           headers={["actorId", "count"]}
@@ -86,6 +105,27 @@ export function AuditAnalyticsSection({
             </tbody>
           </AnalyticsTable>
         </AnalyticsDataTable>
+
+        {data.topTargets.length > 0 && (
+          <AnalyticsChartCard
+            title="Most targeted resources"
+            exportHeaders={["target", "count"]}
+            exportFilename={`audit-targets-${range}.csv`}
+            exportRows={data.topTargets.map((r) => ({
+              target: r.name,
+              count: r.count,
+            }))}
+          >
+            <NamedBarChart
+              data={data.topTargets.map((r) => ({
+                name:
+                  r.name.length > 18 ? `${r.name.slice(0, 16)}…` : r.name,
+                count: r.count,
+              }))}
+              color="#475569"
+            />
+          </AnalyticsChartCard>
+        )}
       </div>
     </div>
   );

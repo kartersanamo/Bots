@@ -6,6 +6,7 @@ import {
   AnalyticsTable,
 } from "@/components/analytics/AnalyticsDataTable";
 import { AnalyticsKpiGrid } from "@/components/analytics/AnalyticsKpiGrid";
+import { AnalyticsUserCountTable } from "@/components/analytics/AnalyticsUserCountTable";
 import {
   DailyLineChart,
   DualDailyLineChart,
@@ -81,6 +82,20 @@ export function TicketsAnalytics({ data, range }: TicketsAnalyticsProps) {
                   ? "Use ≤90d range"
                   : "—",
           },
+          {
+            label: "Close rate",
+            value:
+              kpis.closeRatePercent != null ? `${kpis.closeRatePercent}%` : "—",
+          },
+          {
+            label: "Net backlog (opened − closed)",
+            value: kpis.backlogDelta,
+            hint: "Positive = queue grew in range",
+          },
+          {
+            label: "Transcripts saved",
+            value: kpis.withTranscriptCount,
+          },
         ]}
       />
 
@@ -108,6 +123,21 @@ export function TicketsAnalytics({ data, range }: TicketsAnalyticsProps) {
         >
           <DailyLineChart data={data.openedPerDay} />
         </AnalyticsChartCard>
+
+        <AnalyticsChartCard
+          title="Net queue change per day"
+          exportHeaders={["date", "netChange"]}
+          exportFilename={`tickets-net-queue-${range}.csv`}
+          exportRows={data.netQueuePerDay.map((r) => ({
+            date: r.date,
+            netChange: r.count,
+          }))}
+        >
+          <p className="mb-2 text-xs text-muted">
+            Positive bars = more opened than closed that day.
+          </p>
+          <DailyLineChart data={data.netQueuePerDay} color="#eab308" />
+        </AnalyticsChartCard>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -121,7 +151,21 @@ export function TicketsAnalytics({ data, range }: TicketsAnalyticsProps) {
         </AnalyticsChartCard>
 
         <AnalyticsChartCard
-          title="By hour of day (combined)"
+          title="Closed by type"
+          exportHeaders={["type", "count"]}
+          exportFilename={`tickets-closed-by-type-${range}.csv`}
+          exportRows={data.byTypeClosed.map((r) => ({
+            type: r.name,
+            count: r.count,
+          }))}
+        >
+          <NamedBarChart data={data.byTypeClosed} color="#fb923c" />
+        </AnalyticsChartCard>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <AnalyticsChartCard
+          title="By hour of day — opened (combined)"
           exportHeaders={["hour", "totalTickets"]}
           exportFilename={`tickets-by-hour-${range}.csv`}
           exportRows={data.byHour.map((r) => ({
@@ -135,23 +179,79 @@ export function TicketsAnalytics({ data, range }: TicketsAnalyticsProps) {
           </p>
           <NamedBarChart data={data.byHour} compactLabels />
         </AnalyticsChartCard>
+
+        <AnalyticsChartCard
+          title="By hour of day — closed (combined)"
+          exportHeaders={["hour", "totalTickets"]}
+          exportFilename={`tickets-closed-by-hour-${range}.csv`}
+          exportRows={data.byHourClosed.map((r) => ({
+            hour: r.name,
+            totalTickets: r.count,
+          }))}
+        >
+          <NamedBarChart data={data.byHourClosed} compactLabels color="#22d3ee" />
+        </AnalyticsChartCard>
       </div>
 
-      <AnalyticsChartCard
-        title="By day of week (combined)"
-        exportHeaders={["weekday", "totalTickets"]}
-        exportFilename={`tickets-by-dow-${range}.csv`}
-        exportRows={data.byDayOfWeek.map((r) => ({
-          weekday: r.name,
-          totalTickets: r.count,
-        }))}
-      >
-        <p className="mb-2 text-xs text-muted">
-          Totals for each weekday across the selected period (e.g. all Sundays
-          summed together).
-        </p>
-        <NamedBarChart data={data.byDayOfWeek} color="#10b981" />
-      </AnalyticsChartCard>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <AnalyticsChartCard
+          title="By day of week — opened (combined)"
+          exportHeaders={["weekday", "totalTickets"]}
+          exportFilename={`tickets-by-dow-${range}.csv`}
+          exportRows={data.byDayOfWeek.map((r) => ({
+            weekday: r.name,
+            totalTickets: r.count,
+          }))}
+        >
+          <p className="mb-2 text-xs text-muted">
+            Totals for each weekday across the selected period (e.g. all Sundays
+            summed together).
+          </p>
+          <NamedBarChart data={data.byDayOfWeek} color="#10b981" />
+        </AnalyticsChartCard>
+
+        <AnalyticsChartCard
+          title="By day of week — closed (combined)"
+          exportHeaders={["weekday", "totalTickets"]}
+          exportFilename={`tickets-closed-by-dow-${range}.csv`}
+          exportRows={data.byDayOfWeekClosed.map((r) => ({
+            weekday: r.name,
+            totalTickets: r.count,
+          }))}
+        >
+          <NamedBarChart data={data.byDayOfWeekClosed} color="#14b8a6" />
+        </AnalyticsChartCard>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        {data.visibilitySplit.length > 0 && (
+          <AnalyticsChartCard
+            title="Public vs private tickets opened"
+            exportHeaders={["visibility", "count"]}
+            exportFilename={`tickets-visibility-${range}.csv`}
+            exportRows={data.visibilitySplit.map((r) => ({
+              visibility: r.name,
+              count: r.count,
+            }))}
+          >
+            <NamedBarChart data={data.visibilitySplit} color="#c084fc" />
+          </AnalyticsChartCard>
+        )}
+
+        {data.topCloseReasons.length > 0 && (
+          <AnalyticsChartCard
+            title="Top close reasons"
+            exportHeaders={["reason", "count"]}
+            exportFilename={`tickets-close-reasons-${range}.csv`}
+            exportRows={data.topCloseReasons.map((r) => ({
+              reason: r.name,
+              count: r.count,
+            }))}
+          >
+            <NamedBarChart data={data.topCloseReasons} color="#f472b6" />
+          </AnalyticsChartCard>
+        )}
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <OpenerTable
@@ -165,6 +265,47 @@ export function TicketsAnalytics({ data, range }: TicketsAnalyticsProps) {
           filename="top-openers-all-time.csv"
         />
       </div>
+
+      <AnalyticsUserCountTable
+        title="Top staff — tickets closed (range)"
+        rows={data.topClosersInRange}
+        exportFilename={`top-closers-${range}.csv`}
+        countLabel="Closed"
+      />
+
+      {data.closeTimeByType.length > 0 && (
+        <AnalyticsDataTable
+          title="Median time to close by ticket type"
+          headers={["type", "medianSeconds", "count"]}
+          exportFilename={`close-time-by-type-${range}.csv`}
+          exportRows={data.closeTimeByType.map((r) => ({
+            type: r.type,
+            medianSeconds: r.medianSeconds,
+            count: r.count,
+          }))}
+        >
+          <AnalyticsTable>
+            <thead>
+              <tr className="border-b border-border text-left text-xs text-muted">
+                <th className="px-4 py-2">Type</th>
+                <th className="px-4 py-2">Median close time</th>
+                <th className="px-4 py-2">Sample size</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.closeTimeByType.map((r) => (
+                <tr key={r.type} className="border-b border-border/50">
+                  <td className="px-4 py-2 text-white">{r.type}</td>
+                  <td className="px-4 py-2 text-white">
+                    {formatDurationSeconds(r.medianSeconds)}
+                  </td>
+                  <td className="px-4 py-2 text-muted">{r.count}</td>
+                </tr>
+              ))}
+            </tbody>
+          </AnalyticsTable>
+        </AnalyticsDataTable>
+      )}
 
       <AnalyticsDataTable
         title="Most tickets opened in a single day"
