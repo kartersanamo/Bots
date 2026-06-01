@@ -2,15 +2,7 @@
 
 import { AnalyticsKpiGrid } from "@/components/analytics/AnalyticsKpiGrid";
 import { AnalyticsRangeSelector } from "@/components/analytics/AnalyticsRangeSelector";
-import {
-  LazyAuditAnalyticsSection,
-  LazyEngagementAnalyticsSection,
-  LazyGamesAnalyticsSection,
-  LazyModerationAnalyticsSection,
-  LazyOverviewAnalyticsSection,
-  LazyStaffAnalyticsSection,
-  LazyTicketsAnalytics,
-} from "@/components/analytics/lazy-sections";
+import { AnalyticsTabPanels } from "@/components/analytics/AnalyticsTabPanels";
 import { GamesDiscordUsersProvider } from "@/components/games/GamesDiscordUsersProvider";
 import type { AnalyticsBundle } from "@/lib/analytics/bundle";
 import type { AnalyticsTab } from "@/lib/analytics/bundle";
@@ -84,6 +76,7 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
   const [tabReady, setTabReady] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [chunkLoadFailed, setChunkLoadFailed] = useState(false);
   const summaryAbortRef = useRef<AbortController | null>(null);
   const tabAbortRef = useRef<AbortController | null>(null);
   const loadedTabsRef = useRef<string>("");
@@ -122,8 +115,38 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
   };
 
   useEffect(() => {
+    const onRejection = (event: PromiseRejectionEvent) => {
+      const msg = String(
+        (event.reason as Error)?.message ?? event.reason ?? ""
+      );
+      if (
+        /chunk|dynamically imported module|Failed to fetch/i.test(msg) ||
+        /ERR_QUIC|QUIC_PROTOCOL/i.test(msg)
+      ) {
+        setChunkLoadFailed(true);
+      }
+    };
+    const onScriptError = (event: Event) => {
+      const el = event.target;
+      if (
+        el instanceof HTMLScriptElement &&
+        el.src.includes("/_next/static/")
+      ) {
+        setChunkLoadFailed(true);
+      }
+    };
+    window.addEventListener("unhandledrejection", onRejection);
+    window.addEventListener("error", onScriptError, true);
+    return () => {
+      window.removeEventListener("unhandledrejection", onRejection);
+      window.removeEventListener("error", onScriptError, true);
+    };
+  }, []);
+
+  useEffect(() => {
     loadedTabsRef.current = "";
     setBundle(null);
+    setChunkLoadFailed(false);
     summaryAbortRef.current?.abort();
     const ac = new AbortController();
     summaryAbortRef.current = ac;
@@ -309,58 +332,32 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
           </div>
         )}
 
+        {chunkLoadFailed && (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+            <p>Part of the page failed to load (network or cache mismatch).</p>
+            <button
+              type="button"
+              className="mt-2 text-accent underline hover:no-underline"
+              onClick={() => window.location.reload()}
+            >
+              Reload page
+            </button>
+          </div>
+        )}
+
         {showTabSkeleton ? (
           <div className="space-y-4">
             <div className="h-64 animate-pulse rounded-lg border border-border bg-surface" />
           </div>
         ) : (
-          <>
-            {tab === "overview" && bundle && tabReady && (
-              <LazyOverviewAnalyticsSection bundle={bundle} range={range} />
-            )}
-            {tab === "metrics" && bundle?.metrics && tabReady && (
-              <LazyTicketsAnalytics data={bundle.metrics} range={range} />
-            )}
-            {tab === "metrics" && tabReady && !bundle?.metrics && (
-              <p className="text-muted">No metrics data available.</p>
-            )}
-            {tab === "games" && bundle?.games && tabReady && (
-              <LazyGamesAnalyticsSection data={bundle.games} range={range} />
-            )}
-            {tab === "games" && tabReady && !bundle?.games && (
-              <p className="text-muted">No games data available.</p>
-            )}
-            {tab === "staff" && bundle?.staff && tabReady && (
-              <LazyStaffAnalyticsSection data={bundle.staff} />
-            )}
-            {tab === "staff" && tabReady && !bundle?.staff && (
-              <p className="text-muted">No staff statistics available.</p>
-            )}
-            {tab === "moderation" && bundle?.moderation && tabReady && (
-              <LazyModerationAnalyticsSection
-                data={bundle.moderation}
-                range={range}
-              />
-            )}
-            {tab === "moderation" && tabReady && !bundle?.moderation && (
-              <p className="text-muted">No moderation data available.</p>
-            )}
-            {tab === "audit" && bundle?.audit && tabReady && (
-              <LazyAuditAnalyticsSection data={bundle.audit} range={range} />
-            )}
-            {tab === "engagement" && bundle?.engagement && tabReady && (
-              <LazyEngagementAnalyticsSection
-                data={bundle.engagement}
-                range={range}
-              />
-            )}
-            {tab === "engagement" && tabReady && !bundle?.engagement && (
-              <p className="text-muted">
-                Engagement tracking tables are not available yet. Run the
-                analytics migration and restart bots.
-              </p>
-            )}
-          </>
+          bundle && (
+            <AnalyticsTabPanels
+              tab={tab}
+              bundle={bundle}
+              range={range}
+              tabReady={tabReady}
+            />
+          )
         )}
       </div>
     </GamesDiscordUsersProvider>
