@@ -8,28 +8,34 @@ import {
 export const GET = handleApiRoute(async () => {
   await requireAction("fleet.view");
   const bots = getAllBots();
-  let statusMap: Record<string, string> = {};
 
+  let statusRows: Awaited<ReturnType<typeof getAllBotStatus>>["bots"] = [];
   if (isControlApiConfigured()) {
     try {
-      const { bots: statuses } = await getAllBotStatus();
-      statusMap = Object.fromEntries(
-        statuses.map((s) => [s.botId, s.status])
-      );
+      const data = await getAllBotStatus();
+      statusRows = data.bots;
     } catch {
       /* control API unavailable */
     }
   }
 
+  const statusById = Object.fromEntries(statusRows.map((s) => [s.botId, s]));
+
   return Response.json({
-    bots: bots.map((bot) => ({
-      ...bot,
-      status: (statusMap[bot.id] as
-        | "online"
-        | "offline"
-        | "starting"
-        | "degraded"
-        | "unknown") || "unknown",
-    })),
+    bots: bots.map((bot) => {
+      const row = statusById[bot.id];
+      return {
+        ...bot,
+        status:
+          (row?.status as
+            | "online"
+            | "offline"
+            | "starting"
+            | "degraded"
+            | "unknown") || "unknown",
+        pid: row?.pid ?? null,
+        uptimeSeconds: row?.uptimeSeconds ?? null,
+      };
+    }),
   });
 });

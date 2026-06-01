@@ -63,8 +63,8 @@ Used for:
 - `/login` auth entry
 - `/unauthorized` no-access page
 - `/dashboard` overview
-- `/dashboard/bots` all bots
-- `/dashboard/bots/[botId]` bot detail
+- `/dashboard/bots` bots hub (fleet + grid)
+- `/dashboard/bots/[botId]` tabbed bot workspace (`?tab=overview|console|config|inbox|actions|info`)
 - `/dashboard/server` guild summary
 - `/dashboard/docs` docs hub
 
@@ -93,7 +93,7 @@ flowchart LR
 
 ## Routes (Phase 2)
 
-- `/dashboard/fleet` — process control
-- `/dashboard/bots/[id]/logs|config|inbox|panel`
+- `/dashboard/bots` — process control + bot management hub
+- `/dashboard/bots/[id]?tab=` — console, config, inbox, actions, info
 - `/dashboard/audit`
 - `/dashboard/moderation`

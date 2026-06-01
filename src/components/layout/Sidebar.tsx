@@ -13,7 +13,6 @@ import {
   Menu,
   Server,
   Shield,
-  Terminal,
   ScrollText,
   Ticket,
   X,
@@ -25,7 +24,6 @@ import { useState } from "react";
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
   { href: "/dashboard/tickets", label: "Tickets", icon: Ticket },
-  { href: "/dashboard/fleet", label: "Fleet", icon: Terminal },
   { href: "/dashboard/bots", label: "Bots", icon: Bot },
   { href: "/dashboard/server", label: "Server", icon: Server },
   { href: "/dashboard/moderation", label: "Moderation", icon: Shield },

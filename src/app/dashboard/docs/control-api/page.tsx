@@ -26,10 +26,10 @@ export default function ControlApiDocsPage() {
           <code>docs/CONTROL_API.md</code>
         </p>
         <Link
-          href="/dashboard/fleet"
+          href="/dashboard/bots"
           className="inline-block text-accent-light hover:underline"
         >
-          Open Fleet Control →
+          Open Bots hub →
         </Link>
       </Card>
     </>

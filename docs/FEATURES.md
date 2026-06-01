@@ -7,7 +7,7 @@
 - Restart all fleet (owner)
 - Live status (online / offline / starting / degraded)
 - Log tail, search, file picker, live refresh
-- Fleet control page
+- Bots hub (unified fleet + per-bot workspace)
 
 ### Config management (O)
 - JSON editor per config file
@@ -29,10 +29,15 @@
 
 ### Dashboard pages
 - `/dashboard/tickets` — Tickets command center (list, filters, Discord intake/last message enrichment, detail drawer)
-- `/dashboard/fleet`
-- `/dashboard/bots/[id]/logs|config|inbox|panel`
+- `/dashboard/bots` — Bots hub: fleet status, start/stop/restart, filters; per-bot workspace at `/dashboard/bots/[id]?tab=`
 - `/dashboard/audit`
 - `/dashboard/moderation`
+
+### Bots hub
+- Single nav item **Bots** (replaces separate Fleet + Bots list)
+- Hub: online/offline counts, restart all, filter/sort, cards with process controls + quick links
+- Per-bot workspace tabs: Overview, Console (logs), Config, DMs, Actions (curated APIs), Info (registry metadata)
+- Legacy URLs redirect: `/dashboard/fleet` → `/dashboard/bots`; `/dashboard/bots/[id]/logs|config|inbox|panel` → `?tab=`
 
 ### Tickets command center
 - Paginated ticket list from MySQL (open by default)

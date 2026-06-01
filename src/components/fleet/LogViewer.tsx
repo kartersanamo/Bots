@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
-import { RefreshCw, Search } from "lucide-react";
+import { Maximize2, Minimize2, RefreshCw, Search } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 interface LogViewerProps {
@@ -17,19 +17,32 @@ export function LogViewer({ botId }: LogViewerProps) {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [pauseScroll, setPauseScroll] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const preRef = useRef<HTMLPreElement>(null);
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
+    setFetchError(null);
     try {
       const params = new URLSearchParams({ lines: "200" });
       if (search) params.set("search", search);
       if (file) params.set("file", file);
       const res = await fetch(`/api/bots/${botId}/logs?${params}`);
       const data = await res.json();
+      if (!res.ok) {
+        setFetchError(data.error || "Failed to load logs");
+        setLines([]);
+        return;
+      }
       setLines(data.lines || []);
       setFiles(data.files || []);
       if (data.file && !file) setFile(data.file);
+    } catch {
+      setFetchError("Could not reach log API");
+      setLines([]);
     } finally {
       setLoading(false);
     }
@@ -46,13 +59,20 @@ export function LogViewer({ botId }: LogViewerProps) {
   }, [autoRefresh, fetchLogs]);
 
   useEffect(() => {
+    if (pauseScroll) return;
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [lines]);
+  }, [lines, pauseScroll]);
 
   return (
-    <Card className="flex flex-col">
+    <Card
+      className={cn(
+        "flex flex-col",
+        fullscreen &&
+          "fixed inset-4 z-50 max-h-none shadow-2xl ring-1 ring-border"
+      )}
+    >
       <div className="flex flex-wrap items-center gap-2 border-b border-border pb-4">
-        <div className="relative flex-1 min-w-[200px]">
+        <div className="relative min-w-[200px] flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
           <input
             type="text"
@@ -87,9 +107,55 @@ export function LogViewer({ botId }: LogViewerProps) {
           />
           Live
         </label>
+        <label className="flex items-center gap-2 text-sm text-muted">
+          <input
+            type="checkbox"
+            checked={pauseScroll}
+            onChange={(e) => setPauseScroll(e.target.checked)}
+          />
+          Pause scroll
+        </label>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setFullscreen((f) => !f)}
+          aria-label={fullscreen ? "Exit fullscreen" : "Fullscreen"}
+        >
+          {fullscreen ? (
+            <Minimize2 className="h-4 w-4" />
+          ) : (
+            <Maximize2 className="h-4 w-4" />
+          )}
+        </Button>
       </div>
-      <pre className="mt-4 max-h-[60vh] overflow-auto rounded-lg bg-background p-4 font-mono text-xs leading-relaxed text-green-300/90">
-        {lines.length ? lines.join("\n") : "No log lines."}
+
+      <p className="mt-2 text-xs text-muted">
+        {lines.length} line{lines.length !== 1 ? "s" : ""}
+        {file ? ` · ${file}` : ""}
+      </p>
+
+      {fetchError && (
+        <p className="mt-2 text-sm text-red-400">{fetchError}</p>
+      )}
+
+      <pre
+        ref={preRef}
+        className={cn(
+          "mt-2 overflow-auto rounded-lg bg-background p-4 font-mono text-xs leading-relaxed text-green-300/90",
+          fullscreen ? "max-h-[calc(100vh-12rem)] flex-1" : "max-h-[60vh]"
+        )}
+      >
+        {lines.length ? (
+          lines.join("\n")
+        ) : (
+          <span className="text-muted">
+            {loading
+              ? "Loading logs…"
+              : fetchError
+                ? "—"
+                : "No log lines. Start the bot or pick another log file."}
+          </span>
+        )}
         <div ref={bottomRef} />
       </pre>
     </Card>
