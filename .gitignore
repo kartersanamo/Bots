@@ -32,9 +32,18 @@ yarn-error.log*
 .env
 .env*.local
 
+# audit log data
+/data/
+
+# control api venv
+/control-api/.venv/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
 
 # vercel
 .vercel
+
+# python cache
+*.pyc

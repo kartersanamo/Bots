@@ -29,7 +29,7 @@ const ICON_MAP: Record<string, ElementType> = {
 interface BotCardProps {
   bot: BotDefinition;
   index: number;
-  status?: "online" | "offline" | "unknown";
+  status?: "online" | "offline" | "starting" | "degraded" | "unknown";
 }
 
 export function BotCard({ bot, index, status = "unknown" }: BotCardProps) {
@@ -56,10 +56,12 @@ export function BotCard({ bot, index, status = "unknown" }: BotCardProps) {
                   ? "success"
                   : status === "offline"
                     ? "danger"
-                    : "warning"
+                    : status === "starting" || status === "degraded"
+                      ? "warning"
+                      : "default"
               }
             >
-              {status === "unknown" ? "Phase 2" : status}
+              {status}
             </Badge>
           </div>
           <h3 className="mt-4 text-lg font-semibold text-white">

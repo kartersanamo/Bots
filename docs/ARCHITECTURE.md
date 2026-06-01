@@ -4,11 +4,12 @@
 
 Bots is a Next.js dashboard for Minecadia hosted at `https://bots.kartersanamo.com`.
 
-Phase 1 is read-only and provides:
+Phase 1 (read) and Phase 2 (write) provide:
 - Discord OAuth login with role-based access control.
 - Owner override access.
 - Bot registry and bot details for all six Minecadia bots.
-- Read-only MySQL and Discord API data views.
+- MySQL read/write (tier-gated) and Discord API read/write.
+- Bot Control API for process, config, logs, and DMs.
 
 ## High-level flow
 
@@ -67,12 +68,32 @@ Used for:
 - `/dashboard/server` guild summary
 - `/dashboard/docs` docs hub
 
-## Future architecture
+## Bot Control API (Phase 2)
 
-Phase 2 introduces a separate Bot Control API service (FastAPI/Python) for:
-- process control
-- cog toggles
-- config reloads
-- log streaming
+FastAPI on `127.0.0.1:8787`, authenticated via `X-Control-Key`. See [CONTROL_API.md](./CONTROL_API.md).
 
-This keeps the web app and bot process management decoupled.
+```mermaid
+flowchart LR
+    browser[Browser] --> nextjs[Next.js]
+    nextjs --> audit[Audit JSONL]
+    nextjs --> mysql[(MySQL)]
+    nextjs --> discord[Discord REST]
+    nextjs --> control[Control API]
+    control --> fs[Bot configs and logs]
+    control --> proc[Processes]
+```
+
+## Write flow
+
+1. User action in dashboard UI
+2. `POST/PATCH/DELETE` to `/api/*` with session cookie
+3. `requireAction()` checks granular permission
+4. `withAudit()` logs to `data/audit/audit.jsonl`
+5. Mutation via Control API, MySQL write pool, or Discord actions
+
+## Routes (Phase 2)
+
+- `/dashboard/fleet` — process control
+- `/dashboard/bots/[id]/logs|config|inbox|panel`
+- `/dashboard/audit`
+- `/dashboard/moderation`

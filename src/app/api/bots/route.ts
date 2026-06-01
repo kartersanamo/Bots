@@ -1,19 +1,35 @@
-import { requireSession } from "@/lib/auth/session";
+import { requireAction, handleApiRoute } from "@/lib/api/helpers";
 import { getAllBots } from "@/lib/bots/registry";
-import { NextResponse } from "next/server";
+import {
+  getAllBotStatus,
+  isControlApiConfigured,
+} from "@/lib/control-api/client";
 
-export async function GET() {
-  try {
-    await requireSession();
-    const bots = getAllBots().map((bot) => ({
-      ...bot,
-      status: "unknown" as const,
-    }));
+export const GET = handleApiRoute(async () => {
+  await requireAction("fleet.view");
+  const bots = getAllBots();
+  let statusMap: Record<string, string> = {};
 
-    return NextResponse.json({ bots });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Error";
-    const status = message === "Unauthorized" ? 401 : 403;
-    return NextResponse.json({ error: message }, { status });
+  if (isControlApiConfigured()) {
+    try {
+      const { bots: statuses } = await getAllBotStatus();
+      statusMap = Object.fromEntries(
+        statuses.map((s) => [s.botId, s.status])
+      );
+    } catch {
+      /* control API unavailable */
+    }
   }
-}
+
+  return Response.json({
+    bots: bots.map((bot) => ({
+      ...bot,
+      status: (statusMap[bot.id] as
+        | "online"
+        | "offline"
+        | "starting"
+        | "degraded"
+        | "unknown") || "unknown",
+    })),
+  });
+});

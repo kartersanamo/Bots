@@ -14,7 +14,7 @@ export interface RecentTicket {
   type: string;
   opened: string | null;
   closed: string | null;
-  active: number;
+  active: string | number;
   transcript: string | null;
 }
 
@@ -34,15 +34,18 @@ export async function getOverviewStats(): Promise<OverviewStats | null> {
     }>(
       `SELECT
         (SELECT COUNT(*) FROM tickets) AS totalTickets,
-        (SELECT COUNT(*) FROM tickets WHERE active = 1) AS openTickets,
-        (SELECT COUNT(*) FROM tickets WHERE active = 0) AS closedTickets,
+        (SELECT COUNT(*) FROM tickets WHERE active = 'True') AS openTickets,
+        (SELECT COUNT(*) FROM tickets WHERE active IN ('False', '0')) AS closedTickets,
         (SELECT COUNT(*) FROM polls) AS totalPolls,
         (SELECT COUNT(*) FROM leveling) AS totalLevelingUsers,
         (SELECT COUNT(*) FROM blacklists) AS totalBlacklists,
-        (SELECT COUNT(*) FROM tickets WHERE DATE(opened) = CURDATE()) AS ticketsToday`
+        (SELECT COUNT(*) FROM tickets
+         WHERE TRIM(opened_at) != ''
+           AND DATE(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED))) = CURDATE()) AS ticketsToday`
     );
     return stats;
-  } catch {
+  } catch (err) {
+    console.error("[db] getOverviewStats failed:", err);
     return null;
   }
 }
@@ -53,13 +56,24 @@ export async function getRecentTickets(limit = 10): Promise<RecentTicket[]> {
 
   try {
     return query<RecentTicket>(
-      `SELECT channelID, ownerID, type, opened, closed, active, transcript
+      `SELECT
+        channelID,
+        ownerID,
+        type,
+        FROM_UNIXTIME(CAST(opened_at AS UNSIGNED)) AS opened,
+        CASE
+          WHEN TRIM(closed_at) = '' OR closed_at IS NULL THEN NULL
+          ELSE FROM_UNIXTIME(CAST(closed_at AS UNSIGNED))
+        END AS closed,
+        active,
+        transcript
        FROM tickets
-       ORDER BY opened DESC
+       ORDER BY CAST(opened_at AS UNSIGNED) DESC
        LIMIT ?`,
       [limit]
     );
-  } catch {
+  } catch (err) {
+    console.error("[db] getRecentTickets failed:", err);
     return [];
   }
 }

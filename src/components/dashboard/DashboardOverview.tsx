@@ -3,7 +3,7 @@
 import { StatCard } from "@/components/ui/StatCard";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
-import { formatRelativeTime } from "@/lib/utils";
+import { formatRelativeTime, isTicketOpen } from "@/lib/utils";
 import { motion } from "framer-motion";
 import {
   Bot,
@@ -31,7 +31,7 @@ interface RecentTicket {
   type: string;
   opened: string | null;
   closed: string | null;
-  active: number;
+  active: string | number;
 }
 
 interface GuildInfo {
@@ -46,6 +46,7 @@ export function DashboardOverview() {
   const [guild, setGuild] = useState<GuildInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [dbConfigured, setDbConfigured] = useState(true);
+  const [dbConnected, setDbConnected] = useState(true);
 
   useEffect(() => {
     async function load() {
@@ -59,7 +60,8 @@ export function DashboardOverview() {
         if (statsRes.ok) {
           const data = await statsRes.json();
           setStats(data.stats);
-          setDbConfigured(data.configured);
+          setDbConfigured(data.configured !== false);
+          setDbConnected(data.connected !== false);
         }
 
         if (ticketsRes.ok) {
@@ -117,13 +119,25 @@ export function DashboardOverview() {
         />
       </div>
 
-      {!dbConfigured && !loading && (
+      {!loading && !dbConfigured && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-400"
         >
-          Database not configured. Add DB credentials to <code className="text-amber-300">.env</code> to see live stats.
+          Database not configured. Add <code className="text-amber-300">DB_HOST</code>,{" "}
+          <code className="text-amber-300">DB_USER</code>, and{" "}
+          <code className="text-amber-300">DB_NAME</code> to <code className="text-amber-300">.env</code>.
+        </motion.div>
+      )}
+      {!loading && dbConfigured && !dbConnected && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400"
+        >
+          Could not load stats from MySQL. Check credentials and restart the dashboard after changing{" "}
+          <code className="text-red-300">.env</code>.
         </motion.div>
       )}
 
@@ -156,8 +170,8 @@ export function DashboardOverview() {
                       {t.opened ? formatRelativeTime(t.opened) : "Unknown"}
                     </p>
                   </div>
-                  <Badge variant={t.active ? "success" : "default"}>
-                    {t.active ? "Open" : "Closed"}
+                  <Badge variant={isTicketOpen(t.active) ? "success" : "default"}>
+                    {isTicketOpen(t.active) ? "Open" : "Closed"}
                   </Badge>
                 </div>
               ))}

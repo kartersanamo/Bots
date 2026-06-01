@@ -1,17 +1,21 @@
 import { Header } from "@/components/layout/Header";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { getBotById } from "@/lib/bots/registry";
 import {
   Bot,
   Crown,
   Gamepad2,
+  FileJson,
+  Inbox,
+  ScrollText,
+  Settings2,
   Shield,
   Ticket,
   Users,
   Wrench,
 } from "lucide-react";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ElementType } from "react";
 
@@ -23,6 +27,13 @@ const ICON_MAP: Record<string, ElementType> = {
   Users,
   Crown,
 };
+
+const QUICK_LINKS = [
+  { href: "logs", label: "Logs", icon: ScrollText },
+  { href: "config", label: "Config", icon: FileJson },
+  { href: "inbox", label: "DM Inbox", icon: Inbox },
+  { href: "panel", label: "Actions", icon: Settings2 },
+];
 
 interface BotDetailPageProps {
   params: Promise<{ botId: string }>;
@@ -46,8 +57,23 @@ export default async function BotDetailPage({ params }: BotDetailPageProps) {
           { label: "Bots", href: "/dashboard/bots" },
           { label: bot.shortName },
         ]}
-        action={<Badge variant="warning">Status: Phase 2</Badge>}
       />
+
+      <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {QUICK_LINKS.map((link) => {
+          const LinkIcon = link.icon;
+          return (
+            <Link
+              key={link.href}
+              href={`/dashboard/bots/${botId}/${link.href}`}
+              className="glass flex items-center gap-3 rounded-xl px-4 py-3 transition-all hover:bg-accent/10 hover:shadow-glow"
+            >
+              <LinkIcon className="h-5 w-5 text-accent-light" />
+              <span className="font-medium text-white">{link.label}</span>
+            </Link>
+          );
+        })}
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-1">
@@ -141,12 +167,6 @@ export default async function BotDetailPage({ params }: BotDetailPageProps) {
               ))}
             </div>
           </Card>
-
-          <EmptyState
-            icon={Bot}
-            title="Bot control coming in Phase 2"
-            description="Live status, log tailing, config editing, and cog management will be available once the Bot Control API is built."
-          />
         </div>
       </div>
     </>

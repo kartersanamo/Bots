@@ -6,6 +6,28 @@ export type PermissionTier =
   | "helper"
   | "none";
 
+export type PermissionAction =
+  | "fleet.view"
+  | "fleet.restart"
+  | "fleet.restart_all"
+  | "logs.view"
+  | "config.view"
+  | "config.edit"
+  | "dm.view"
+  | "dm.send"
+  | "audit.view"
+  | "tickets.read"
+  | "tickets.write"
+  | "bans.read"
+  | "bans.write"
+  | "leveling.read"
+  | "leveling.write"
+  | "polls.write"
+  | "factions.write"
+  | "discord.moderate"
+  | "discord.channels"
+  | "bot.panels";
+
 const TIER_RANK: Record<PermissionTier, number> = {
   owner: 100,
   manager: 80,
@@ -13,6 +35,30 @@ const TIER_RANK: Record<PermissionTier, number> = {
   moderator: 40,
   helper: 20,
   none: 0,
+};
+
+/** Minimum tier required per action */
+export const ACTION_TIER: Record<PermissionAction, PermissionTier> = {
+  "fleet.view": "helper",
+  "fleet.restart": "manager",
+  "fleet.restart_all": "owner",
+  "logs.view": "helper",
+  "config.view": "admin",
+  "config.edit": "manager",
+  "dm.view": "admin",
+  "dm.send": "admin",
+  "audit.view": "admin",
+  "tickets.read": "helper",
+  "tickets.write": "admin",
+  "bans.read": "moderator",
+  "bans.write": "admin",
+  "leveling.read": "helper",
+  "leveling.write": "admin",
+  "polls.write": "admin",
+  "factions.write": "admin",
+  "discord.moderate": "admin",
+  "discord.channels": "manager",
+  "bot.panels": "admin",
 };
 
 /** Role IDs from MinecadiaTickets config ROLE_HIERARCHY */
@@ -89,6 +135,13 @@ export function hasMinimumTier(
   required: PermissionTier
 ): boolean {
   return TIER_RANK[userTier] >= TIER_RANK[required];
+}
+
+export function can(
+  userTier: PermissionTier,
+  action: PermissionAction
+): boolean {
+  return hasMinimumTier(userTier, ACTION_TIER[action]);
 }
 
 export function tierLabel(tier: PermissionTier): string {

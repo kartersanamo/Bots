@@ -1,4 +1,4 @@
-import { BotGrid } from "@/components/dashboard/BotCard";
+import { BotGridLive } from "@/components/dashboard/BotGridLive";
 import { Header } from "@/components/layout/Header";
 import { getAllBots } from "@/lib/bots/registry";
 
@@ -15,7 +15,7 @@ export default function BotsPage() {
           { label: "Bots" },
         ]}
       />
-      <BotGrid bots={bots} />
+      <BotGridLive bots={bots} />
     </>
   );
 }

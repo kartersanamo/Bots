@@ -5,15 +5,29 @@ import { tierColor, tierLabel } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
 import { AnimatePresence, motion } from "framer-motion";
-import { BookOpen, Bot, LayoutDashboard, LogOut, Menu, Server, X } from "lucide-react";
+import {
+  BookOpen,
+  Bot,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Server,
+  Shield,
+  Terminal,
+  ScrollText,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
+  { href: "/dashboard/fleet", label: "Fleet", icon: Terminal },
   { href: "/dashboard/bots", label: "Bots", icon: Bot },
   { href: "/dashboard/server", label: "Server", icon: Server },
+  { href: "/dashboard/moderation", label: "Moderation", icon: Shield },
+  { href: "/dashboard/audit", label: "Audit", icon: ScrollText },
   { href: "/dashboard/docs", label: "Docs", icon: BookOpen },
 ];
 

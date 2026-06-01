@@ -5,6 +5,10 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export function isTicketOpen(active: string | number): boolean {
+  return active === "True" || active === 1 || active === "1";
+}
+
 export function formatNumber(n: number): string {
   return new Intl.NumberFormat("en-US").format(n);
 }

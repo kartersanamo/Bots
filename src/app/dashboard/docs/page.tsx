@@ -13,7 +13,7 @@ import Link from "next/link";
 const PHASES = [
   {
     phase: "Phase 1 — Foundation",
-    status: "current" as const,
+    status: "done" as const,
     items: [
       "Discord OAuth with role-based access",
       "Owner override for full access",
@@ -27,14 +27,15 @@ const PHASES = [
   },
   {
     phase: "Phase 2 — Bot Control API",
-    status: "planned" as const,
+    status: "current" as const,
     items: [
       "Python/FastAPI service for bot management",
       "Live bot status & uptime monitoring",
       "Log tail viewer per bot",
-      "Config hot-reload triggers",
+      "JSON config editor with backups",
       "Start/stop/restart bot processes",
-      "Cog enable/disable",
+      "DM inbox per bot",
+      "Audit log for all writes",
     ],
   },
   {
@@ -70,6 +71,12 @@ const DOC_LINKS = [
     href: "/dashboard/docs/deployment",
     icon: Zap,
   },
+  {
+    title: "Control API",
+    description: "Process, config, logs, and DM proxy service.",
+    href: "/dashboard/docs/control-api",
+    icon: Shield,
+  },
 ];
 
 export default function DocsPage() {
@@ -104,9 +111,19 @@ export default function DocsPage() {
               <BookOpen className="h-5 w-5 text-accent-light" />
               <h3 className="text-lg font-semibold text-white">{phase.phase}</h3>
               <Badge
-                variant={phase.status === "current" ? "success" : "default"}
+                variant={
+                  phase.status === "current"
+                    ? "success"
+                    : phase.status === "done"
+                      ? "info"
+                      : "default"
+                }
               >
-                {phase.status === "current" ? "Current" : "Planned"}
+                {phase.status === "current"
+                  ? "Current"
+                  : phase.status === "done"
+                    ? "Complete"
+                    : "Planned"}
               </Badge>
             </div>
             <ul className="grid gap-2 md:grid-cols-2">
