@@ -1,4 +1,9 @@
 import { rangeSinceUnix } from "@/lib/analytics/range";
+import {
+  bucketKeySqlFromUnix,
+  getTimeBucketSpec,
+  normalizeTimeSeries,
+} from "@/lib/analytics/time-buckets";
 import type { AnalyticsRange, DailyCount, ModerationAnalytics } from "@/lib/analytics/types";
 import { query, queryOne, isDbConfigured } from "@/lib/db/pool";
 
@@ -8,6 +13,9 @@ export async function getModerationAnalytics(
   if (!isDbConfigured()) return null;
 
   const since = rangeSinceUnix(range);
+  const bucketSpec = getTimeBucketSpec(range);
+  const blBucket = bucketKeySqlFromUnix("whenToUnbl", bucketSpec);
+  const pollBucket = bucketKeySqlFromUnix("created_at", bucketSpec);
 
   try {
     const [kpis, blacklistsPerDay, blacklistsByStaff, pollsPerDay, mediaCount] =
@@ -27,27 +35,21 @@ export async function getModerationAnalytics(
             (SELECT COUNT(*) FROM blacklists
              WHERE TRIM(whenToUnbl) != '' AND CAST(whenToUnbl AS UNSIGNED) > 0) AS withExpiry`
         ),
-        since != null
-          ? query<{ date: string; count: number }>(
-              `SELECT DATE(FROM_UNIXTIME(CAST(whenToUnbl AS UNSIGNED))) AS date, COUNT(*) AS count
-               FROM blacklists
-               WHERE CAST(whenToUnbl AS UNSIGNED) >= ?
-               GROUP BY date ORDER BY date`,
-              [since]
-            ).catch(() => [])
-          : query<{ date: string; count: number }>(
-              `SELECT DATE(FROM_UNIXTIME(CAST(whenToUnbl AS UNSIGNED))) AS date, COUNT(*) AS count
-               FROM blacklists
-               WHERE CAST(whenToUnbl AS UNSIGNED) > 0
-               GROUP BY date ORDER BY date`
-            ).catch(() => []),
+        query<{ date: string; count: number }>(
+          `SELECT ${blBucket} AS date, COUNT(*) AS count
+           FROM blacklists
+           WHERE CAST(whenToUnbl AS UNSIGNED) > 0
+           ${since != null ? "AND CAST(whenToUnbl AS UNSIGNED) >= ?" : ""}
+           GROUP BY date ORDER BY date`,
+          since != null ? [since] : []
+        ).catch(() => []),
         query<{ staffID: string; count: number }>(
           `SELECT staffID, COUNT(*) AS count FROM blacklists
            WHERE TRIM(staffID) != ''
            GROUP BY staffID ORDER BY count DESC LIMIT 15`
         ).catch(() => []),
         query<{ date: string; count: number }>(
-          `SELECT DATE(FROM_UNIXTIME(CAST(created_at AS UNSIGNED))) AS date, COUNT(*) AS count
+          `SELECT ${pollBucket} AS date, COUNT(*) AS count
            FROM polls
            WHERE CAST(created_at AS UNSIGNED) > 0
            ${since != null ? "AND CAST(created_at AS UNSIGNED) >= ?" : ""}
@@ -69,12 +71,12 @@ export async function getModerationAnalytics(
         mediaEntries: Number(mediaCount?.total ?? 0),
         blacklistsWithExpiry: Number(kpis?.withExpiry ?? 0),
       },
-      blacklistsPerDay: mapDaily(blacklistsPerDay),
+      blacklistsPerDay: normalizeTimeSeries(mapDaily(blacklistsPerDay), range),
       blacklistsByStaff: blacklistsByStaff.map((r) => ({
         userId: String(r.staffID),
         count: Number(r.count),
       })),
-      pollsCreatedPerDay: mapDaily(pollsPerDay),
+      pollsCreatedPerDay: normalizeTimeSeries(mapDaily(pollsPerDay), range),
     };
   } catch (err) {
     console.error("[analytics] getModerationAnalytics failed:", err);

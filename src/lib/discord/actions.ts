@@ -1,8 +1,10 @@
+import { env, envRequired } from "@/lib/env";
+
 const DISCORD_API = "https://discord.com/api/v10";
 
 function botHeaders(): HeadersInit {
   return {
-    Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}`,
+    Authorization: `Bot ${envRequired("DISCORD_BOT_TOKEN")}`,
     "Content-Type": "application/json",
   };
 }
@@ -138,7 +140,5 @@ export async function sendChannelMessage(
 }
 
 export function guildId(): string {
-  const id = process.env.DISCORD_GUILD_ID;
-  if (!id) throw new Error("DISCORD_GUILD_ID not configured");
-  return id;
+  return envRequired("DISCORD_GUILD_ID");
 }

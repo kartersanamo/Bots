@@ -5,6 +5,11 @@ import path from "path";
 import { fillHourOfDayBuckets } from "@/lib/analytics/buckets";
 import type { AuditEntry } from "@/lib/audit";
 import { rangeSinceUnix } from "@/lib/analytics/range";
+import {
+  bucketIsoDay,
+  getTimeBucketSpec,
+  normalizeTimeSeries,
+} from "@/lib/analytics/time-buckets";
 import type { AnalyticsRange, AuditAnalytics, DailyCount, NamedCount } from "@/lib/analytics/types";
 
 const AUDIT_FILE = path.join(process.cwd(), "data", "audit", "audit.jsonl");
@@ -51,9 +56,18 @@ export async function getAuditAnalytics(
   const sinceMs = rangeSinceUnix(range);
   const agg = await getAuditAggregate(sinceMs != null ? sinceMs * 1000 : null);
 
-  const actionsPerDay: DailyCount[] = [...agg.byDay.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, count]) => ({ date, count }));
+  const spec = getTimeBucketSpec(range);
+  const bucketed = new Map<string, number>();
+  for (const [day, count] of agg.byDay) {
+    const key = bucketIsoDay(day, spec);
+    bucketed.set(key, (bucketed.get(key) ?? 0) + count);
+  }
+  const actionsPerDay = normalizeTimeSeries(
+    [...bucketed.entries()]
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => a.date.localeCompare(b.date)),
+    range
+  );
 
   const topActors = [...agg.byActor.entries()]
     .sort((a, b) => b[1] - a[1])

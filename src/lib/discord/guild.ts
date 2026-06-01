@@ -1,10 +1,8 @@
+import { env } from "@/lib/env";
+
 /** Guild ID for Discord deep links (client + server). */
 export function discordGuildId(): string {
-  return (
-    process.env.NEXT_PUBLIC_DISCORD_GUILD_ID ||
-    process.env.DISCORD_GUILD_ID ||
-    ""
-  );
+  return env("NEXT_PUBLIC_DISCORD_GUILD_ID") || env("DISCORD_GUILD_ID");
 }
 
 /** https://discord.com/channels/{guild_id}/{channel_id} */

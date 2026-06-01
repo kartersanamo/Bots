@@ -1,3 +1,4 @@
+import { env, envInt } from "@/lib/env";
 import type { QueryValues } from "mysql2";
 import mysql from "mysql2/promise";
 
@@ -6,11 +7,11 @@ let pool: mysql.Pool | null = null;
 export function getPool(): mysql.Pool {
   if (!pool) {
     pool = mysql.createPool({
-      host: process.env.DB_HOST || "localhost",
-      port: Number(process.env.DB_PORT || 3306),
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
+      host: env("DB_HOST") || "localhost",
+      port: envInt("DB_PORT", 3306),
+      user: env("DB_USER"),
+      password: env("DB_PASSWORD"),
+      database: env("DB_NAME"),
       waitForConnections: true,
       connectionLimit: 15,
       enableKeepAlive: true,
@@ -39,5 +40,5 @@ export async function queryOne<T>(
 }
 
 export function isDbConfigured(): boolean {
-  return !!(process.env.DB_HOST && process.env.DB_USER && process.env.DB_NAME);
+  return !!(env("DB_HOST") && env("DB_USER") && env("DB_NAME"));
 }

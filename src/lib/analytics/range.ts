@@ -71,7 +71,7 @@ export function rangeLabel(range: AnalyticsRange): string {
     "30d": "Last 30 days",
     "90d": "Last 90 days",
     "365d": "Last year",
-    all: "All time",
+    all: "All time (monthly)",
   };
   return labels[range];
 }

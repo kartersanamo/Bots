@@ -8,6 +8,12 @@ import {
   openedAtRangeClause,
   rangeSinceUnix,
 } from "@/lib/analytics/range";
+import {
+  bucketKeySqlFromUnix,
+  getTimeBucketSpec,
+  normalizeTimeSeries,
+  percentileFromHistogram,
+} from "@/lib/analytics/time-buckets";
 import type {
   AnalyticsRange,
   CloseTimeByTypeRow,
@@ -26,7 +32,7 @@ const EXCLUDED_OPENER_IDS = ["837793755838939157", "220576008372355072"];
 const VALID_CLOSED =
   "TRIM(closed_at) != '' AND closed_at IS NOT NULL AND closed_at NOT IN ('0', '00000000')";
 
-const HEAVY_RANGES: AnalyticsRange[] = ["7d", "30d", "90d"];
+const SAMPLE_TIMING_LIMIT = 25_000;
 
 type SliceRow = {
   metric: string;
@@ -54,7 +60,9 @@ export async function getTicketAnalytics(
   const closedRange = closedAtRangeClause(range);
   const rangeWhere = `${base.sql}${openedRange.sql}`;
   const rangeParams = [...base.params, ...openedRange.params];
-  const runHeavy = HEAVY_RANGES.includes(range);
+  const bucketSpec = getTimeBucketSpec(range);
+  const openedBucket = bucketKeySqlFromUnix("opened_at", bucketSpec);
+  const closedBucket = bucketKeySqlFromUnix("closed_at", bucketSpec);
 
   try {
     const closedWhere = `${base.sql} AND ${VALID_CLOSED}${closedRange.sql}`;
@@ -76,7 +84,7 @@ export async function getTicketAnalytics(
       longestOpen,
       heavyStats,
     ] = await Promise.all([
-      queryRangeSlices(rangeWhere, rangeParams),
+      queryRangeSlices(rangeWhere, rangeParams, range),
       queryClosedSlices(closedWhere, closedParams),
       queryOne<{
         openCount: number;
@@ -90,7 +98,7 @@ export async function getTicketAnalytics(
         [...base.params, ...rangeParams, ...base.params, ...closedRange.params]
       ),
       query<{ date: string; count: number }>(
-        `SELECT DATE(FROM_UNIXTIME(CAST(closed_at AS UNSIGNED))) AS date, COUNT(*) AS count
+        `SELECT ${closedBucket} AS date, COUNT(*) AS count
          FROM tickets ${base.sql} AND ${VALID_CLOSED}${closedRange.sql}
          GROUP BY date ORDER BY date`,
         [...base.params, ...closedRange.params]
@@ -173,13 +181,11 @@ export async function getTicketAnalytics(
          ORDER BY ticket_duration DESC LIMIT 5`,
         base.params
       ),
-      runHeavy
-        ? queryHeavyTiming(base, closedRange, range)
-        : Promise.resolve(null),
+      queryTimingStats(base, closedRange, range),
     ]);
 
-    const openedPerDay = slices.openedPerDay;
-    const closedDaily = mapDaily(closedPerDay);
+    const openedPerDay = normalizeTimeSeries(slices.openedPerDay, range);
+    const closedDaily = normalizeTimeSeries(mapDaily(closedPerDay), range);
     const avgTicketsPerDay =
       openedPerDay.length > 0
         ? openedPerDay.reduce((s, d) => s + d.count, 0) / openedPerDay.length
@@ -267,16 +273,18 @@ export async function getTicketAnalytics(
 
 async function queryRangeSlices(
   rangeWhere: string,
-  rangeParams: (string | number)[]
+  rangeParams: (string | number)[],
+  range: AnalyticsRange
 ): Promise<{
   openedPerDay: DailyCount[];
   byHour: { hour: number; count: number }[];
   byDayOfWeek: { dow: number; count: number }[];
   byType: { name: string; count: number }[];
 }> {
+  const bucket = bucketKeySqlFromUnix("opened_at", getTimeBucketSpec(range));
   const rows = await query<SliceRow>(
     `SELECT 'day' AS metric,
-      DATE(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED))) AS k1,
+      ${bucket} AS k1,
       NULL AS k2,
       COUNT(*) AS val
      FROM tickets ${rangeWhere}
@@ -397,7 +405,7 @@ function computeNetQueue(
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
-async function queryHeavyTiming(
+async function queryTimingStats(
   base: { sql: string; params: (string | number)[] },
   closedRange: { sql: string; params: number[] },
   range: AnalyticsRange
@@ -412,8 +420,13 @@ async function queryHeavyTiming(
     since != null
       ? ` AND CAST(opened_at AS UNSIGNED) >= ${since}`
       : "";
+  const useSample = range === "365d" || range === "all";
+  const limitClause = useSample ? ` LIMIT ${SAMPLE_TIMING_LIMIT}` : "";
 
-  const [gapRow, timingRow, closeRow] = await Promise.all([
+  const closedWhere = `${base.sql} AND ${VALID_CLOSED}${closedRange.sql}`;
+  const closedParams = [...base.params, ...closedRange.params];
+
+  const [gapRow, timingRow, histRows] = await Promise.all([
     queryOne<{
       current_channelID: string;
       current_opened_at: string;
@@ -424,7 +437,7 @@ async function queryHeavyTiming(
       `WITH ordered AS (
         SELECT channelID, CAST(opened_at AS UNSIGNED) AS ts
         FROM tickets ${base.sql}${rangeTs}
-        ORDER BY ts
+        ORDER BY ts${limitClause}
       ),
       gaps AS (
         SELECT channelID AS current_channelID, ts AS current_opened_at,
@@ -442,30 +455,25 @@ async function queryHeavyTiming(
       `WITH ordered AS (
         SELECT CAST(opened_at AS UNSIGNED) AS ts
         FROM tickets ${base.sql}${rangeTs}
-        ORDER BY ts
+        ORDER BY ts${limitClause}
       )
       SELECT AVG(ts - prev_ts) AS avg_between FROM (
         SELECT ts, LAG(ts) OVER (ORDER BY ts) AS prev_ts FROM ordered
       ) d WHERE prev_ts IS NOT NULL`,
       base.params
     ),
-    queryOne<{ median_s: number | null; p90_s: number | null }>(
-      `SELECT
-        AVG(CASE WHEN rn = CEIL(0.5 * cnt) THEN dur END) AS median_s,
-        AVG(CASE WHEN rn = CEIL(0.9 * cnt) THEN dur END) AS p90_s
-      FROM (
-        SELECT TIMESTAMPDIFF(SECOND,
-          FROM_UNIXTIME(CAST(opened_at AS UNSIGNED)),
-          FROM_UNIXTIME(CAST(closed_at AS UNSIGNED))
-        ) AS dur,
-        ROW_NUMBER() OVER (ORDER BY TIMESTAMPDIFF(SECOND,
-          FROM_UNIXTIME(CAST(opened_at AS UNSIGNED)),
-          FROM_UNIXTIME(CAST(closed_at AS UNSIGNED))
-        )) AS rn,
-        COUNT(*) OVER () AS cnt
-        FROM tickets ${base.sql} AND ${VALID_CLOSED}${closedRange.sql}
-      ) ranked`,
-      [...base.params, ...closedRange.params]
+    query<{ bucket: number; cnt: number }>(
+      `SELECT LEAST(FLOOR(dur / 60), 10080) AS bucket, COUNT(*) AS cnt
+       FROM (
+         SELECT TIMESTAMPDIFF(SECOND,
+           FROM_UNIXTIME(CAST(opened_at AS UNSIGNED)),
+           FROM_UNIXTIME(CAST(closed_at AS UNSIGNED))
+         ) AS dur
+         FROM tickets ${closedWhere}
+       ) t
+       WHERE dur > 0
+       GROUP BY bucket`,
+      closedParams
     ),
   ]);
 
@@ -483,8 +491,8 @@ async function queryHeavyTiming(
     avgBetween:
       timingRow?.avg_between != null ? Number(timingRow.avg_between) : null,
     longestGap,
-    medianClose: closeRow?.median_s != null ? Number(closeRow.median_s) : null,
-    p90Close: closeRow?.p90_s != null ? Number(closeRow.p90_s) : null,
+    medianClose: percentileFromHistogram(histRows, 0.5),
+    p90Close: percentileFromHistogram(histRows, 0.9),
   };
 }
 

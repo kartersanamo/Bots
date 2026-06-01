@@ -1,4 +1,5 @@
 import { ChunkLoadRecovery } from "@/components/ChunkLoadRecovery";
+import { env } from "@/lib/env";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import type { ReactNode } from "react";
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
   },
   description: "Minecadia staff dashboard for Discord bots.",
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL || "https://bots.kartersanamo.com"
+    env("NEXT_PUBLIC_APP_URL") || "https://bots.kartersanamo.com"
   ),
 };
 

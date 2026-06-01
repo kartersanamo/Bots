@@ -1,3 +1,5 @@
+import { env } from "@/lib/env";
+
 const DISCORD_API = "https://discord.com/api/v10";
 
 const enrichCache = new Map<
@@ -43,15 +45,14 @@ export interface DiscordMessage {
 }
 
 function botHeaders(): HeadersInit {
-  const token =
-    process.env.BOT_TICKETS_TOKEN || process.env.DISCORD_BOT_TOKEN || "";
+  const token = env("BOT_TICKETS_TOKEN") || env("DISCORD_BOT_TOKEN");
   return { Authorization: `Bot ${token}` };
 }
 
 export { discordChannelUrl } from "@/lib/discord/guild";
 
 export function isDiscordConfigured(): boolean {
-  return !!(process.env.DISCORD_BOT_TOKEN || process.env.BOT_TICKETS_TOKEN);
+  return !!(env("DISCORD_BOT_TOKEN") || env("BOT_TICKETS_TOKEN"));
 }
 
 async function discordFetch(url: string, init?: RequestInit): Promise<Response> {

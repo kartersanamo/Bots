@@ -1,3 +1,4 @@
+import { env } from "@/lib/env";
 import { fetchWithTimeout } from "@/lib/fetch-timeout";
 
 const DEFAULT_URL = "http://127.0.0.1:8787";
@@ -15,11 +16,11 @@ export class ControlApiError extends Error {
 }
 
 function baseUrl(): string {
-  return process.env.CONTROL_API_URL || DEFAULT_URL;
+  return env("CONTROL_API_URL") || DEFAULT_URL;
 }
 
 function secret(): string {
-  const s = process.env.CONTROL_API_SECRET;
+  const s = env("CONTROL_API_SECRET");
   if (!s) throw new Error("CONTROL_API_SECRET not configured");
   return s;
 }
@@ -153,5 +154,5 @@ export async function sendDmMessage(
 }
 
 export function isControlApiConfigured(): boolean {
-  return !!process.env.CONTROL_API_SECRET;
+  return !!env("CONTROL_API_SECRET");
 }

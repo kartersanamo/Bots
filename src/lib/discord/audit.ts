@@ -1,5 +1,6 @@
-import { fetchWithTimeout } from "@/lib/fetch-timeout";
 import { isDiscordConfigured } from "@/lib/discord/api";
+import { envRequired } from "@/lib/env";
+import { fetchWithTimeout } from "@/lib/fetch-timeout";
 
 const DISCORD_API = "https://discord.com/api/v10";
 const FETCH_MS = 5000;
@@ -125,7 +126,7 @@ export function formatAuditTarget(entry: DiscordAuditEntry): string {
 }
 
 function botHeaders(): HeadersInit {
-  return { Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}` };
+  return { Authorization: `Bot ${envRequired("DISCORD_BOT_TOKEN")}` };
 }
 
 export async function fetchGuildAuditLogs(opts: {
@@ -137,7 +138,7 @@ export async function fetchGuildAuditLogs(opts: {
     throw new Error("Discord API not configured");
   }
 
-  const guildId = process.env.DISCORD_GUILD_ID!;
+  const guildId = envRequired("DISCORD_GUILD_ID");
   const params = new URLSearchParams();
   params.set("limit", String(Math.min(100, Math.max(1, opts.limit ?? 50))));
   if (opts.before) params.set("before", opts.before);

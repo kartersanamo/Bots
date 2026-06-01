@@ -51,36 +51,36 @@ export function TicketsAnalytics({ data, range }: TicketsAnalyticsProps) {
             value:
               kpis.avgTimeBetweenTicketsSeconds != null
                 ? formatDurationSeconds(kpis.avgTimeBetweenTicketsSeconds)
-                : range === "365d" || range === "all"
-                  ? "Use ≤90d range"
-                  : "—",
+                : "—",
+            hint:
+              range === "365d" || range === "all"
+                ? "Sampled for long ranges"
+                : undefined,
           },
           {
             label: "Longest gap (no ticket)",
             value:
               kpis.longestGapSeconds != null
                 ? formatDurationSeconds(kpis.longestGapSeconds)
-                : range === "365d" || range === "all"
-                  ? "Use ≤90d range"
-                  : "—",
+                : "—",
+            hint:
+              range === "365d" || range === "all"
+                ? "Sampled for long ranges"
+                : undefined,
           },
           {
             label: "Median time to close",
             value:
               kpis.medianCloseSeconds != null
                 ? formatDurationSeconds(kpis.medianCloseSeconds)
-                : range === "365d" || range === "all"
-                  ? "Use ≤90d range"
-                  : "—",
+                : "—",
           },
           {
             label: "P90 time to close",
             value:
               kpis.p90CloseSeconds != null
                 ? formatDurationSeconds(kpis.p90CloseSeconds)
-                : range === "365d" || range === "all"
-                  ? "Use ≤90d range"
-                  : "—",
+                : "—",
           },
           {
             label: "Close rate",

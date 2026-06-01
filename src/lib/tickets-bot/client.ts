@@ -1,3 +1,5 @@
+import { env } from "@/lib/env";
+
 const DEFAULT_URL = "http://127.0.0.1:8788";
 
 export class TicketsBotApiError extends Error {
@@ -12,20 +14,17 @@ export class TicketsBotApiError extends Error {
 }
 
 function baseUrl(): string {
-  return process.env.TICKETS_BOT_API_URL || DEFAULT_URL;
+  return env("TICKETS_BOT_API_URL") || DEFAULT_URL;
 }
 
 function secret(): string {
-  const s =
-    process.env.TICKETS_BOT_API_SECRET || process.env.CONTROL_API_SECRET;
+  const s = env("TICKETS_BOT_API_SECRET") || env("CONTROL_API_SECRET");
   if (!s) throw new Error("TICKETS_BOT_API_SECRET not configured");
   return s;
 }
 
 export function isTicketsBotApiConfigured(): boolean {
-  return !!(
-    process.env.TICKETS_BOT_API_SECRET || process.env.CONTROL_API_SECRET
-  );
+  return !!(env("TICKETS_BOT_API_SECRET") || env("CONTROL_API_SECRET"));
 }
 
 export async function closeTicketViaBot(params: {

@@ -1,7 +1,9 @@
+import { env, envRequired } from "@/lib/env";
+
 const DISCORD_API = "https://discord.com/api/v10";
 
 function botHeaders(): HeadersInit {
-  return { Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}` };
+  return { Authorization: `Bot ${envRequired("DISCORD_BOT_TOKEN")}` };
 }
 
 export interface GuildInfo {
@@ -31,15 +33,13 @@ export interface GuildChannel {
 }
 
 export function isDiscordConfigured(): boolean {
-  return !!(
-    process.env.DISCORD_BOT_TOKEN && process.env.DISCORD_GUILD_ID
-  );
+  return !!(env("DISCORD_BOT_TOKEN") && env("DISCORD_GUILD_ID"));
 }
 
 export async function fetchGuildInfo(): Promise<GuildInfo | null> {
   if (!isDiscordConfigured()) return null;
 
-  const guildId = process.env.DISCORD_GUILD_ID!;
+  const guildId = envRequired("DISCORD_GUILD_ID");
   const res = await fetch(`${DISCORD_API}/guilds/${guildId}?with_counts=true`, {
     headers: botHeaders(),
     next: { revalidate: 60 },
@@ -62,7 +62,7 @@ export async function fetchGuildInfo(): Promise<GuildInfo | null> {
 export async function fetchGuildRoles(): Promise<GuildRole[]> {
   if (!isDiscordConfigured()) return [];
 
-  const guildId = process.env.DISCORD_GUILD_ID!;
+  const guildId = envRequired("DISCORD_GUILD_ID");
   const res = await fetch(`${DISCORD_API}/guilds/${guildId}/roles`, {
     headers: botHeaders(),
     next: { revalidate: 300 },
@@ -77,7 +77,7 @@ export async function fetchGuildRoles(): Promise<GuildRole[]> {
 export async function fetchGuildChannels(): Promise<GuildChannel[]> {
   if (!isDiscordConfigured()) return [];
 
-  const guildId = process.env.DISCORD_GUILD_ID!;
+  const guildId = envRequired("DISCORD_GUILD_ID");
   const res = await fetch(`${DISCORD_API}/guilds/${guildId}/channels`, {
     headers: botHeaders(),
     next: { revalidate: 300 },

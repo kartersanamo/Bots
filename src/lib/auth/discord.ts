@@ -1,3 +1,4 @@
+import { env, envRequired } from "@/lib/env";
 import type { PermissionTier } from "@/lib/permissions";
 import { resolvePermissionTier } from "@/lib/permissions";
 
@@ -5,8 +6,8 @@ const DISCORD_API = "https://discord.com/api/v10";
 
 export function getDiscordAuthUrl(): string {
   const params = new URLSearchParams({
-    client_id: process.env.DISCORD_CLIENT_ID!,
-    redirect_uri: process.env.DISCORD_REDIRECT_URI!,
+    client_id: envRequired("DISCORD_CLIENT_ID"),
+    redirect_uri: envRequired("DISCORD_REDIRECT_URI"),
     response_type: "code",
     scope: "identify guilds guilds.members.read",
   });
@@ -38,11 +39,11 @@ export async function exchangeCode(code: string): Promise<DiscordTokenResponse> 
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      client_id: process.env.DISCORD_CLIENT_ID!,
-      client_secret: process.env.DISCORD_CLIENT_SECRET!,
+      client_id: envRequired("DISCORD_CLIENT_ID"),
+      client_secret: envRequired("DISCORD_CLIENT_SECRET"),
       grant_type: "authorization_code",
       code,
-      redirect_uri: process.env.DISCORD_REDIRECT_URI!,
+      redirect_uri: envRequired("DISCORD_REDIRECT_URI"),
     }),
   });
 
@@ -98,7 +99,7 @@ export async function buildSessionFromOAuth(
   tier: PermissionTier;
   roleIds: string[];
 }> {
-  const guildId = process.env.DISCORD_GUILD_ID!;
+  const guildId = envRequired("DISCORD_GUILD_ID");
   const roleIds = await fetchGuildMemberRoles(accessToken, guildId);
   const tier = resolvePermissionTier(user.id, roleIds);
 

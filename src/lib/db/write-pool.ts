@@ -1,20 +1,21 @@
+import { env, envInt } from "@/lib/env";
 import type { QueryValues } from "mysql2";
 import mysql from "mysql2/promise";
 
 let writePool: mysql.Pool | null = null;
 
 export function getWritePool(): mysql.Pool | null {
-  const user = process.env.DB_WRITE_USER || process.env.DB_USER;
-  const password = process.env.DB_WRITE_PASSWORD || process.env.DB_PASSWORD;
-  if (!process.env.DB_HOST || !user || !process.env.DB_NAME) return null;
+  const user = env("DB_WRITE_USER") || env("DB_USER");
+  const password = env("DB_WRITE_PASSWORD") || env("DB_PASSWORD");
+  if (!env("DB_HOST") || !user || !env("DB_NAME")) return null;
 
   if (!writePool) {
     writePool = mysql.createPool({
-      host: process.env.DB_HOST || "localhost",
-      port: Number(process.env.DB_PORT || 3306),
+      host: env("DB_HOST") || "localhost",
+      port: envInt("DB_PORT", 3306),
       user,
       password,
-      database: process.env.DB_NAME,
+      database: env("DB_NAME"),
       waitForConnections: true,
       connectionLimit: 3,
     });

@@ -1,3 +1,5 @@
+import { env } from "@/lib/env";
+
 export type PermissionTier =
   | "owner"
   | "manager"
@@ -125,7 +127,7 @@ export function resolvePermissionTier(
   userId: string,
   roleIds: string[]
 ): PermissionTier {
-  const ownerId = process.env.OWNER_DISCORD_ID;
+  const ownerId = env("OWNER_DISCORD_ID");
   if (ownerId && userId === ownerId) return "owner";
 
   let highest: PermissionTier = "none";

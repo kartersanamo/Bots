@@ -1,3 +1,4 @@
+import { env } from "@/lib/env";
 import type { ResolvedDiscordUser } from "@/lib/discord/users.types";
 import { cached, invalidateCache } from "@/lib/server-cache";
 import dns from "node:dns";
@@ -20,19 +21,15 @@ export function isDiscordBotConfigured(): boolean {
 
 function botToken(): string {
   return (
-    process.env.DISCORD_BOT_TOKEN ||
-    process.env.BOT_GAMES_TOKEN ||
-    process.env.BOT_TICKETS_TOKEN ||
-    ""
-  ).trim();
+    env("DISCORD_BOT_TOKEN") ||
+    env("BOT_GAMES_TOKEN") ||
+    env("BOT_TICKETS_TOKEN")
+  );
 }
 
 function guildId(): string | null {
-  const id =
-    process.env.DISCORD_GUILD_ID ||
-    process.env.NEXT_PUBLIC_DISCORD_GUILD_ID ||
-    "";
-  return id.trim() || null;
+  const id = env("DISCORD_GUILD_ID") || env("NEXT_PUBLIC_DISCORD_GUILD_ID");
+  return id || null;
 }
 
 /** Node https — avoids Next.js patched fetch breaking Discord bot requests. */

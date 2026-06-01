@@ -1,10 +1,36 @@
 import { rangeSinceUnix } from "@/lib/analytics/range";
+import {
+  bucketKeySqlFromDate,
+  bucketKeySqlFromUnix,
+  getTimeBucketSpec,
+  normalizeTimeSeries,
+} from "@/lib/analytics/time-buckets";
 import type {
   AnalyticsRange,
   DailyCount,
   EngagementAnalytics,
 } from "@/lib/analytics/types";
 import { isDbConfigured, query, queryOne } from "@/lib/db/pool";
+
+function thinSnapshotSeries(
+  rows: {
+    day: string;
+    member_count: number;
+    online_count: number;
+    boost_tier: number;
+  }[],
+  maxPoints: number
+) {
+  const mapped = rows.map((r) => ({
+    date: String(r.day).slice(0, 10),
+    members: Number(r.member_count),
+    online: Number(r.online_count),
+    boostTier: Number(r.boost_tier),
+  }));
+  if (mapped.length <= maxPoints) return mapped;
+  const step = Math.ceil(mapped.length / maxPoints);
+  return mapped.filter((_, i) => i % step === 0).slice(0, maxPoints);
+}
 
 function mapDaily(rows: { date: string | Date; count: number }[]): DailyCount[] {
   return rows.map((r) => ({
@@ -39,6 +65,12 @@ export async function getEngagementAnalytics(
   if (!isDbConfigured()) return null;
 
   const since = rangeSinceUnix(range);
+  const bucketSpec = getTimeBucketSpec(range);
+  const dayBucket = bucketKeySqlFromDate("day", bucketSpec);
+  const tsBucket = bucketKeySqlFromUnix("created_at", bucketSpec);
+  const votedBucket = bucketKeySqlFromUnix("voted_at", bucketSpec);
+  const endedBucket = bucketKeySqlFromUnix("ended_at", bucketSpec);
+  const blCreatedBucket = bucketKeySqlFromUnix("created_at", bucketSpec);
   const tsClause = since != null ? " AND created_at >= ?" : "";
   const tsParams = since != null ? [since] : [];
   const dayClause = since != null ? " AND day >= DATE(FROM_UNIXTIME(?))" : "";
@@ -77,9 +109,9 @@ export async function getEngagementAnalytics(
     ] = await Promise.all([
       hasStaff
         ? query<{ date: string; count: number }>(
-            `SELECT day AS date, SUM(message_count) AS count
+            `SELECT ${dayBucket} AS date, SUM(message_count) AS count
              FROM analytics_staff_messages_daily WHERE 1=1${dayClause}
-             GROUP BY day ORDER BY day`,
+             GROUP BY date ORDER BY date`,
             dayParams
           )
         : [],
@@ -93,15 +125,15 @@ export async function getEngagementAnalytics(
         : [],
       hasTickets
         ? query<{ date: string; count: number }>(
-            `SELECT day AS date, SUM(staff_messages) AS count
+            `SELECT ${dayBucket} AS date, SUM(staff_messages) AS count
              FROM analytics_ticket_messages_daily WHERE 1=1${dayClause}
-             GROUP BY day ORDER BY day`,
+             GROUP BY date ORDER BY date`,
             dayParams
           )
         : [],
       hasTickets
         ? query<{ date: string; count: number }>(
-            `SELECT day AS date, SUM(owner_messages) AS count
+            `SELECT ${dayBucket} AS date, SUM(owner_messages) AS count
              FROM analytics_ticket_messages_daily WHERE 1=1${dayClause}
              GROUP BY day ORDER BY day`,
             dayParams
@@ -109,7 +141,7 @@ export async function getEngagementAnalytics(
         : [],
       hasMembers
         ? query<{ date: string; count: number }>(
-            `SELECT DATE(FROM_UNIXTIME(created_at)) AS date, COUNT(*) AS count
+            `SELECT ${tsBucket} AS date, COUNT(*) AS count
              FROM analytics_member_events WHERE event_type = 'join'${tsClause}
              GROUP BY date ORDER BY date`,
             tsParams
@@ -117,7 +149,7 @@ export async function getEngagementAnalytics(
         : [],
       hasMembers
         ? query<{ date: string; count: number }>(
-            `SELECT DATE(FROM_UNIXTIME(created_at)) AS date, COUNT(*) AS count
+            `SELECT ${tsBucket} AS date, COUNT(*) AS count
              FROM analytics_member_events WHERE event_type = 'leave'${tsClause}
              GROUP BY date ORDER BY date`,
             tsParams
@@ -125,9 +157,9 @@ export async function getEngagementAnalytics(
         : [],
       hasVoice
         ? query<{ date: string; count: number }>(
-            `SELECT day AS date, SUM(seconds) AS count
+            `SELECT ${dayBucket} AS date, SUM(seconds) AS count
              FROM analytics_voice_daily WHERE 1=1${dayClause}
-             GROUP BY day ORDER BY day`,
+             GROUP BY date ORDER BY date`,
             dayParams
           )
         : [],
@@ -141,9 +173,9 @@ export async function getEngagementAnalytics(
         : [],
       hasCommands
         ? query<{ date: string; count: number }>(
-            `SELECT day AS date, SUM(invocations) AS count
+            `SELECT ${dayBucket} AS date, SUM(invocations) AS count
              FROM analytics_command_daily WHERE 1=1${dayClause}
-             GROUP BY day ORDER BY day`,
+             GROUP BY date ORDER BY date`,
             dayParams
           )
         : [],
@@ -157,7 +189,7 @@ export async function getEngagementAnalytics(
         : [],
       hasMod
         ? query<{ date: string; count: number }>(
-            `SELECT DATE(FROM_UNIXTIME(created_at)) AS date, COUNT(*) AS count
+            `SELECT ${tsBucket} AS date, COUNT(*) AS count
              FROM analytics_mod_actions WHERE 1=1${tsClause}
              GROUP BY date ORDER BY date`,
             tsParams
@@ -181,7 +213,7 @@ export async function getEngagementAnalytics(
         : [],
       hasPollVotes
         ? query<{ date: string; count: number }>(
-            `SELECT DATE(FROM_UNIXTIME(voted_at)) AS date, COUNT(*) AS count
+            `SELECT ${votedBucket} AS date, COUNT(*) AS count
              FROM analytics_poll_votes WHERE voted_at > 0${
                since != null ? " AND voted_at >= ?" : ""
              }
@@ -191,7 +223,7 @@ export async function getEngagementAnalytics(
         : [],
       hasGames
         ? query<{ date: string; count: number }>(
-            `SELECT DATE(FROM_UNIXTIME(ended_at)) AS date, COUNT(*) AS count
+            `SELECT ${endedBucket} AS date, COUNT(*) AS count
              FROM analytics_game_outcomes WHERE ended_at > 0${
                since != null ? " AND ended_at >= ?" : ""
              }
@@ -216,14 +248,17 @@ export async function getEngagementAnalytics(
             online_count: number;
             boost_tier: number;
           }>(
-            `SELECT day, member_count, online_count, boost_tier
-             FROM analytics_server_snapshots WHERE 1=1${dayClause.replace("day >=", "day >=")}
-             ORDER BY day`,
+            `SELECT ${dayBucket} AS day,
+              ROUND(AVG(member_count)) AS member_count,
+              ROUND(AVG(online_count)) AS online_count,
+              MAX(boost_tier) AS boost_tier
+             FROM analytics_server_snapshots WHERE 1=1${dayClause}
+             GROUP BY day ORDER BY day`,
             dayParams
           )
         : [],
       query<{ date: string; count: number }>(
-        `SELECT DATE(FROM_UNIXTIME(CAST(created_at AS UNSIGNED))) AS date, COUNT(*) AS count
+        `SELECT ${blCreatedBucket} AS date, COUNT(*) AS count
          FROM blacklists
          WHERE CAST(created_at AS UNSIGNED) > 0
          ${since != null ? "AND CAST(created_at AS UNSIGNED) >= ?" : ""}
@@ -274,26 +309,32 @@ export async function getEngagementAnalytics(
           0
         ),
       },
-      staffMessagesPerDay: mapDaily(staffPerDay),
+      staffMessagesPerDay: normalizeTimeSeries(mapDaily(staffPerDay), range),
       topStaffByMessages: topStaffMessages.map((r) => ({
         userId: String(r.user_id),
         count: Number(r.total),
       })),
-      ticketStaffMessagesPerDay: mapDaily(ticketStaffPerDay),
-      ticketOwnerMessagesPerDay: mapDaily(ticketOwnerPerDay),
-      memberJoinsPerDay: mapDaily(joinsPerDay),
-      memberLeavesPerDay: mapDaily(leavesPerDay),
-      voiceSecondsPerDay: mapDaily(voicePerDay),
+      ticketStaffMessagesPerDay: normalizeTimeSeries(
+        mapDaily(ticketStaffPerDay),
+        range
+      ),
+      ticketOwnerMessagesPerDay: normalizeTimeSeries(
+        mapDaily(ticketOwnerPerDay),
+        range
+      ),
+      memberJoinsPerDay: normalizeTimeSeries(mapDaily(joinsPerDay), range),
+      memberLeavesPerDay: normalizeTimeSeries(mapDaily(leavesPerDay), range),
+      voiceSecondsPerDay: normalizeTimeSeries(mapDaily(voicePerDay), range),
       topVoiceUsers: topVoiceUsers.map((r) => ({
         userId: String(r.user_id),
         count: Number(r.total),
       })),
-      commandsPerDay: mapDaily(commandsPerDay),
+      commandsPerDay: normalizeTimeSeries(mapDaily(commandsPerDay), range),
       topCommands: topCommands.map((r) => ({
         name: r.name,
         count: Number(r.count),
       })),
-      modActionsPerDay: mapDaily(modPerDay),
+      modActionsPerDay: normalizeTimeSeries(mapDaily(modPerDay), range),
       modActionsByType: modByType.map((r) => ({
         name: r.name,
         count: Number(r.count),
@@ -302,19 +343,17 @@ export async function getEngagementAnalytics(
         userId: String(r.actor_id),
         count: Number(r.count),
       })),
-      pollVotesPerDay: mapDaily(pollVotesPerDay),
-      gameOutcomesPerDay: mapDaily(gameOutcomesPerDay),
+      pollVotesPerDay: normalizeTimeSeries(mapDaily(pollVotesPerDay), range),
+      gameOutcomesPerDay: normalizeTimeSeries(mapDaily(gameOutcomesPerDay), range),
       gameOutcomesByType: outcomesByType.map((r) => ({
         name: r.name,
         count: Number(r.count),
       })),
-      serverSnapshots: snapshots.map((r) => ({
-        date: String(r.day).slice(0, 10),
-        members: Number(r.member_count),
-        online: Number(r.online_count),
-        boostTier: Number(r.boost_tier),
-      })),
-      blacklistsCreatedPerDay: mapDaily(blacklistCreatedPerDay),
+      serverSnapshots: thinSnapshotSeries(snapshots, bucketSpec.maxPoints),
+      blacklistsCreatedPerDay: normalizeTimeSeries(
+        mapDaily(blacklistCreatedPerDay),
+        range
+      ),
     };
   } catch (err) {
     console.error("[analytics] getEngagementAnalytics failed:", err);

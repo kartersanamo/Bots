@@ -1,14 +1,12 @@
 import { handleApiRoute, requireAction } from "@/lib/api/helpers";
 import { getCountingData } from "@/lib/db/games";
 import { isDbConfigured } from "@/lib/db/pool";
+import { env } from "@/lib/env";
 import { discordUsersForIds, snowflakeString } from "@/lib/games/discord-enrich";
 
 export const GET = handleApiRoute(async () => {
   await requireAction("games.read");
-  const guildId =
-    process.env.DISCORD_GUILD_ID ||
-    process.env.NEXT_PUBLIC_DISCORD_GUILD_ID ||
-    "";
+  const guildId = env("DISCORD_GUILD_ID") || env("NEXT_PUBLIC_DISCORD_GUILD_ID");
 
   if (!isDbConfigured() || !guildId) {
     return Response.json({ server: null, users: [], configured: false });

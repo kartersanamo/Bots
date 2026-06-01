@@ -1,3 +1,4 @@
+import { env } from "@/lib/env";
 import { fetchWithTimeout } from "@/lib/fetch-timeout";
 
 const DEFAULT_URL = "http://127.0.0.1:8789";
@@ -14,20 +15,17 @@ export class GamesBotApiError extends Error {
 }
 
 function baseUrl(): string {
-  return process.env.GAMES_BOT_API_URL || DEFAULT_URL;
+  return env("GAMES_BOT_API_URL") || DEFAULT_URL;
 }
 
 function secret(): string {
-  const s =
-    process.env.GAMES_BOT_API_SECRET || process.env.CONTROL_API_SECRET;
+  const s = env("GAMES_BOT_API_SECRET") || env("CONTROL_API_SECRET");
   if (!s) throw new Error("GAMES_BOT_API_SECRET not configured");
   return s;
 }
 
 export function isGamesBotApiConfigured(): boolean {
-  return !!(
-    process.env.GAMES_BOT_API_SECRET || process.env.CONTROL_API_SECRET
-  );
+  return !!(env("GAMES_BOT_API_SECRET") || env("CONTROL_API_SECRET"));
 }
 
 async function gamesFetch<T>(

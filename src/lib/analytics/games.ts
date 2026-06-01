@@ -1,4 +1,10 @@
 import { rangeSinceUnix } from "@/lib/analytics/range";
+import {
+  bucketKeySqlFromUnix,
+  bucketKeySqlFromDate,
+  getTimeBucketSpec,
+  normalizeTimeSeries,
+} from "@/lib/analytics/time-buckets";
 import type { AnalyticsRange, DailyCount, GamesAnalytics } from "@/lib/analytics/types";
 import { getGamesOverview } from "@/lib/db/games";
 import { query, queryOne, isDbConfigured } from "@/lib/db/pool";
@@ -15,6 +21,11 @@ export async function getGamesAnalytics(
   const tsClause =
     since != null ? " AND CAST(timestamp AS UNSIGNED) >= ?" : "";
   const tsParams = since != null ? [since] : [];
+  const bucketSpec = getTimeBucketSpec(range);
+  const xpBucket = bucketKeySqlFromUnix("timestamp", bucketSpec);
+  const sessionBucket = bucketKeySqlFromDate("refreshed_at", bucketSpec);
+  const claimBucket = bucketKeySqlFromUnix("last_claimed", bucketSpec);
+  const earnedBucket = bucketKeySqlFromUnix("earned_at", bucketSpec);
   const skipNewPlayers = range === "all" || range === "365d";
 
   const sessionClause =
@@ -59,14 +70,13 @@ export async function getGamesAnalytics(
         tsParams
       ),
       query<{ date: string; count: number }>(
-        `SELECT DATE(FROM_UNIXTIME(CAST(timestamp AS UNSIGNED))) AS date,
-          COALESCE(SUM(xp), 0) AS count
+        `SELECT ${xpBucket} AS date, COALESCE(SUM(xp), 0) AS count
          FROM xp_logs WHERE CAST(timestamp AS UNSIGNED) > 0${tsClause}
          GROUP BY date ORDER BY date`,
         tsParams
       ),
       query<{ date: string; count: number }>(
-        `SELECT DATE(refreshed_at) AS date, COUNT(*) AS count
+        `SELECT ${sessionBucket} AS date, COUNT(*) AS count
          FROM games
          WHERE game_id != -999999${sessionClause}
          GROUP BY date ORDER BY date`,
@@ -81,7 +91,7 @@ export async function getGamesAnalytics(
       skipNewPlayers
         ? Promise.resolve([] as { date: string; count: number }[])
         : query<{ date: string; count: number }>(
-            `SELECT DATE(FROM_UNIXTIME(first_ts)) AS date, COUNT(*) AS count FROM (
+            `SELECT ${bucketKeySqlFromUnix("first_ts", bucketSpec)} AS date, COUNT(*) AS count FROM (
               SELECT user_id, MIN(CAST(timestamp AS UNSIGNED)) AS first_ts
               FROM xp_logs WHERE CAST(timestamp AS UNSIGNED) > 0${tsClause}
               GROUP BY user_id
@@ -109,14 +119,14 @@ export async function getGamesAnalytics(
          GROUP BY name ORDER BY count DESC`
       ),
       query<{ date: string; count: number }>(
-        `SELECT DATE(FROM_UNIXTIME(CAST(last_claimed AS UNSIGNED))) AS date, COUNT(*) AS count
+        `SELECT ${claimBucket} AS date, COUNT(*) AS count
          FROM daily_claims
          WHERE CAST(last_claimed AS UNSIGNED) > 0${claimClause}
          GROUP BY date ORDER BY date`,
         claimParams
       ),
       query<{ date: string; count: number }>(
-        `SELECT DATE(FROM_UNIXTIME(CAST(earned_at AS UNSIGNED))) AS date, COUNT(*) AS count
+        `SELECT ${earnedBucket} AS date, COUNT(*) AS count
          FROM user_achievements
          WHERE CAST(earned_at AS UNSIGNED) > 0${achievementClause}
          GROUP BY date ORDER BY date`,
@@ -188,13 +198,13 @@ export async function getGamesAnalytics(
         countingTotalCounts: Number(countingAgg?.totalCounts ?? 0),
         countingMistakes: Number(countingAgg?.mistakes ?? 0),
       },
-      xpPerDay: mapDaily(xpPerDay),
-      sessionsPerDay: mapDaily(sessionsPerDay),
+      xpPerDay: normalizeTimeSeries(mapDaily(xpPerDay), range),
+      sessionsPerDay: normalizeTimeSeries(mapDaily(sessionsPerDay), range),
       topXpSources: topSources.map((r) => ({
         name: r.name,
         count: Number(r.count),
       })),
-      newPlayersPerDay: mapDaily(newPlayers),
+      newPlayersPerDay: normalizeTimeSeries(mapDaily(newPlayers), range),
       topXpEarners: topEarners.map((r) => ({
         userId: String(r.user_id),
         value: Number(r.total),
@@ -203,8 +213,8 @@ export async function getGamesAnalytics(
         name: r.name,
         count: Number(r.count),
       })),
-      dailyClaimsPerDay: mapDaily(claimsPerDay),
-      achievementsPerDay: mapDaily(achievementsPerDay),
+      dailyClaimsPerDay: normalizeTimeSeries(mapDaily(claimsPerDay), range),
+      achievementsPerDay: normalizeTimeSeries(mapDaily(achievementsPerDay), range),
       sessionsByGame: sessionsByGame.map((r) => ({
         name: r.name,
         count: Number(r.count),

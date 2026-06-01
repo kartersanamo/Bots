@@ -20,6 +20,12 @@ const CHART_COLORS = {
   muted: "#64748b",
 };
 
+function xTickInterval(length: number): number | "preserveStartEnd" {
+  if (length <= 12) return 0;
+  if (length <= 24) return 1;
+  return Math.ceil(length / 10) - 1;
+}
+
 export function DailyLineChart({
   data,
   dataKey = "count",
@@ -33,6 +39,8 @@ export function DailyLineChart({
     return <p className="py-8 text-center text-sm text-muted">No data in range</p>;
   }
 
+  const tickInterval = xTickInterval(data.length);
+
   return (
     <ResponsiveContainer width="100%" height={220}>
       <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
@@ -40,6 +48,7 @@ export function DailyLineChart({
         <XAxis
           dataKey="date"
           tick={{ fill: "#94a3b8", fontSize: 11 }}
+          interval={tickInterval}
           tickFormatter={(v) => String(v).slice(5)}
         />
         <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} width={40} />
@@ -57,6 +66,7 @@ export function DailyLineChart({
           stroke={color}
           strokeWidth={2}
           dot={false}
+          isAnimationActive={false}
         />
       </LineChart>
     </ResponsiveContainer>
@@ -102,7 +112,7 @@ export function NamedBarChart({
             borderRadius: 8,
           }}
         />
-        <Bar dataKey="count" fill={color} radius={[4, 4, 0, 0]} />
+        <Bar dataKey="count" fill={color} radius={[4, 4, 0, 0]} isAnimationActive={false} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -132,6 +142,8 @@ export function DualDailyLineChart({
     return <p className="py-8 text-center text-sm text-muted">No data in range</p>;
   }
 
+  const tickInterval = xTickInterval(data.length);
+
   return (
     <ResponsiveContainer width="100%" height={240}>
       <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
@@ -139,6 +151,7 @@ export function DualDailyLineChart({
         <XAxis
           dataKey="date"
           tick={{ fill: "#94a3b8", fontSize: 11 }}
+          interval={tickInterval}
           tickFormatter={(v) => String(v).slice(5)}
         />
         <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} width={40} />
@@ -157,6 +170,7 @@ export function DualDailyLineChart({
           stroke={CHART_COLORS.primary}
           strokeWidth={2}
           dot={false}
+          isAnimationActive={false}
         />
         <Line
           type="monotone"
@@ -165,6 +179,7 @@ export function DualDailyLineChart({
           stroke={CHART_COLORS.secondary}
           strokeWidth={2}
           dot={false}
+          isAnimationActive={false}
         />
       </LineChart>
     </ResponsiveContainer>

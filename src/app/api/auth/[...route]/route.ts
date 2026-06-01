@@ -4,6 +4,7 @@ import {
   fetchDiscordUser,
   getDiscordAuthUrl,
 } from "@/lib/auth/discord";
+import { env } from "@/lib/env";
 import {
   encodeSession,
   getSessionCookieName,
@@ -12,7 +13,7 @@ import {
 import { NextRequest, NextResponse } from "next/server";
 
 function getRedirectBaseUrl(request: NextRequest): string {
-  return process.env.NEXT_PUBLIC_APP_URL || request.url;
+  return env("NEXT_PUBLIC_APP_URL") || request.url;
 }
 
 export async function GET(
