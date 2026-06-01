@@ -4,10 +4,8 @@ import { AuditAnalyticsSection } from "@/components/analytics/AuditAnalyticsSect
 import { AnalyticsKpiGrid } from "@/components/analytics/AnalyticsKpiGrid";
 import { AnalyticsRangeSelector } from "@/components/analytics/AnalyticsRangeSelector";
 import { GamesAnalyticsSection } from "@/components/analytics/GamesAnalyticsSection";
-import { OpenTicketsWorkspace } from "@/components/analytics/open-tickets/OpenTicketsWorkspace";
 import { ModerationAnalyticsSection } from "@/components/analytics/ModerationAnalyticsSection";
 import { StaffAnalyticsSection } from "@/components/analytics/StaffAnalyticsSection";
-import { TicketlogsWorkspace } from "@/components/analytics/ticketlogs/TicketlogsWorkspace";
 import { TicketsAnalytics } from "@/components/analytics/TicketsAnalytics";
 import { GamesDiscordUsersProvider } from "@/components/games/GamesDiscordUsersProvider";
 import type { AnalyticsBundle } from "@/lib/analytics/bundle";
@@ -22,19 +20,10 @@ import { cn, formatNumber } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-type TabId =
-  | "tickets"
-  | "ticketlogs"
-  | "metrics"
-  | "games"
-  | "staff"
-  | "moderation"
-  | "audit";
+type TabId = "metrics" | "games" | "staff" | "moderation" | "audit";
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: "tickets", label: "Tickets" },
-  { id: "ticketlogs", label: "Ticketlogs" },
-  { id: "metrics", label: "Metrics" },
+  { id: "metrics", label: "Ticket metrics" },
   { id: "games", label: "Games" },
   { id: "staff", label: "Staff" },
   { id: "moderation", label: "Moderation" },
@@ -42,8 +31,6 @@ const TABS: { id: TabId; label: string }[] = [
 ];
 
 const BUNDLE_TABS = "metrics,games,staff,moderation,audit";
-
-const RANGE_TABS: TabId[] = ["metrics", "games", "staff", "moderation", "audit"];
 
 interface AnalyticsPageClientProps {
   userTier: PermissionTier;
@@ -54,15 +41,21 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
   const searchParams = useSearchParams();
   const range = parseAnalyticsRange(searchParams.get("range"));
   const tabParam = searchParams.get("tab");
+
+  useEffect(() => {
+    if (tabParam === "tickets") {
+      router.replace("/dashboard/tickets");
+    } else if (tabParam === "ticketlogs") {
+      router.replace("/dashboard/ticketlogs");
+    }
+  }, [tabParam, router]);
   const tab: TabId =
-    tabParam === "ticketlogs" ||
-    tabParam === "metrics" ||
     tabParam === "games" ||
     tabParam === "staff" ||
     tabParam === "moderation" ||
     tabParam === "audit"
       ? tabParam
-      : "tickets";
+      : "metrics";
 
   const [bundle, setBundle] = useState<AnalyticsBundle | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -70,7 +63,6 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  const needsBundle = RANGE_TABS.includes(tab);
   const cacheKey = `bundle:${range}`;
 
   const applyBundle = useCallback((data: AnalyticsBundle) => {
@@ -91,11 +83,6 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
   };
 
   useEffect(() => {
-    if (!needsBundle) {
-      setRefreshing(false);
-      return;
-    }
-
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
@@ -139,67 +126,60 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
       });
 
     return () => ac.abort();
-  }, [range, cacheKey, applyBundle, needsBundle]);
+  }, [range, cacheKey, applyBundle]);
 
   const summary = bundle?.summary;
-  const showKpiSkeleton = needsBundle && !hydrated && refreshing;
-  const showTabSkeleton = needsBundle && !hydrated && refreshing;
+  const showSkeleton = !hydrated && refreshing;
 
   return (
     <GamesDiscordUsersProvider>
       <div className="space-y-6">
-        {RANGE_TABS.includes(tab) && (
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <AnalyticsRangeSelector value={range} onChange={setRange} />
-            <p className="text-xs text-muted">
-              Private tickets{" "}
-              {can(userTier, "tickets.view_private") ? "included" : "excluded"}
-              {refreshing && hydrated ? " · updating…" : ""}
-              {!refreshing && hydrated ? " · cached" : ""}
-            </p>
-          </div>
-        )}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <AnalyticsRangeSelector value={range} onChange={setRange} />
+          <p className="text-xs text-muted">
+            Private tickets{" "}
+            {can(userTier, "tickets.view_private") ? "included" : "excluded"}
+            {refreshing && hydrated ? " · updating…" : ""}
+            {!refreshing && hydrated ? " · cached" : ""}
+          </p>
+        </div>
 
-        {tab !== "tickets" && tab !== "ticketlogs" && (
-          <>
-            {showKpiSkeleton ? (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="h-20 animate-pulse rounded-lg border border-border bg-surface"
-                  />
-                ))}
-              </div>
-            ) : summary ? (
-              <AnalyticsKpiGrid
-                items={[
-                  { label: "Open tickets", value: summary.tickets.openCount },
-                  {
-                    label: "Opened (range)",
-                    value: summary.tickets.openedInRange,
-                  },
-                  {
-                    label: "Avg tickets / day",
-                    value: summary.tickets.avgPerDay.toFixed(2),
-                  },
-                  {
-                    label: "Active game players",
-                    value: summary.games.activePlayers,
-                  },
-                  {
-                    label: "XP in range",
-                    value: formatNumber(summary.games.xpInRange),
-                  },
-                  {
-                    label: "Dashboard actions",
-                    value: summary.audit.actionsInRange,
-                  },
-                ]}
+        {showSkeleton ? (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-20 animate-pulse rounded-lg border border-border bg-surface"
               />
-            ) : null}
-          </>
-        )}
+            ))}
+          </div>
+        ) : summary ? (
+          <AnalyticsKpiGrid
+            items={[
+              { label: "Open tickets", value: summary.tickets.openCount },
+              {
+                label: "Opened (range)",
+                value: summary.tickets.openedInRange,
+              },
+              {
+                label: "Avg tickets / day",
+                value: summary.tickets.avgPerDay.toFixed(2),
+              },
+              {
+                label: "Active game players",
+                value: summary.games.activePlayers,
+              },
+              {
+                label: "XP in range",
+                value: formatNumber(summary.games.xpInRange),
+              },
+              {
+                label: "Dashboard actions",
+                value: summary.audit.actionsInRange,
+              },
+            ]}
+          />
+        ) : null}
 
         <div className="flex flex-wrap gap-1 border-b border-border">
           {TABS.map((t) => (
@@ -225,11 +205,7 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
           </div>
         )}
 
-        {tab === "tickets" && <OpenTicketsWorkspace userTier={userTier} />}
-
-        {tab === "ticketlogs" && <TicketlogsWorkspace userTier={userTier} />}
-
-        {showTabSkeleton ? (
+        {showSkeleton ? (
           <div className="space-y-4">
             <div className="h-64 animate-pulse rounded-lg border border-border bg-surface" />
           </div>

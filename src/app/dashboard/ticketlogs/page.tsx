@@ -1,4 +1,4 @@
-import { OpenTicketsWorkspace } from "@/components/analytics/open-tickets/OpenTicketsWorkspace";
+import { TicketlogsWorkspace } from "@/components/analytics/ticketlogs/TicketlogsWorkspace";
 import { Header } from "@/components/layout/Header";
 import { GamesDiscordUsersProvider } from "@/components/games/GamesDiscordUsersProvider";
 import { getSession } from "@/lib/auth/session";
@@ -6,7 +6,7 @@ import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
-export default async function TicketsPage() {
+export default async function TicketlogsPage() {
   const session = await getSession();
   if (!session || session.tier === "none") redirect("/login");
   if (!can(session.tier, "tickets.read")) redirect("/unauthorized");
@@ -14,20 +14,20 @@ export default async function TicketsPage() {
   return (
     <>
       <Header
-        title="Tickets"
-        description="Open ticket queue — resolve active tickets quickly."
+        title="Ticketlogs"
+        description="Search closed tickets, transcripts, and historical records."
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },
-          { label: "Tickets" },
+          { label: "Ticketlogs" },
         ]}
       />
       <Suspense
         fallback={
-          <div className="animate-pulse text-muted">Loading open tickets…</div>
+          <div className="animate-pulse text-muted">Loading ticket logs…</div>
         }
       >
         <GamesDiscordUsersProvider>
-          <OpenTicketsWorkspace userTier={session.tier} />
+          <TicketlogsWorkspace userTier={session.tier} />
         </GamesDiscordUsersProvider>
       </Suspense>
     </>

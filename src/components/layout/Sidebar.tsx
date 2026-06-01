@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  Archive,
   BarChart3,
   Bot,
   Gamepad2,
@@ -31,7 +32,18 @@ const NAV_ITEMS = [
     icon: BarChart3,
     permission: "analytics.read" as const,
   },
-  { href: "/dashboard/tickets", label: "Tickets", icon: Ticket },
+  {
+    href: "/dashboard/tickets",
+    label: "Tickets",
+    icon: Ticket,
+    permission: "tickets.read" as const,
+  },
+  {
+    href: "/dashboard/ticketlogs",
+    label: "Ticketlogs",
+    icon: Archive,
+    permission: "tickets.read" as const,
+  },
   {
     href: "/dashboard/games",
     label: "Games",

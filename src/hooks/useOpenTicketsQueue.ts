@@ -57,8 +57,7 @@ export function useOpenTicketsQueue() {
     (updates: Partial<OpenTicketsQueueState>) => {
       const current = readState(searchParams);
       const next = { ...current, ...updates };
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("tab", "tickets");
+      const params = new URLSearchParams();
       if (next.sort !== "opened_at") params.set("sort", next.sort);
       else params.delete("sort");
       if (next.order !== "asc") params.set("order", next.order);
@@ -75,7 +74,8 @@ export function useOpenTicketsQueue() {
       else params.delete("q");
       if (next.privated) params.set("privated", next.privated);
       else params.delete("privated");
-      router.replace(`/dashboard/analytics?${params.toString()}`);
+      const qs = params.toString();
+      router.replace(`/dashboard/tickets${qs ? `?${qs}` : ""}`);
     },
     [router, searchParams]
   );

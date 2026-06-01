@@ -20,58 +20,6 @@ export interface TicketlogsSearchState {
   hasTranscript: string;
 }
 
-function readState(searchParams: URLSearchParams): TicketlogsSearchState {
-  return {
-    sort: searchParams.get("tl_sort") || "closed_at",
-    order: searchParams.get("tl_order") || "desc",
-    page: Number(searchParams.get("tl_page") || 1),
-    limit: Number(searchParams.get("tl_limit") || 50),
-    type: searchParams.get("tl_type") || "",
-    ownerId: searchParams.get("tl_ownerId") || "",
-    number: searchParams.get("tl_number") || "",
-    q: searchParams.get("tl_q") || "",
-    privated: searchParams.get("tl_privated") || "",
-    closedFrom: searchParams.get("tl_closedFrom") || "",
-    closedTo: searchParams.get("tl_closedTo") || "",
-    closedBy: searchParams.get("tl_closedBy") || "",
-    hasTranscript: searchParams.get("tl_hasTranscript") || "",
-  };
-}
-
-function stateKey(s: TicketlogsSearchState): string {
-  return [
-    s.sort,
-    s.order,
-    s.page,
-    s.limit,
-    s.type,
-    s.ownerId,
-    s.number,
-    s.q,
-    s.privated,
-    s.closedFrom,
-    s.closedTo,
-    s.closedBy,
-    s.hasTranscript,
-  ].join("|");
-}
-
-const TL_KEYS: Record<keyof TicketlogsSearchState, string> = {
-  sort: "tl_sort",
-  order: "tl_order",
-  page: "tl_page",
-  limit: "tl_limit",
-  type: "tl_type",
-  ownerId: "tl_ownerId",
-  number: "tl_number",
-  q: "tl_q",
-  privated: "tl_privated",
-  closedFrom: "tl_closedFrom",
-  closedTo: "tl_closedTo",
-  closedBy: "tl_closedBy",
-  hasTranscript: "tl_hasTranscript",
-};
-
 const DEFAULTS: TicketlogsSearchState = {
   sort: "closed_at",
   order: "desc",
@@ -87,6 +35,46 @@ const DEFAULTS: TicketlogsSearchState = {
   closedBy: "",
   hasTranscript: "",
 };
+
+type StateKey = keyof TicketlogsSearchState;
+
+const PARAM_KEYS: Record<StateKey, string> = {
+  sort: "sort",
+  order: "order",
+  page: "page",
+  limit: "limit",
+  type: "type",
+  ownerId: "ownerId",
+  number: "number",
+  q: "q",
+  privated: "privated",
+  closedFrom: "closedFrom",
+  closedTo: "closedTo",
+  closedBy: "closedBy",
+  hasTranscript: "hasTranscript",
+};
+
+function readState(searchParams: URLSearchParams): TicketlogsSearchState {
+  return {
+    sort: searchParams.get("sort") || DEFAULTS.sort,
+    order: searchParams.get("order") || DEFAULTS.order,
+    page: Number(searchParams.get("page") || DEFAULTS.page),
+    limit: Number(searchParams.get("limit") || DEFAULTS.limit),
+    type: searchParams.get("type") || "",
+    ownerId: searchParams.get("ownerId") || "",
+    number: searchParams.get("number") || "",
+    q: searchParams.get("q") || "",
+    privated: searchParams.get("privated") || "",
+    closedFrom: searchParams.get("closedFrom") || "",
+    closedTo: searchParams.get("closedTo") || "",
+    closedBy: searchParams.get("closedBy") || "",
+    hasTranscript: searchParams.get("hasTranscript") || "",
+  };
+}
+
+function stateKey(s: TicketlogsSearchState): string {
+  return Object.values(s).join("|");
+}
 
 export function useTicketlogsSearch() {
   const router = useRouter();
@@ -112,23 +100,19 @@ export function useTicketlogsSearch() {
       const apply = () => {
         const current = readState(searchParams);
         const next = { ...current, ...updates };
-        const params = new URLSearchParams(searchParams.toString());
-        params.set("tab", "ticketlogs");
+        const params = new URLSearchParams();
 
-        (Object.keys(TL_KEYS) as (keyof TicketlogsSearchState)[]).forEach(
-          (key) => {
-            const paramKey = TL_KEYS[key];
-            const val = next[key];
-            const def = DEFAULTS[key];
-            if (val !== def && val !== "" && val !== 0) {
-              params.set(paramKey, String(val));
-            } else {
-              params.delete(paramKey);
-            }
+        (Object.keys(PARAM_KEYS) as StateKey[]).forEach((key) => {
+          const paramKey = PARAM_KEYS[key];
+          const val = next[key];
+          const def = DEFAULTS[key];
+          if (val !== def && val !== "" && val !== 0) {
+            params.set(paramKey, String(val));
           }
-        );
+        });
 
-        router.replace(`/dashboard/analytics?${params.toString()}`);
+        const qs = params.toString();
+        router.replace(`/dashboard/ticketlogs${qs ? `?${qs}` : ""}`);
       };
 
       if (opts?.debounce) {
