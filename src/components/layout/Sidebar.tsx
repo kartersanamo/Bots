@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  BarChart3,
   Bot,
   Gamepad2,
   LayoutDashboard,
@@ -24,6 +25,12 @@ import { useState } from "react";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
+  {
+    href: "/dashboard/analytics",
+    label: "Analytics",
+    icon: BarChart3,
+    permission: "analytics.read" as const,
+  },
   { href: "/dashboard/tickets", label: "Tickets", icon: Ticket },
   {
     href: "/dashboard/games",

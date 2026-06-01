@@ -1,0 +1,318 @@
+"use client";
+
+import { AnalyticsChartCard } from "@/components/analytics/AnalyticsChartCard";
+import {
+  AnalyticsDataTable,
+  AnalyticsTable,
+} from "@/components/analytics/AnalyticsDataTable";
+import { AnalyticsKpiGrid } from "@/components/analytics/AnalyticsKpiGrid";
+import {
+  DailyLineChart,
+  DualDailyLineChart,
+  NamedBarChart,
+} from "@/components/analytics/charts";
+import { DiscordUserChip } from "@/components/games/DiscordUserChip";
+import { formatDurationSeconds } from "@/lib/analytics/format";
+import type { AnalyticsRange, TicketAnalytics } from "@/lib/analytics/types";
+import { formatNumber, formatUnixTimestamp } from "@/lib/utils";
+import Link from "next/link";
+
+interface TicketsAnalyticsProps {
+  data: TicketAnalytics;
+  range: AnalyticsRange;
+}
+
+export function TicketsAnalytics({ data, range }: TicketsAnalyticsProps) {
+  const { kpis } = data;
+
+  return (
+    <div className="space-y-6">
+      <AnalyticsKpiGrid
+        items={[
+          {
+            label: "Avg tickets / day",
+            value: kpis.avgTicketsPerDay.toFixed(2),
+          },
+          {
+            label: "Opened in range",
+            value: kpis.openedInRange,
+          },
+          {
+            label: "Closed in range",
+            value: kpis.closedInRange,
+          },
+          {
+            label: "Currently open",
+            value: kpis.openCount,
+          },
+          {
+            label: "Avg time between tickets",
+            value:
+              kpis.avgTimeBetweenTicketsSeconds != null
+                ? formatDurationSeconds(kpis.avgTimeBetweenTicketsSeconds)
+                : "—",
+          },
+          {
+            label: "Longest gap (no ticket)",
+            value:
+              kpis.longestGapSeconds != null
+                ? formatDurationSeconds(kpis.longestGapSeconds)
+                : "—",
+          },
+          {
+            label: "Median time to close",
+            value:
+              kpis.medianCloseSeconds != null
+                ? formatDurationSeconds(kpis.medianCloseSeconds)
+                : "—",
+          },
+          {
+            label: "P90 time to close",
+            value:
+              kpis.p90CloseSeconds != null
+                ? formatDurationSeconds(kpis.p90CloseSeconds)
+                : "—",
+          },
+        ]}
+      />
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <AnalyticsChartCard
+          title="Tickets opened & closed per day"
+          exportHeaders={["date", "opened", "closed"]}
+          exportFilename={`tickets-daily-${range}.csv`}
+          exportRows={mergeDailyExport(data.openedPerDay, data.closedPerDay)}
+        >
+          <DualDailyLineChart
+            opened={data.openedPerDay}
+            closed={data.closedPerDay}
+          />
+        </AnalyticsChartCard>
+
+        <AnalyticsChartCard
+          title="Opened per day"
+          exportHeaders={["date", "count"]}
+          exportFilename={`tickets-opened-${range}.csv`}
+          exportRows={data.openedPerDay.map((r) => ({
+            date: r.date,
+            count: r.count,
+          }))}
+        >
+          <DailyLineChart data={data.openedPerDay} />
+        </AnalyticsChartCard>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <AnalyticsChartCard
+          title="By ticket type"
+          exportHeaders={["type", "count"]}
+          exportFilename={`tickets-by-type-${range}.csv`}
+          exportRows={data.byType.map((r) => ({ type: r.name, count: r.count }))}
+        >
+          <NamedBarChart data={data.byType} color="#f97316" />
+        </AnalyticsChartCard>
+
+        <AnalyticsChartCard
+          title="By hour of day (opened)"
+          exportHeaders={["hour", "count"]}
+          exportFilename={`tickets-by-hour-${range}.csv`}
+          exportRows={data.byHour.map((r) => ({ hour: r.name, count: r.count }))}
+        >
+          <NamedBarChart data={data.byHour} />
+        </AnalyticsChartCard>
+      </div>
+
+      <AnalyticsChartCard
+        title="By day of week (opened)"
+        exportHeaders={["day", "count"]}
+        exportFilename={`tickets-by-dow-${range}.csv`}
+        exportRows={data.byDayOfWeek.map((r) => ({ day: r.name, count: r.count }))}
+      >
+        <NamedBarChart data={data.byDayOfWeek} color="#10b981" />
+      </AnalyticsChartCard>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <OpenerTable
+          title={`Top ticket openers (${range})`}
+          rows={data.topOpenersInRange}
+          filename={`top-openers-${range}.csv`}
+        />
+        <OpenerTable
+          title="Top ticket openers (all time)"
+          rows={data.topOpenersAllTime}
+          filename="top-openers-all-time.csv"
+        />
+      </div>
+
+      <AnalyticsDataTable
+        title="Most tickets opened in a single day"
+        headers={["ownerId", "date", "count"]}
+        exportFilename={`most-tickets-one-day.csv`}
+        exportRows={data.mostTicketsInOneDay.map((r) => ({
+          ownerId: r.ownerId,
+          date: r.date,
+          count: r.count,
+        }))}
+      >
+        <AnalyticsTable>
+          <thead>
+            <tr className="border-b border-border text-left text-xs text-muted">
+              <th className="px-4 py-2">#</th>
+              <th className="px-4 py-2">User</th>
+              <th className="px-4 py-2">Date</th>
+              <th className="px-4 py-2">Tickets</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.mostTicketsInOneDay.map((r, i) => (
+              <tr key={`${r.ownerId}-${r.date}`} className="border-b border-border/50">
+                <td className="px-4 py-2 text-muted">{i + 1}</td>
+                <td className="px-4 py-2">
+                  <DiscordUserChip userId={r.ownerId} />
+                </td>
+                <td className="px-4 py-2 text-white">{r.date}</td>
+                <td className="px-4 py-2 font-medium text-white">
+                  {formatNumber(r.count)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </AnalyticsTable>
+      </AnalyticsDataTable>
+
+      <AnalyticsDataTable
+        title="Top 5 longest open tickets"
+        headers={[
+          "channelId",
+          "ownerId",
+          "type",
+          "number",
+          "durationSeconds",
+        ]}
+        exportFilename="longest-open-tickets.csv"
+        exportRows={data.longestOpenTickets.map((r) => ({
+          channelId: r.channelId,
+          ownerId: r.ownerId,
+          type: r.type,
+          number: r.number,
+          durationSeconds: r.durationSeconds,
+        }))}
+      >
+        <AnalyticsTable>
+          <thead>
+            <tr className="border-b border-border text-left text-xs text-muted">
+              <th className="px-4 py-2">#</th>
+              <th className="px-4 py-2">Owner</th>
+              <th className="px-4 py-2">Type</th>
+              <th className="px-4 py-2">Duration</th>
+              <th className="px-4 py-2">Ticket</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.longestOpenTickets.map((r, i) => (
+              <tr key={r.channelId} className="border-b border-border/50">
+                <td className="px-4 py-2 text-muted">{i + 1}</td>
+                <td className="px-4 py-2">
+                  <DiscordUserChip userId={r.ownerId} />
+                </td>
+                <td className="px-4 py-2 text-white">{r.type}</td>
+                <td className="px-4 py-2 text-white">
+                  {formatDurationSeconds(r.durationSeconds)}
+                </td>
+                <td className="px-4 py-2">
+                  <Link
+                    href="/dashboard/tickets"
+                    className="text-accent hover:underline"
+                  >
+                    #{r.number}
+                  </Link>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </AnalyticsTable>
+      </AnalyticsDataTable>
+
+      {data.longestGap && (
+        <div className="rounded-lg border border-border bg-surface p-4 text-sm">
+          <h3 className="font-medium text-white">Longest gap without a ticket</h3>
+          <p className="mt-2 text-muted">
+            {formatDurationSeconds(data.longestGap.gapSeconds)} between tickets
+          </p>
+          <ul className="mt-2 space-y-1 text-white">
+            <li>
+              Previous: channel {data.longestGap.previousChannelId} · opened{" "}
+              {formatUnixTimestamp(data.longestGap.previousOpenedAt)}
+            </li>
+            <li>
+              Next: channel {data.longestGap.currentChannelId} · opened{" "}
+              {formatUnixTimestamp(data.longestGap.currentOpenedAt)}
+            </li>
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OpenerTable({
+  title,
+  rows,
+  filename,
+}: {
+  title: string;
+  rows: { ownerId: string; count: number }[];
+  filename: string;
+}) {
+  return (
+    <AnalyticsDataTable
+      title={title}
+      headers={["rank", "ownerId", "tickets"]}
+      exportFilename={filename}
+      exportRows={rows.map((r, i) => ({
+        rank: i + 1,
+        ownerId: r.ownerId,
+        tickets: r.count,
+      }))}
+    >
+      <AnalyticsTable>
+        <thead>
+          <tr className="border-b border-border text-left text-xs text-muted">
+            <th className="px-4 py-2">#</th>
+            <th className="px-4 py-2">User</th>
+            <th className="px-4 py-2">Tickets</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={r.ownerId} className="border-b border-border/50">
+              <td className="px-4 py-2 text-muted">{i + 1}</td>
+              <td className="px-4 py-2">
+                <DiscordUserChip userId={r.ownerId} />
+              </td>
+              <td className="px-4 py-2 font-medium text-white">
+                {formatNumber(r.count)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </AnalyticsTable>
+    </AnalyticsDataTable>
+  );
+}
+
+function mergeDailyExport(
+  opened: { date: string; count: number }[],
+  closed: { date: string; count: number }[]
+): Record<string, unknown>[] {
+  const map = new Map<string, { date: string; opened: number; closed: number }>();
+  for (const r of opened) {
+    map.set(r.date, { date: r.date, opened: r.count, closed: 0 });
+  }
+  for (const r of closed) {
+    const cur = map.get(r.date) ?? { date: r.date, opened: 0, closed: 0 };
+    cur.closed = r.count;
+    map.set(r.date, cur);
+  }
+  return [...map.values()].sort((a, b) => a.date.localeCompare(b.date));
+}

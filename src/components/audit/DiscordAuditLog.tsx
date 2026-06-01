@@ -113,13 +113,6 @@ export function DiscordAuditLog() {
         <p className="mb-4 text-sm text-red-400">{error}</p>
       )}
 
-      {guildUrl && configured && !error && (
-        <p className="mb-4 text-xs text-muted">
-          In Discord: Server Settings → Audit Log. The bot needs the{" "}
-          <span className="text-white">View Audit Log</span> permission.
-        </p>
-      )}
-
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>

@@ -1,0 +1,164 @@
+"use client";
+
+import type { DailyCount, NamedCount } from "@/lib/analytics/types";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+
+const CHART_COLORS = {
+  primary: "#8b5cf6",
+  secondary: "#06b6d4",
+  muted: "#64748b",
+};
+
+export function DailyLineChart({
+  data,
+  dataKey = "count",
+  color = CHART_COLORS.primary,
+}: {
+  data: DailyCount[];
+  dataKey?: string;
+  color?: string;
+}) {
+  if (!data.length) {
+    return <p className="py-8 text-center text-sm text-muted">No data in range</p>;
+  }
+
+  return (
+    <ResponsiveContainer width="100%" height={220}>
+      <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+        <XAxis
+          dataKey="date"
+          tick={{ fill: "#94a3b8", fontSize: 11 }}
+          tickFormatter={(v) => String(v).slice(5)}
+        />
+        <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} width={40} />
+        <Tooltip
+          contentStyle={{
+            background: "#1e293b",
+            border: "1px solid #334155",
+            borderRadius: 8,
+          }}
+          labelStyle={{ color: "#e2e8f0" }}
+        />
+        <Line
+          type="monotone"
+          dataKey={dataKey}
+          stroke={color}
+          strokeWidth={2}
+          dot={false}
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}
+
+export function NamedBarChart({
+  data,
+  color = CHART_COLORS.secondary,
+}: {
+  data: NamedCount[];
+  color?: string;
+}) {
+  if (!data.length) {
+    return <p className="py-8 text-center text-sm text-muted">No data</p>;
+  }
+
+  return (
+    <ResponsiveContainer width="100%" height={220}>
+      <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+        <XAxis
+          dataKey="name"
+          tick={{ fill: "#94a3b8", fontSize: 10 }}
+          interval={0}
+          angle={-25}
+          textAnchor="end"
+          height={50}
+        />
+        <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} width={40} />
+        <Tooltip
+          contentStyle={{
+            background: "#1e293b",
+            border: "1px solid #334155",
+            borderRadius: 8,
+          }}
+        />
+        <Bar dataKey="count" fill={color} radius={[4, 4, 0, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+export function DualDailyLineChart({
+  opened,
+  closed,
+}: {
+  opened: DailyCount[];
+  closed: DailyCount[];
+}) {
+  const map = new Map<string, { date: string; opened: number; closed: number }>();
+  for (const r of opened) {
+    map.set(r.date, { date: r.date, opened: r.count, closed: 0 });
+  }
+  for (const r of closed) {
+    const cur = map.get(r.date) ?? { date: r.date, opened: 0, closed: 0 };
+    cur.closed = r.count;
+    map.set(r.date, cur);
+  }
+  const data = [...map.values()].sort((a, b) =>
+    a.date.localeCompare(b.date)
+  );
+
+  if (!data.length) {
+    return <p className="py-8 text-center text-sm text-muted">No data in range</p>;
+  }
+
+  return (
+    <ResponsiveContainer width="100%" height={240}>
+      <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+        <XAxis
+          dataKey="date"
+          tick={{ fill: "#94a3b8", fontSize: 11 }}
+          tickFormatter={(v) => String(v).slice(5)}
+        />
+        <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} width={40} />
+        <Tooltip
+          contentStyle={{
+            background: "#1e293b",
+            border: "1px solid #334155",
+            borderRadius: 8,
+          }}
+        />
+        <Legend />
+        <Line
+          type="monotone"
+          dataKey="opened"
+          name="Opened"
+          stroke={CHART_COLORS.primary}
+          strokeWidth={2}
+          dot={false}
+        />
+        <Line
+          type="monotone"
+          dataKey="closed"
+          name="Closed"
+          stroke={CHART_COLORS.secondary}
+          strokeWidth={2}
+          dot={false}
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}

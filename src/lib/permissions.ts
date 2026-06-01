@@ -16,6 +16,7 @@ export type PermissionAction =
   | "dm.view"
   | "dm.send"
   | "audit.view"
+  | "analytics.read"
   | "tickets.read"
   | "tickets.write"
   | "tickets.view_private"
@@ -53,6 +54,7 @@ export const ACTION_TIER: Record<PermissionAction, PermissionTier> = {
   "dm.view": "admin",
   "dm.send": "admin",
   "audit.view": "admin",
+  "analytics.read": "moderator",
   "tickets.read": "helper",
   "tickets.write": "admin",
   "tickets.view_private": "admin",
