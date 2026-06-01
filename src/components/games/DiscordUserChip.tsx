@@ -2,7 +2,7 @@
 
 import { Avatar } from "@/components/ui/Avatar";
 import { useGamesDiscordUsers, useResolveDiscordUsers } from "@/components/games/GamesDiscordUsersProvider";
-import { snowflakeString } from "@/lib/games/discord-enrich";
+import { snowflakeString } from "@/lib/games/snowflake";
 import { cn } from "@/lib/utils";
 
 interface DiscordUserChipProps {

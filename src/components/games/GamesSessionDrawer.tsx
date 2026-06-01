@@ -8,8 +8,8 @@ import {
   useMergeDiscordUsersFromApi,
   useResolveDiscordUsers,
 } from "@/components/games/GamesDiscordUsersProvider";
-import { snowflakeString } from "@/lib/games/discord-enrich";
-import type { ResolvedDiscordUser } from "@/lib/discord/users";
+import { snowflakeString } from "@/lib/games/snowflake";
+import type { ResolvedDiscordUser } from "@/lib/discord/users.types";
 import { formatBoolFlag, formatUnixTimestamp } from "@/lib/utils";
 import { can, type PermissionTier } from "@/lib/permissions";
 import { X } from "lucide-react";

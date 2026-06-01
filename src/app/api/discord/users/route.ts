@@ -2,10 +2,11 @@ import { handleApiRoute, requireAction } from "@/lib/api/helpers";
 import {
   isDiscordBotConfigured,
   resolveDiscordUsers,
-} from "@/lib/discord/users";
-import { collectSnowflakeIds } from "@/lib/games/discord-enrich";
+} from "@/lib/discord/users.server";
+import { collectSnowflakeIds } from "@/lib/games/snowflake";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 export const GET = handleApiRoute(async (request) => {
   await requireAction("games.read");

@@ -1,7 +1,7 @@
 "use client";
 
-import type { ResolvedDiscordUser } from "@/lib/discord/users";
-import { snowflakeString } from "@/lib/games/discord-enrich";
+import type { ResolvedDiscordUser } from "@/lib/discord/users.types";
+import { snowflakeString } from "@/lib/games/snowflake";
 import {
   createContext,
   useCallback,

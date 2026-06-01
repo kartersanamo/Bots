@@ -3,8 +3,8 @@
 import { Card } from "@/components/ui/Card";
 import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { useMergeDiscordUsersFromApi } from "@/components/games/GamesDiscordUsersProvider";
-import type { ResolvedDiscordUser } from "@/lib/discord/users";
-import { snowflakeString } from "@/lib/games/discord-enrich";
+import type { ResolvedDiscordUser } from "@/lib/discord/users.types";
+import { snowflakeString } from "@/lib/games/snowflake";
 import { useEffect, useState } from "react";
 
 export function GamesWinnersSection() {

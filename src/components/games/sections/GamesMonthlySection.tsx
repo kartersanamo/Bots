@@ -8,7 +8,7 @@ import {
   type DiscordUserProfile,
 } from "@/components/games/GamesDiscordUsersProvider";
 import { GamesUserDrawer } from "@/components/games/GamesUserDrawer";
-import { snowflakeString } from "@/lib/games/discord-enrich";
+import { snowflakeString } from "@/lib/games/snowflake";
 import { can, type PermissionTier } from "@/lib/permissions";
 import { formatBoolFlag } from "@/lib/utils";
 import { useEffect, useState } from "react";

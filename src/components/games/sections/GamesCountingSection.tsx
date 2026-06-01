@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { useMergeDiscordUsersFromApi } from "@/components/games/GamesDiscordUsersProvider";
-import type { ResolvedDiscordUser } from "@/lib/discord/users";
+import type { ResolvedDiscordUser } from "@/lib/discord/users.types";
 import { can, type PermissionTier } from "@/lib/permissions";
 import { useEffect, useState } from "react";
 
