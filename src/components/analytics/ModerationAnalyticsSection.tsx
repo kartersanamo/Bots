@@ -22,7 +22,7 @@ export function ModerationAnalyticsSection({
         items={[
           { label: "Active bans", value: kpis.activeBans },
           { label: "Blacklist entries", value: kpis.totalBlacklists },
-          { label: "Active polls", value: kpis.activePolls },
+          { label: "Open polls", value: kpis.activePolls, hint: "Rows in polls table" },
           { label: "Total polls", value: kpis.totalPolls },
         ]}
       />

@@ -113,21 +113,35 @@ export function TicketsAnalytics({ data, range }: TicketsAnalyticsProps) {
         </AnalyticsChartCard>
 
         <AnalyticsChartCard
-          title="By hour of day (opened)"
-          exportHeaders={["hour", "count"]}
+          title="By hour of day (combined)"
+          exportHeaders={["hour", "totalTickets"]}
           exportFilename={`tickets-by-hour-${range}.csv`}
-          exportRows={data.byHour.map((r) => ({ hour: r.name, count: r.count }))}
+          exportRows={data.byHour.map((r) => ({
+            hour: r.name,
+            totalTickets: r.count,
+          }))}
         >
-          <NamedBarChart data={data.byHour} />
+          <p className="mb-2 text-xs text-muted">
+            Totals at each hour across all days in the selected period (e.g. every
+            5am summed together).
+          </p>
+          <NamedBarChart data={data.byHour} compactLabels />
         </AnalyticsChartCard>
       </div>
 
       <AnalyticsChartCard
-        title="By day of week (opened)"
-        exportHeaders={["day", "count"]}
+        title="By day of week (combined)"
+        exportHeaders={["weekday", "totalTickets"]}
         exportFilename={`tickets-by-dow-${range}.csv`}
-        exportRows={data.byDayOfWeek.map((r) => ({ day: r.name, count: r.count }))}
+        exportRows={data.byDayOfWeek.map((r) => ({
+          weekday: r.name,
+          totalTickets: r.count,
+        }))}
       >
+        <p className="mb-2 text-xs text-muted">
+          Totals for each weekday across the selected period (e.g. all Sundays
+          summed together).
+        </p>
         <NamedBarChart data={data.byDayOfWeek} color="#10b981" />
       </AnalyticsChartCard>
 

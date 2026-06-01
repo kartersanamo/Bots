@@ -66,12 +66,20 @@ export function DailyLineChart({
 export function NamedBarChart({
   data,
   color = CHART_COLORS.secondary,
+  compactLabels = false,
 }: {
   data: NamedCount[];
   color?: string;
+  /** Fixed small x-axis labels (24h / weekday charts) */
+  compactLabels?: boolean;
 }) {
   if (!data.length) {
     return <p className="py-8 text-center text-sm text-muted">No data</p>;
+  }
+
+  const hasAny = data.some((d) => d.count > 0);
+  if (!hasAny) {
+    return <p className="py-8 text-center text-sm text-muted">No data in range</p>;
   }
 
   return (
@@ -80,11 +88,11 @@ export function NamedBarChart({
         <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
         <XAxis
           dataKey="name"
-          tick={{ fill: "#94a3b8", fontSize: 10 }}
+          tick={{ fill: "#94a3b8", fontSize: compactLabels ? 9 : 10 }}
           interval={0}
-          angle={-25}
-          textAnchor="end"
-          height={50}
+          angle={compactLabels ? 0 : -25}
+          textAnchor={compactLabels ? "middle" : "end"}
+          height={compactLabels ? 28 : 50}
         />
         <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} width={40} />
         <Tooltip

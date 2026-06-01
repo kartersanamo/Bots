@@ -125,16 +125,18 @@ export async function getTicketAnalytics(
          GROUP BY type ORDER BY count DESC LIMIT 16`,
         rangeParams
       ),
-      query<{ name: string; count: number }>(
-        `SELECT CAST(HOUR(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED))) AS CHAR) AS name, COUNT(*) AS count
+      query<{ hour: number; count: number }>(
+        `SELECT HOUR(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED))) AS hour, COUNT(*) AS count
          FROM tickets ${rangeWhere}
-         GROUP BY name ORDER BY CAST(name AS UNSIGNED)`,
+         GROUP BY hour
+         ORDER BY hour`,
         rangeParams
       ),
-      query<{ name: string; count: number }>(
-        `SELECT CAST(DAYOFWEEK(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED))) AS CHAR) AS name, COUNT(*) AS count
+      query<{ dow: number; count: number }>(
+        `SELECT DAYOFWEEK(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED))) AS dow, COUNT(*) AS count
          FROM tickets ${rangeWhere}
-         GROUP BY name ORDER BY CAST(name AS UNSIGNED)`,
+         GROUP BY dow
+         ORDER BY dow`,
         rangeParams
       ),
       query<{ ownerID: string; ticket_count: number }>(
@@ -223,11 +225,8 @@ export async function getTicketAnalytics(
       openedPerDay: mapDaily(openedPerDay),
       closedPerDay: mapDaily(closedPerDay),
       byType: byType.map((r) => ({ name: r.name, count: Number(r.count) })),
-      byHour: byHour.map((r) => ({ name: r.name, count: Number(r.count) })),
-      byDayOfWeek: byDayOfWeek.map((r) => ({
-        name: dayOfWeekLabel(Number(r.name)),
-        count: Number(r.count),
-      })),
+      byHour: fillHourOfDayBuckets(byHour),
+      byDayOfWeek: fillDayOfWeekBuckets(byDayOfWeek),
       topOpenersInRange: mapOpeners(topInRange),
       topOpenersAllTime: mapOpeners(topAllTime),
       mostTicketsInOneDay: mostInDay.map((r) => ({
@@ -273,7 +272,42 @@ function mapOpeners(
   }));
 }
 
-function dayOfWeekLabel(dow: number): string {
-  const names = ["", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  return names[dow] ?? String(dow);
+/** Sum tickets at each hour (0–23) across every day in the selected range. */
+function fillHourOfDayBuckets(
+  rows: { hour: number; count: number }[]
+): { name: string; count: number }[] {
+  const totals = new Map<number, number>();
+  for (const row of rows) {
+    const h = Number(row.hour);
+    if (h < 0 || h > 23) continue;
+    totals.set(h, (totals.get(h) ?? 0) + Number(row.count));
+  }
+  return Array.from({ length: 24 }, (_, hour) => ({
+    name: formatHourOfDayLabel(hour),
+    count: totals.get(hour) ?? 0,
+  }));
+}
+
+/** Sum tickets for each weekday (Sun–Sat) across every day in the selected range. */
+function fillDayOfWeekBuckets(
+  rows: { dow: number; count: number }[]
+): { name: string; count: number }[] {
+  const totals = new Map<number, number>();
+  for (const row of rows) {
+    const dow = Number(row.dow);
+    if (dow < 1 || dow > 7) continue;
+    totals.set(dow, (totals.get(dow) ?? 0) + Number(row.count));
+  }
+  const labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+  return labels.map((name, i) => ({
+    name,
+    count: totals.get(i + 1) ?? 0,
+  }));
+}
+
+function formatHourOfDayLabel(hour: number): string {
+  if (hour === 0) return "12am";
+  if (hour < 12) return `${hour}am`;
+  if (hour === 12) return "12pm";
+  return `${hour - 12}pm`;
 }

@@ -20,7 +20,7 @@ export async function getModerationAnalytics(
         `SELECT
           (SELECT COUNT(*) FROM bans) AS activeBans,
           (SELECT COUNT(*) FROM blacklists) AS totalBlacklists,
-          (SELECT COUNT(*) FROM polls WHERE active = 1 OR active = '1') AS activePolls,
+          (SELECT COUNT(*) FROM polls) AS activePolls,
           (SELECT COUNT(*) FROM polls) AS totalPolls`
       ),
       since != null
@@ -37,9 +37,7 @@ export async function getModerationAnalytics(
              WHERE CAST(whenToUnbl AS UNSIGNED) > 0
              GROUP BY date ORDER BY date`
           ).catch(() => []),
-      query<{ date: string; count: number }>(
-        `SELECT CURDATE() AS date, COUNT(*) AS count FROM polls`
-      ).catch(() => []),
+      Promise.resolve([] as { date: string; count: number }[]),
     ]);
 
     return {
