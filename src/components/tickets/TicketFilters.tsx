@@ -14,6 +14,9 @@ interface TicketFiltersProps {
   autoRefresh: boolean;
   onAutoRefreshChange: (v: boolean) => void;
   canViewPrivate: boolean;
+  discordPreviews?: boolean;
+  onDiscordPreviewsChange?: (v: boolean) => void;
+  enrichLoading?: boolean;
 }
 
 export function TicketFilters({
@@ -25,6 +28,9 @@ export function TicketFilters({
   autoRefresh,
   onAutoRefreshChange,
   canViewPrivate,
+  discordPreviews = false,
+  onDiscordPreviewsChange,
+  enrichLoading = false,
 }: TicketFiltersProps) {
   return (
     <div className="space-y-3 rounded-lg border border-border bg-surface p-4">
@@ -143,6 +149,19 @@ export function TicketFilters({
           />
           Auto-refresh (30s)
         </label>
+        {state.status === "open" && onDiscordPreviewsChange && (
+          <label className="flex items-center gap-2 text-sm text-muted">
+            <input
+              type="checkbox"
+              checked={discordPreviews}
+              onChange={(e) => onDiscordPreviewsChange(e.target.checked)}
+            />
+            Discord previews
+            {enrichLoading && (
+              <RefreshCw className="h-3 w-3 animate-spin text-muted" />
+            )}
+          </label>
+        )}
       </div>
     </div>
   );

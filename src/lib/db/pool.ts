@@ -12,8 +12,9 @@ export function getPool(): mysql.Pool {
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
       waitForConnections: true,
-      connectionLimit: 5,
+      connectionLimit: 15,
       enableKeepAlive: true,
+      connectTimeout: 5000,
     });
   }
   return pool;

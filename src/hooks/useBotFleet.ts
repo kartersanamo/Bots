@@ -26,15 +26,20 @@ export function formatBotUptime(seconds: number | null | undefined): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-export function useBotFleet(pollMs = 15000) {
+function isPageVisible(): boolean {
+  return typeof document === "undefined" || document.visibilityState !== "hidden";
+}
+
+export function useBotFleet(pollMs = 30_000) {
   const [bots, setBots] = useState<BotFleetRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [controlApiOk, setControlApiOk] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
+    if (!isPageVisible()) return;
     try {
-      const res = await fetch("/api/bots");
+      const res = await fetch("/api/bots", { cache: "no-store" });
       if (!res.ok) {
         setControlApiOk(false);
         return;
@@ -64,8 +69,20 @@ export function useBotFleet(pollMs = 15000) {
   useEffect(() => {
     refresh();
     if (pollMs <= 0) return;
-    const t = setInterval(refresh, pollMs);
-    return () => clearInterval(t);
+
+    const onVisible = () => {
+      if (isPageVisible()) refresh();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    const id = setInterval(() => {
+      if (isPageVisible()) refresh();
+    }, pollMs);
+
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [refresh, pollMs]);
 
   const runAction = useCallback(

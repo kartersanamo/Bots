@@ -51,19 +51,22 @@ export function DashboardOverview() {
   const [tickets, setTickets] = useState<RecentTicket[]>([]);
   const [guild, setGuild] = useState<GuildInfo | null>(null);
   const [botRows, setBotRows] = useState<BotStatusRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [coreLoading, setCoreLoading] = useState(true);
+  const [secondaryLoading, setSecondaryLoading] = useState(true);
   const [dbConfigured, setDbConfigured] = useState(true);
   const [dbConnected, setDbConnected] = useState(true);
 
   useEffect(() => {
-    async function load() {
+    let cancelled = false;
+
+    async function loadCore() {
       try {
-        const [statsRes, ticketsRes, serverRes, botsRes] = await Promise.all([
+        const [statsRes, ticketsRes] = await Promise.all([
           fetch("/api/stats/overview"),
           fetch("/api/tickets/recent?limit=5"),
-          fetch("/api/server/info"),
-          fetch("/api/bots"),
         ]);
+
+        if (cancelled) return;
 
         if (statsRes.ok) {
           const data = await statsRes.json();
@@ -76,6 +79,19 @@ export function DashboardOverview() {
           const data = await ticketsRes.json();
           setTickets(data.tickets);
         }
+      } finally {
+        if (!cancelled) setCoreLoading(false);
+      }
+    }
+
+    async function loadSecondary() {
+      try {
+        const [serverRes, botsRes] = await Promise.all([
+          fetch("/api/server/info"),
+          fetch("/api/bots"),
+        ]);
+
+        if (cancelled) return;
 
         if (serverRes.ok) {
           const data = await serverRes.json();
@@ -95,12 +111,19 @@ export function DashboardOverview() {
           );
         }
       } finally {
-        setLoading(false);
+        if (!cancelled) setSecondaryLoading(false);
       }
     }
-    load();
+
+    loadCore();
+    loadSecondary();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
+  const loading = coreLoading;
   const onlineCount = botRows.filter((b) => b.status === "online").length;
 
   return (
@@ -121,9 +144,9 @@ export function DashboardOverview() {
         />
         <StatCard
           label="Members"
-          value={guild?.memberCount ?? "—"}
+          value={guild?.memberCount ?? (secondaryLoading ? "—" : "—")}
           icon={Users}
-          loading={loading}
+          loading={secondaryLoading && !guild}
           trend={
             guild?.approximatePresenceCount
               ? `${guild.approximatePresenceCount} online`
@@ -200,30 +223,37 @@ export function DashboardOverview() {
             </Link>
           </div>
           <p className="mb-3 text-xs text-muted">
-            {loading
+            {secondaryLoading
               ? "Loading…"
               : `${onlineCount} of ${botRows.length} online`}
           </p>
           <div className="grid grid-cols-2 gap-1.5">
-            {botRows.map((b) => (
-              <Link
-                key={b.id}
-                href={`/dashboard/bots/${b.id}`}
-                className="flex items-center gap-2 rounded-md px-2 py-2 hover:bg-surface-hover"
-              >
-                <Bot className="h-3.5 w-3.5 text-muted" />
-                <span className="text-sm text-white">{b.shortName}</span>
-                <span
-                  className={`ml-auto h-1.5 w-1.5 rounded-full ${
-                    b.status === "online"
-                      ? "bg-green-500"
-                      : b.status === "offline"
-                        ? "bg-zinc-500"
-                        : "bg-amber-500"
-                  }`}
-                />
-              </Link>
-            ))}
+            {secondaryLoading && botRows.length === 0
+              ? [...Array(4)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-8 animate-pulse rounded-md bg-surface-hover"
+                  />
+                ))
+              : botRows.map((b) => (
+                  <Link
+                    key={b.id}
+                    href={`/dashboard/bots/${b.id}`}
+                    className="flex items-center gap-2 rounded-md px-2 py-2 hover:bg-surface-hover"
+                  >
+                    <Bot className="h-3.5 w-3.5 text-muted" />
+                    <span className="text-sm text-white">{b.shortName}</span>
+                    <span
+                      className={`ml-auto h-1.5 w-1.5 rounded-full ${
+                        b.status === "online"
+                          ? "bg-green-500"
+                          : b.status === "offline"
+                            ? "bg-zinc-500"
+                            : "bg-amber-500"
+                      }`}
+                    />
+                  </Link>
+                ))}
           </div>
         </Card>
       </div>

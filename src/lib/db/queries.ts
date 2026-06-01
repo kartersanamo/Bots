@@ -23,27 +23,43 @@ export async function getOverviewStats(): Promise<OverviewStats | null> {
   if (!isDbConfigured()) return null;
 
   try {
-    const stats = await queryOne<{
-      totalTickets: number;
-      openTickets: number;
-      closedTickets: number;
-      totalPolls: number;
-      totalLevelingUsers: number;
-      totalBlacklists: number;
-      ticketsToday: number;
-    }>(
-      `SELECT
-        (SELECT COUNT(*) FROM tickets) AS totalTickets,
-        (SELECT COUNT(*) FROM tickets WHERE active = 'True') AS openTickets,
-        (SELECT COUNT(*) FROM tickets WHERE active IN ('False', '0')) AS closedTickets,
-        (SELECT COUNT(*) FROM polls) AS totalPolls,
-        (SELECT COUNT(*) FROM leveling) AS totalLevelingUsers,
-        (SELECT COUNT(*) FROM blacklists) AS totalBlacklists,
-        (SELECT COUNT(*) FROM tickets
-         WHERE TRIM(opened_at) != ''
-           AND DATE(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED))) = CURDATE()) AS ticketsToday`
-    );
-    return stats;
+    const [ticketStats, pollRow, levelingRow, blacklistRow] = await Promise.all([
+      queryOne<{
+        totalTickets: number;
+        openTickets: number;
+        closedTickets: number;
+        ticketsToday: number;
+      }>(
+        `SELECT
+          COUNT(*) AS totalTickets,
+          SUM(active = 'True') AS openTickets,
+          SUM(active IN ('False', '0')) AS closedTickets,
+          SUM(
+            TRIM(opened_at) != ''
+            AND DATE(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED))) = CURDATE()
+          ) AS ticketsToday
+         FROM tickets`
+      ),
+      queryOne<{ totalPolls: number }>(`SELECT COUNT(*) AS totalPolls FROM polls`),
+      queryOne<{ totalLevelingUsers: number }>(
+        `SELECT COUNT(*) AS totalLevelingUsers FROM leveling`
+      ),
+      queryOne<{ totalBlacklists: number }>(
+        `SELECT COUNT(*) AS totalBlacklists FROM blacklists`
+      ),
+    ]);
+
+    if (!ticketStats) return null;
+
+    return {
+      totalTickets: Number(ticketStats.totalTickets ?? 0),
+      openTickets: Number(ticketStats.openTickets ?? 0),
+      closedTickets: Number(ticketStats.closedTickets ?? 0),
+      ticketsToday: Number(ticketStats.ticketsToday ?? 0),
+      totalPolls: Number(pollRow?.totalPolls ?? 0),
+      totalLevelingUsers: Number(levelingRow?.totalLevelingUsers ?? 0),
+      totalBlacklists: Number(blacklistRow?.totalBlacklists ?? 0),
+    };
   } catch (err) {
     console.error("[db] getOverviewStats failed:", err);
     return null;

@@ -28,7 +28,7 @@ export function BotsHub({ canRestart, canRestartAll }: BotsHubProps) {
     runAction,
     restartAll,
     counts,
-  } = useBotFleet(15000);
+  } = useBotFleet(30_000);
 
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [sort, setSort] = useState<SortMode>("name");

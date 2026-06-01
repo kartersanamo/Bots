@@ -228,16 +228,25 @@ export async function getTicketStats(
   }
 }
 
+const typesCache = new Map<string, { expires: number; data: string[] }>();
+const TYPES_CACHE_MS = 60_000;
+
 export async function getDistinctTicketTypes(
   viewerTier: PermissionTier,
   status: TicketStatusFilter = "open"
 ): Promise<string[]> {
   if (!isDbConfigured()) return [];
 
+  const cacheKey = `${viewerTier}:${status}`;
+  const hit = typesCache.get(cacheKey);
+  if (hit && hit.expires > Date.now()) return hit.data;
+
   const priv = privatedClause(viewerTier);
   const rows = await query<{ type: string }>(
     `SELECT DISTINCT type FROM tickets WHERE 1=1${statusClause(status)}${priv.sql} ORDER BY type`,
     priv.params
   );
-  return rows.map((r) => r.type).filter(Boolean);
+  const data = rows.map((r) => r.type).filter(Boolean);
+  typesCache.set(cacheKey, { expires: Date.now() + TYPES_CACHE_MS, data });
+  return data;
 }

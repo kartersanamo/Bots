@@ -31,7 +31,9 @@ export function TicketsPageClient({ userTier }: TicketsPageClientProps) {
     pageCount,
   } = useTicketsList();
 
-  const enrichEnabled = state.status === "open";
+  const [loadDiscordPreviews, setLoadDiscordPreviews] = useState(false);
+  const enrichEnabled =
+    loadDiscordPreviews && state.status === "open" && tickets.length > 0;
   const { enrichments, loading: enrichLoading, refresh: refreshEnrich } =
     useTicketEnrichment(tickets, enrichEnabled);
 
@@ -42,10 +44,10 @@ export function TicketsPageClient({ userTier }: TicketsPageClientProps) {
     if (!autoRefresh) return;
     const t = setInterval(() => {
       refresh();
-      refreshEnrich();
+      if (loadDiscordPreviews) refreshEnrich();
     }, 30000);
     return () => clearInterval(t);
-  }, [autoRefresh, refresh, refreshEnrich]);
+  }, [autoRefresh, loadDiscordPreviews, refresh, refreshEnrich]);
 
   return (
     <>
@@ -72,12 +74,15 @@ export function TicketsPageClient({ userTier }: TicketsPageClientProps) {
           onChange={setParams}
           onRefresh={() => {
             refresh();
-            refreshEnrich();
+            if (loadDiscordPreviews) refreshEnrich();
           }}
           loading={loading}
           autoRefresh={autoRefresh}
           onAutoRefreshChange={setAutoRefresh}
           canViewPrivate={can(userTier, "tickets.view_private")}
+          discordPreviews={loadDiscordPreviews}
+          onDiscordPreviewsChange={setLoadDiscordPreviews}
+          enrichLoading={enrichLoading}
         />
       </div>
 

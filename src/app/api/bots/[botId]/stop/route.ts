@@ -5,6 +5,7 @@ import {
 } from "@/lib/api/helpers";
 import { getBotById } from "@/lib/bots/registry";
 import { stopBot, isControlApiConfigured } from "@/lib/control-api/client";
+import { invalidateCache } from "@/lib/server-cache";
 
 export const POST = handleApiRoute(async (request, { params }) => {
   const session = await requireAction("fleet.restart");
@@ -22,5 +23,6 @@ export const POST = handleApiRoute(async (request, { params }) => {
     botId,
     () => stopBot(botId)
   );
+  invalidateCache("control-api");
   return Response.json(result);
 });

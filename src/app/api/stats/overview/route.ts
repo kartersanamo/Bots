@@ -1,7 +1,10 @@
 import { requireSession } from "@/lib/auth/session";
 import { getOverviewStats } from "@/lib/db/queries";
 import { isDbConfigured } from "@/lib/db/pool";
+import { cached } from "@/lib/server-cache";
 import { NextResponse } from "next/server";
+
+const OVERVIEW_CACHE_MS = 45_000;
 
 const EMPTY_STATS = {
   totalTickets: 0,
@@ -17,7 +20,9 @@ export async function GET() {
   try {
     await requireSession();
     const configured = isDbConfigured();
-    const stats = configured ? await getOverviewStats() : null;
+    const stats = configured
+      ? await cached("db:overview-stats", OVERVIEW_CACHE_MS, getOverviewStats)
+      : null;
 
     return NextResponse.json({
       stats: stats ?? EMPTY_STATS,

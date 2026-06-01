@@ -122,7 +122,11 @@ def _process_uptime(pid: int) -> Optional[float]:
         return None
 
 
-def get_process_info(bot_id: str) -> ProcessInfo:
+_STATUS_CACHE: dict[str, tuple[float, ProcessInfo]] = {}
+_STATUS_CACHE_TTL = 5.0
+
+
+def _get_process_info_uncached(bot_id: str) -> ProcessInfo:
     entry = get_bot(bot_id)
     if not entry:
         return ProcessInfo(bot_id, "unknown", None, None, None, "Unknown bot")
@@ -149,6 +153,23 @@ def get_process_info(bot_id: str) -> ProcessInfo:
     return ProcessInfo(bot_id, "offline", None, None, None, None)
 
 
+def get_process_info(bot_id: str) -> ProcessInfo:
+    now = time.time()
+    hit = _STATUS_CACHE.get(bot_id)
+    if hit and now - hit[0] < _STATUS_CACHE_TTL:
+        return hit[1]
+    info = _get_process_info_uncached(bot_id)
+    _STATUS_CACHE[bot_id] = (now, info)
+    return info
+
+
+def invalidate_process_cache(bot_id: str | None = None) -> None:
+    if bot_id:
+        _STATUS_CACHE.pop(bot_id, None)
+    else:
+        _STATUS_CACHE.clear()
+
+
 def start_bot(bot_id: str) -> ProcessInfo:
     entry = get_bot(bot_id)
     if not entry:
@@ -160,6 +181,7 @@ def start_bot(bot_id: str) -> ProcessInfo:
         if result.returncode != 0:
             raise RuntimeError(result.stderr or "Failed to start unit")
         time.sleep(1)
+        invalidate_process_cache(bot_id)
         return get_process_info(bot_id)
 
     info = get_process_info(bot_id)
@@ -185,6 +207,7 @@ def start_bot(bot_id: str) -> ProcessInfo:
             start_new_session=True,
         )
     time.sleep(2)
+    invalidate_process_cache(bot_id)
     return get_process_info(bot_id)
 
 
@@ -199,6 +222,7 @@ def stop_bot(bot_id: str) -> ProcessInfo:
         if result.returncode != 0:
             raise RuntimeError(result.stderr or "Failed to stop unit")
         time.sleep(0.5)
+        invalidate_process_cache(bot_id)
         return get_process_info(bot_id)
 
     root = bot_root(bot_id)
@@ -216,6 +240,7 @@ def stop_bot(bot_id: str) -> ProcessInfo:
             except ProcessLookupError:
                 pass
     time.sleep(0.5)
+    invalidate_process_cache(bot_id)
     return get_process_info(bot_id)
 
 
@@ -226,6 +251,7 @@ def restart_bot(bot_id: str) -> ProcessInfo:
         if result.returncode != 0:
             raise RuntimeError(result.stderr or "Failed to restart unit")
         time.sleep(1)
+        invalidate_process_cache(bot_id)
         return get_process_info(bot_id)
 
     stop_bot(bot_id)

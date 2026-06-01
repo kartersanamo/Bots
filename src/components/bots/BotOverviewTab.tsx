@@ -25,18 +25,25 @@ const STATUS_VARIANT: Record<
   unknown: "default",
 };
 
+type FleetState = ReturnType<typeof useBotFleet>;
+
 interface BotOverviewTabProps {
   bot: BotDefinition;
   canRestart: boolean;
+  fleet: FleetState;
 }
 
-export function BotOverviewTab({ bot, canRestart }: BotOverviewTabProps) {
-  const { bots, loading, actionLoading, refresh, runAction } = useBotFleet(10000);
+export function BotOverviewTab({ bot, canRestart, fleet }: BotOverviewTabProps) {
+  const { bots, loading, actionLoading, refresh, runAction } = fleet;
   const row = bots.find((b) => b.id === bot.id);
   const status = row?.status ?? "unknown";
   const [logPreview, setLogPreview] = useState<string[]>([]);
 
   useEffect(() => {
+    if (status === "offline") {
+      setLogPreview([]);
+      return;
+    }
     fetch(`/api/bots/${bot.id}/logs?lines=8`)
       .then((r) => r.json())
       .then((d) => setLogPreview((d.lines || []).slice(-8)))
@@ -133,7 +140,7 @@ export function BotOverviewTab({ bot, canRestart }: BotOverviewTabProps) {
           <Link
             key={link.tab}
             href={`/dashboard/bots/${bot.id}?tab=${link.tab}`}
-            className="glass rounded-xl px-4 py-3 text-center text-sm font-medium text-white transition-colors hover:bg-accent/10"
+            className="rounded-lg border border-border bg-surface px-4 py-3 text-center text-sm font-medium text-white transition-colors hover:bg-surface-hover"
           >
             {link.label}
           </Link>

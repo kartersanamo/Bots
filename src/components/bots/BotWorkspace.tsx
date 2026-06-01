@@ -73,7 +73,8 @@ export function BotWorkspace({
   const router = useRouter();
   const searchParams = useSearchParams();
   const tab = parseBotTab(searchParams.get("tab"));
-  const { bots, actionLoading, runAction } = useBotFleet(10000);
+  const fleet = useBotFleet(30_000);
+  const { bots, actionLoading, runAction } = fleet;
   const row = bots.find((b) => b.id === bot.id);
   const status = row?.status ?? "unknown";
   const Icon = ICON_MAP[bot.icon] || Bot;
@@ -173,7 +174,7 @@ export function BotWorkspace({
       </div>
 
       {activeTab === "overview" && (
-        <BotOverviewTab bot={bot} canRestart={canRestart} />
+        <BotOverviewTab bot={bot} canRestart={canRestart} fleet={fleet} />
       )}
       {activeTab === "console" && can(userTier, "logs.view") && (
         <LogViewer botId={bot.id} />

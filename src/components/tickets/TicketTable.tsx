@@ -120,9 +120,14 @@ export function TicketTable({
                       <div className="h-4 w-full animate-pulse rounded bg-surface-hover" />
                     ) : (
                       <p className="line-clamp-2 text-xs text-white">
-                        {e?.lastOwnerPreview || (
-                          <span className="text-amber-400">Awaiting user</span>
-                        )}
+                        {e?.lastOwnerPreview ||
+                          (e
+                            ? (
+                                <span className="text-amber-400">
+                                  Awaiting user
+                                </span>
+                              )
+                            : "—")}
                       </p>
                     )}
                   </td>
@@ -172,12 +177,16 @@ export function TicketTable({
                 </Badge>
               </div>
               <p className="mt-1 text-sm text-white">{t.type}</p>
-              <p className="mt-2 text-xs text-muted line-clamp-2">
-                {e?.intakePreview || "Loading intake…"}
-              </p>
-              <p className="mt-1 text-xs text-white line-clamp-2">
-                {e?.lastOwnerPreview || "Awaiting user"}
-              </p>
+              {e?.intakePreview ? (
+                <p className="mt-2 text-xs text-muted line-clamp-2">
+                  {e.intakePreview}
+                </p>
+              ) : null}
+              {e?.lastOwnerPreview ? (
+                <p className="mt-1 text-xs text-white line-clamp-2">
+                  {e.lastOwnerPreview}
+                </p>
+              ) : null}
             </button>
           );
         })}

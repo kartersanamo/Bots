@@ -1,4 +1,7 @@
+import { fetchWithTimeout } from "@/lib/fetch-timeout";
+
 const DEFAULT_URL = "http://127.0.0.1:8787";
+const FETCH_TIMEOUT_MS = 4000;
 
 export class ControlApiError extends Error {
   constructor(
@@ -26,15 +29,19 @@ export async function controlFetch<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${baseUrl()}${path.startsWith("/") ? path : `/${path}`}`;
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      "X-Control-Key": secret(),
-      "Content-Type": "application/json",
-      ...options.headers,
+  const res = await fetchWithTimeout(
+    url,
+    {
+      ...options,
+      headers: {
+        "X-Control-Key": secret(),
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+      cache: "no-store",
     },
-    cache: "no-store",
-  });
+    FETCH_TIMEOUT_MS
+  );
 
   const text = await res.text();
   let data: unknown;

@@ -5,7 +5,10 @@ import {
   fetchGuildRoles,
   isDiscordConfigured,
 } from "@/lib/discord/api";
+import { cached } from "@/lib/server-cache";
 import { NextResponse } from "next/server";
+
+const SERVER_INFO_CACHE_MS = 120_000;
 
 export async function GET() {
   try {
@@ -20,11 +23,16 @@ export async function GET() {
       });
     }
 
-    const [guild, roles, channels] = await Promise.all([
-      fetchGuildInfo(),
-      fetchGuildRoles(),
-      fetchGuildChannels(),
-    ]);
+    const [guild, roles, channels] = await cached(
+      "discord:server-info",
+      SERVER_INFO_CACHE_MS,
+      () =>
+        Promise.all([
+          fetchGuildInfo(),
+          fetchGuildRoles(),
+          fetchGuildChannels(),
+        ])
+    );
 
     return NextResponse.json({
       configured: true,

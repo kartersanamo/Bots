@@ -4,6 +4,9 @@ import {
   getAllBotStatus,
   isControlApiConfigured,
 } from "@/lib/control-api/client";
+import { cached } from "@/lib/server-cache";
+
+const BOTS_STATUS_CACHE_MS = 12_000;
 
 export const GET = handleApiRoute(async () => {
   await requireAction("fleet.view");
@@ -12,7 +15,9 @@ export const GET = handleApiRoute(async () => {
   let statusRows: Awaited<ReturnType<typeof getAllBotStatus>>["bots"] = [];
   if (isControlApiConfigured()) {
     try {
-      const data = await getAllBotStatus();
+      const data = await cached("control-api:bots-status", BOTS_STATUS_CACHE_MS, () =>
+        getAllBotStatus()
+      );
       statusRows = data.bots;
     } catch {
       /* control API unavailable */

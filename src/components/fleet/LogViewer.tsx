@@ -27,7 +27,7 @@ export function LogViewer({ botId }: LogViewerProps) {
     setLoading(true);
     setFetchError(null);
     try {
-      const params = new URLSearchParams({ lines: "200" });
+      const params = new URLSearchParams({ lines: "100" });
       if (search) params.set("search", search);
       if (file) params.set("file", file);
       const res = await fetch(`/api/bots/${botId}/logs?${params}`);
@@ -54,7 +54,10 @@ export function LogViewer({ botId }: LogViewerProps) {
 
   useEffect(() => {
     if (!autoRefresh) return;
-    const t = setInterval(fetchLogs, 3000);
+    const tick = () => {
+      if (document.visibilityState !== "hidden") fetchLogs();
+    };
+    const t = setInterval(tick, 10_000);
     return () => clearInterval(t);
   }, [autoRefresh, fetchLogs]);
 

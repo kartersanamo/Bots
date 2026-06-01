@@ -4,7 +4,8 @@ const enrichCache = new Map<
   string,
   { data: TicketEnrichment; expires: number }
 >();
-const CACHE_TTL_MS = 60_000;
+const CACHE_TTL_MS = 300_000;
+const DISCORD_FETCH_MS = 4000;
 
 export interface IntakeField {
   label: string;
@@ -53,13 +54,21 @@ export function isDiscordConfigured(): boolean {
   return !!(process.env.DISCORD_BOT_TOKEN || process.env.BOT_TICKETS_TOKEN);
 }
 
+async function discordFetch(url: string, init?: RequestInit): Promise<Response> {
+  const { fetchWithTimeout } = await import("@/lib/fetch-timeout");
+  return fetchWithTimeout(
+    url,
+    { ...init, headers: { ...botHeaders(), ...init?.headers } },
+    DISCORD_FETCH_MS
+  );
+}
+
 export async function getTicketChannelMessages(
   channelId: string,
   limit = 50
 ): Promise<DiscordMessage[]> {
-  const res = await fetch(
-    `${DISCORD_API}/channels/${channelId}/messages?limit=${limit}`,
-    { headers: botHeaders(), cache: "no-store" }
+  const res = await discordFetch(
+    `${DISCORD_API}/channels/${channelId}/messages?limit=${limit}`
   );
   if (!res.ok) {
     const err = await res.text();
@@ -169,7 +178,7 @@ export async function enrichTicket(
   }
 
   try {
-    const messages = await getTicketChannelMessages(channelId);
+    const messages = await getTicketChannelMessages(channelId, 25);
     const intake = parseIntakeEmbed(messages);
     const lastOwnerMessage = getLatestOwnerMessage(messages, ownerId);
     const intakePreview = buildPreview(intake);
@@ -208,7 +217,7 @@ export async function enrichTicketsBatch(
   items: { channelId: string; ownerId: string }[]
 ): Promise<Record<string, TicketEnrichment>> {
   const result: Record<string, TicketEnrichment> = {};
-  const concurrency = 5;
+  const concurrency = 3;
   let i = 0;
 
   async function worker() {

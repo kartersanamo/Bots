@@ -25,17 +25,18 @@ def bot_status(bot_id: str):
 def all_status():
     from bot_registry import BOT_ENTRIES
 
-    return {
-        "bots": [
+    bots = []
+    for bid in BOT_ENTRIES:
+        info = proc.get_process_info(bid)
+        bots.append(
             {
-                "botId": bid,
-                "status": proc.get_process_info(bid).status,
-                "pid": proc.get_process_info(bid).pid,
-                "uptimeSeconds": proc.get_process_info(bid).uptime_seconds,
+                "botId": info.bot_id,
+                "status": info.status,
+                "pid": info.pid,
+                "uptimeSeconds": info.uptime_seconds,
             }
-            for bid in BOT_ENTRIES
-        ]
-    }
+        )
+    return {"bots": bots}
 
 
 @router.post("/{bot_id}/start")
