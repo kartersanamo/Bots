@@ -67,11 +67,16 @@ async function main() {
 
   let sql = fs.readFileSync(sqlPath, "utf8");
   sql = sql.replace(/ADD COLUMN IF NOT EXISTS/g, "ADD COLUMN");
+  // Drop full-line comments so semicolon-split chunks are not discarded.
+  sql = sql
+    .split("\n")
+    .filter((line) => !line.trim().startsWith("--"))
+    .join("\n");
 
   const statements = sql
     .split(";")
     .map((s) => s.trim())
-    .filter((s) => s && !s.startsWith("--"));
+    .filter(Boolean);
 
   for (const stmt of statements) {
     try {

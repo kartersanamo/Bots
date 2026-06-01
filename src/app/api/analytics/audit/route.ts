@@ -8,12 +8,12 @@ import {
 import { NextResponse } from "next/server";
 
 export const GET = handleApiRoute(async (request) => {
-  const { range } = await requireAnalytics(request);
+  const { range, groupBy } = await requireAnalytics(request);
 
   const data = await cachedAnalytics(
-    `analytics:audit:${range}`,
+    `analytics:audit:${range}:${groupBy}`,
     ANALYTICS_CACHE_MS,
-    () => getAuditAnalytics(range)
+    () => getAuditAnalytics(range, groupBy)
   );
 
   return NextResponse.json({ configured: true, range, data });

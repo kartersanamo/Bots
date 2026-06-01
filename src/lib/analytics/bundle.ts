@@ -1,6 +1,7 @@
 import { getAuditAnalytics } from "@/lib/analytics/audit-data";
 import { getEngagementAnalytics } from "@/lib/analytics/engagement";
 import { getGamesAnalytics } from "@/lib/analytics/games";
+import type { AnalyticsGroupBy } from "@/lib/analytics/group-by";
 import { getModerationAnalytics } from "@/lib/analytics/moderation";
 import { getAnalyticsSummaryLight } from "@/lib/analytics/summary-light";
 import { getStaffAnalytics } from "@/lib/analytics/staff";
@@ -27,6 +28,7 @@ export type AnalyticsTab =
 
 export interface AnalyticsBundle {
   range: AnalyticsRange;
+  groupBy: AnalyticsGroupBy;
   summary: AnalyticsSummary;
   metrics?: TicketAnalytics | null;
   games?: GamesAnalytics | null;
@@ -39,6 +41,7 @@ export interface AnalyticsBundle {
 export async function getAnalyticsBundle(
   tier: PermissionTier,
   range: AnalyticsRange,
+  groupBy: AnalyticsGroupBy,
   tabs: AnalyticsTab[],
   opts?: { includeSummary?: boolean }
 ): Promise<AnalyticsBundle> {
@@ -49,12 +52,12 @@ export async function getAnalyticsBundle(
     : undefined;
 
   const loaders: Record<AnalyticsTab, () => Promise<unknown>> = {
-    metrics: () => getTicketAnalytics(tier, range),
-    games: () => getGamesAnalytics(range),
+    metrics: () => getTicketAnalytics(tier, range, groupBy),
+    games: () => getGamesAnalytics(range, groupBy),
     staff: () => getStaffAnalytics(),
-    moderation: () => getModerationAnalytics(range),
-    audit: () => getAuditAnalytics(range),
-    engagement: () => getEngagementAnalytics(range),
+    moderation: () => getModerationAnalytics(range, groupBy),
+    audit: () => getAuditAnalytics(range, groupBy),
+    engagement: () => getEngagementAnalytics(range, groupBy),
   };
 
   const entries = await Promise.all(
@@ -66,6 +69,7 @@ export async function getAnalyticsBundle(
 
   const bundle = {
     range,
+    groupBy,
     summary:
       summary ??
       ({

@@ -1,14 +1,16 @@
 import type { AnalyticsRange } from "@/lib/analytics/types";
 
-const RANGE_SECONDS: Record<Exclude<AnalyticsRange, "all">, number> = {
-  "7d": 7 * 86400,
-  "30d": 30 * 86400,
-  "90d": 90 * 86400,
-  "365d": 365 * 86400,
-};
+const RANGE_SECONDS: Record<Exclude<AnalyticsRange, "all" | "today">, number> =
+  {
+    "7d": 7 * 86400,
+    "30d": 30 * 86400,
+    "90d": 90 * 86400,
+    "365d": 365 * 86400,
+  };
 
 export function parseAnalyticsRange(input: string | null): AnalyticsRange {
   if (
+    input === "today" ||
     input === "7d" ||
     input === "30d" ||
     input === "90d" ||
@@ -22,6 +24,15 @@ export function parseAnalyticsRange(input: string | null): AnalyticsRange {
 
 export function rangeSinceUnix(range: AnalyticsRange): number | null {
   if (range === "all") return null;
+  if (range === "today") {
+    const now = new Date();
+    const startUtc = Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate()
+    );
+    return Math.floor(startUtc / 1000);
+  }
   return Math.floor(Date.now() / 1000) - RANGE_SECONDS[range];
 }
 
@@ -67,11 +78,12 @@ export function xpTimestampRangeClause(
 
 export function rangeLabel(range: AnalyticsRange): string {
   const labels: Record<AnalyticsRange, string> = {
+    today: "Today",
     "7d": "Last 7 days",
     "30d": "Last 30 days",
     "90d": "Last 90 days",
     "365d": "Last year",
-    all: "All time (monthly)",
+    all: "All time",
   };
   return labels[range];
 }

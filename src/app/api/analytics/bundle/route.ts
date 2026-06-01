@@ -20,7 +20,7 @@ const VALID_TABS = new Set<AnalyticsTab>([
 ]);
 
 export const GET = handleApiRoute(async (request) => {
-  const { session, range } = await requireAnalytics(request);
+  const { session, range, groupBy } = await requireAnalytics(request);
   const url = new URL(request.url);
   const tabParam = url.searchParams.get("tabs") ?? "metrics";
   const includeSummary = url.searchParams.get("summary") !== "0";
@@ -34,9 +34,9 @@ export const GET = handleApiRoute(async (request) => {
     return Response.json({ error: "No valid tabs" }, { status: 400 });
   }
 
-  const cacheKey = `analytics:bundle:${range}:${session.tier}:${includeSummary}:${tabs.sort().join(",")}`;
+  const cacheKey = `analytics:bundle:${range}:${groupBy}:${session.tier}:${includeSummary}:${tabs.sort().join(",")}`;
   const bundle = await cachedAnalytics(cacheKey, ANALYTICS_CACHE_MS, () =>
-    getAnalyticsBundle(session.tier, range, tabs, { includeSummary })
+    getAnalyticsBundle(session.tier, range, groupBy, tabs, { includeSummary })
   );
 
   return jsonCached({ configured: true, ...bundle }, 120, {

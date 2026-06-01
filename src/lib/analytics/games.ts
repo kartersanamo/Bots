@@ -1,8 +1,9 @@
+import type { AnalyticsGroupBy } from "@/lib/analytics/group-by";
 import { rangeSinceUnix } from "@/lib/analytics/range";
 import {
   bucketKeySqlFromUnix,
   bucketKeySqlFromDate,
-  getTimeBucketSpec,
+  buildTimeBucketSpec,
   normalizeTimeSeries,
 } from "@/lib/analytics/time-buckets";
 import type { AnalyticsRange, DailyCount, GamesAnalytics } from "@/lib/analytics/types";
@@ -10,7 +11,8 @@ import { getGamesOverview } from "@/lib/db/games";
 import { query, queryOne, isDbConfigured } from "@/lib/db/pool";
 
 export async function getGamesAnalytics(
-  range: AnalyticsRange
+  range: AnalyticsRange,
+  groupBy: AnalyticsGroupBy
 ): Promise<GamesAnalytics | null> {
   if (!isDbConfigured()) return null;
 
@@ -21,7 +23,7 @@ export async function getGamesAnalytics(
   const tsClause =
     since != null ? " AND CAST(timestamp AS UNSIGNED) >= ?" : "";
   const tsParams = since != null ? [since] : [];
-  const bucketSpec = getTimeBucketSpec(range);
+  const bucketSpec = buildTimeBucketSpec(range, groupBy);
   const xpBucket = bucketKeySqlFromUnix("timestamp", bucketSpec);
   const sessionBucket = bucketKeySqlFromDate("refreshed_at", bucketSpec);
   const claimBucket = bucketKeySqlFromUnix("last_claimed", bucketSpec);
@@ -183,6 +185,7 @@ export async function getGamesAnalytics(
 
     return {
       range,
+      groupBy,
       kpis: {
         activePlayers: overview.activePlayers,
         everPlayed: overview.everPlayed,
@@ -198,13 +201,17 @@ export async function getGamesAnalytics(
         countingTotalCounts: Number(countingAgg?.totalCounts ?? 0),
         countingMistakes: Number(countingAgg?.mistakes ?? 0),
       },
-      xpPerDay: normalizeTimeSeries(mapDaily(xpPerDay), range),
-      sessionsPerDay: normalizeTimeSeries(mapDaily(sessionsPerDay), range),
+      xpPerDay: normalizeTimeSeries(mapDaily(xpPerDay), range, groupBy),
+      sessionsPerDay: normalizeTimeSeries(
+        mapDaily(sessionsPerDay),
+        range,
+        groupBy
+      ),
       topXpSources: topSources.map((r) => ({
         name: r.name,
         count: Number(r.count),
       })),
-      newPlayersPerDay: normalizeTimeSeries(mapDaily(newPlayers), range),
+      newPlayersPerDay: normalizeTimeSeries(mapDaily(newPlayers), range, groupBy),
       topXpEarners: topEarners.map((r) => ({
         userId: String(r.user_id),
         value: Number(r.total),
@@ -213,8 +220,16 @@ export async function getGamesAnalytics(
         name: r.name,
         count: Number(r.count),
       })),
-      dailyClaimsPerDay: normalizeTimeSeries(mapDaily(claimsPerDay), range),
-      achievementsPerDay: normalizeTimeSeries(mapDaily(achievementsPerDay), range),
+      dailyClaimsPerDay: normalizeTimeSeries(
+        mapDaily(claimsPerDay),
+        range,
+        groupBy
+      ),
+      achievementsPerDay: normalizeTimeSeries(
+        mapDaily(achievementsPerDay),
+        range,
+        groupBy
+      ),
       sessionsByGame: sessionsByGame.map((r) => ({
         name: r.name,
         count: Number(r.count),

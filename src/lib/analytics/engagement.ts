@@ -1,8 +1,10 @@
+import type { AnalyticsGroupBy } from "@/lib/analytics/group-by";
 import { rangeSinceUnix } from "@/lib/analytics/range";
+import { getAnalyticsTrackingTableStatus } from "@/lib/analytics/table-check";
 import {
   bucketKeySqlFromDate,
   bucketKeySqlFromUnix,
-  getTimeBucketSpec,
+  buildTimeBucketSpec,
   normalizeTimeSeries,
 } from "@/lib/analytics/time-buckets";
 import type {
@@ -42,30 +44,14 @@ function mapDaily(rows: { date: string | Date; count: number }[]): DailyCount[] 
   }));
 }
 
-const TABLE_EXISTS_TTL_MS = 5 * 60_000;
-const tableExistsCache = new Map<string, { ok: boolean; at: number }>();
-
-async function tableExists(name: string): Promise<boolean> {
-  const hit = tableExistsCache.get(name);
-  if (hit && Date.now() - hit.at < TABLE_EXISTS_TTL_MS) return hit.ok;
-
-  const row = await queryOne<{ ok: number }>(
-    `SELECT COUNT(*) AS ok FROM information_schema.tables
-     WHERE table_schema = DATABASE() AND table_name = ?`,
-    [name]
-  );
-  const ok = Number(row?.ok ?? 0) > 0;
-  tableExistsCache.set(name, { ok, at: Date.now() });
-  return ok;
-}
-
 export async function getEngagementAnalytics(
-  range: AnalyticsRange
+  range: AnalyticsRange,
+  groupBy: AnalyticsGroupBy
 ): Promise<EngagementAnalytics | null> {
   if (!isDbConfigured()) return null;
 
   const since = rangeSinceUnix(range);
-  const bucketSpec = getTimeBucketSpec(range);
+  const bucketSpec = buildTimeBucketSpec(range, groupBy);
   const dayBucket = bucketKeySqlFromDate("day", bucketSpec);
   const tsBucket = bucketKeySqlFromUnix("created_at", bucketSpec);
   const votedBucket = bucketKeySqlFromUnix("voted_at", bucketSpec);
@@ -77,15 +63,16 @@ export async function getEngagementAnalytics(
   const dayParams = since != null ? [since] : [];
 
   try {
-    const hasStaff = await tableExists("analytics_staff_messages_daily");
-    const hasTickets = await tableExists("analytics_ticket_messages_daily");
-    const hasMembers = await tableExists("analytics_member_events");
-    const hasVoice = await tableExists("analytics_voice_daily");
-    const hasCommands = await tableExists("analytics_command_daily");
-    const hasMod = await tableExists("analytics_mod_actions");
-    const hasPollVotes = await tableExists("analytics_poll_votes");
-    const hasGames = await tableExists("analytics_game_outcomes");
-    const hasSnapshots = await tableExists("analytics_server_snapshots");
+    const tableStatus = await getAnalyticsTrackingTableStatus();
+    const hasStaff = tableStatus.staffMessages === true;
+    const hasTickets = tableStatus.ticketMessages === true;
+    const hasMembers = tableStatus.memberEvents === true;
+    const hasVoice = tableStatus.voice === true;
+    const hasCommands = tableStatus.commands === true;
+    const hasMod = tableStatus.moderation === true;
+    const hasPollVotes = tableStatus.pollVotes === true;
+    const hasGames = tableStatus.gameOutcomes === true;
+    const hasSnapshots = tableStatus.snapshots === true;
 
     const [
       staffPerDay,
@@ -274,17 +261,8 @@ export async function getEngagementAnalytics(
 
     return {
       range,
-      tablesReady: {
-        staffMessages: hasStaff,
-        ticketMessages: hasTickets,
-        memberEvents: hasMembers,
-        voice: hasVoice,
-        commands: hasCommands,
-        moderation: hasMod,
-        pollVotes: hasPollVotes,
-        gameOutcomes: hasGames,
-        snapshots: hasSnapshots,
-      },
+      groupBy,
+      tablesReady: tableStatus,
       kpis: {
         staffMessagesInRange: staffTotal,
         ticketStaffMessages: ticketStaffPerDay.reduce(
@@ -309,32 +287,46 @@ export async function getEngagementAnalytics(
           0
         ),
       },
-      staffMessagesPerDay: normalizeTimeSeries(mapDaily(staffPerDay), range),
+      staffMessagesPerDay: normalizeTimeSeries(
+        mapDaily(staffPerDay),
+        range,
+        groupBy
+      ),
       topStaffByMessages: topStaffMessages.map((r) => ({
         userId: String(r.user_id),
         count: Number(r.total),
       })),
       ticketStaffMessagesPerDay: normalizeTimeSeries(
         mapDaily(ticketStaffPerDay),
-        range
+        range,
+        groupBy
       ),
       ticketOwnerMessagesPerDay: normalizeTimeSeries(
         mapDaily(ticketOwnerPerDay),
-        range
+        range,
+        groupBy
       ),
-      memberJoinsPerDay: normalizeTimeSeries(mapDaily(joinsPerDay), range),
-      memberLeavesPerDay: normalizeTimeSeries(mapDaily(leavesPerDay), range),
-      voiceSecondsPerDay: normalizeTimeSeries(mapDaily(voicePerDay), range),
+      memberJoinsPerDay: normalizeTimeSeries(mapDaily(joinsPerDay), range, groupBy),
+      memberLeavesPerDay: normalizeTimeSeries(
+        mapDaily(leavesPerDay),
+        range,
+        groupBy
+      ),
+      voiceSecondsPerDay: normalizeTimeSeries(mapDaily(voicePerDay), range, groupBy),
       topVoiceUsers: topVoiceUsers.map((r) => ({
         userId: String(r.user_id),
         count: Number(r.total),
       })),
-      commandsPerDay: normalizeTimeSeries(mapDaily(commandsPerDay), range),
+      commandsPerDay: normalizeTimeSeries(
+        mapDaily(commandsPerDay),
+        range,
+        groupBy
+      ),
       topCommands: topCommands.map((r) => ({
         name: r.name,
         count: Number(r.count),
       })),
-      modActionsPerDay: normalizeTimeSeries(mapDaily(modPerDay), range),
+      modActionsPerDay: normalizeTimeSeries(mapDaily(modPerDay), range, groupBy),
       modActionsByType: modByType.map((r) => ({
         name: r.name,
         count: Number(r.count),
@@ -343,8 +335,16 @@ export async function getEngagementAnalytics(
         userId: String(r.actor_id),
         count: Number(r.count),
       })),
-      pollVotesPerDay: normalizeTimeSeries(mapDaily(pollVotesPerDay), range),
-      gameOutcomesPerDay: normalizeTimeSeries(mapDaily(gameOutcomesPerDay), range),
+      pollVotesPerDay: normalizeTimeSeries(
+        mapDaily(pollVotesPerDay),
+        range,
+        groupBy
+      ),
+      gameOutcomesPerDay: normalizeTimeSeries(
+        mapDaily(gameOutcomesPerDay),
+        range,
+        groupBy
+      ),
       gameOutcomesByType: outcomesByType.map((r) => ({
         name: r.name,
         count: Number(r.count),
@@ -352,7 +352,8 @@ export async function getEngagementAnalytics(
       serverSnapshots: thinSnapshotSeries(snapshots, bucketSpec.maxPoints),
       blacklistsCreatedPerDay: normalizeTimeSeries(
         mapDaily(blacklistCreatedPerDay),
-        range
+        range,
+        groupBy
       ),
     };
   } catch (err) {

@@ -4,16 +4,20 @@ import { AnalyticsChartCard } from "@/components/analytics/AnalyticsChartCard";
 import { AnalyticsKpiGrid } from "@/components/analytics/AnalyticsKpiGrid";
 import { AnalyticsUserCountTable } from "@/components/analytics/AnalyticsUserCountTable";
 import { DailyLineChart, NamedBarChart } from "@/components/analytics/charts";
+import { chartTitleWithPeriod } from "@/lib/analytics/chart-period";
+import type { AnalyticsGroupBy } from "@/lib/analytics/group-by";
 import type { AnalyticsRange, ModerationAnalytics } from "@/lib/analytics/types";
 
 interface ModerationAnalyticsSectionProps {
   data: ModerationAnalytics;
   range: AnalyticsRange;
+  groupBy: AnalyticsGroupBy;
 }
 
 export function ModerationAnalyticsSection({
   data,
   range,
+  groupBy,
 }: ModerationAnalyticsSectionProps) {
   const { kpis } = data;
 
@@ -51,7 +55,7 @@ export function ModerationAnalyticsSection({
 
         {data.pollsCreatedPerDay.length > 0 && (
           <AnalyticsChartCard
-            title="Polls created per day"
+            title={chartTitleWithPeriod("Polls created", groupBy)}
             exportHeaders={["date", "polls"]}
             exportFilename={`polls-created-${range}.csv`}
             exportRows={data.pollsCreatedPerDay.map((r) => ({

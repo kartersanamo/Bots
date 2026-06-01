@@ -1,4 +1,14 @@
-export type AnalyticsRange = "7d" | "30d" | "90d" | "365d" | "all";
+import type { AnalyticsGroupBy } from "@/lib/analytics/group-by";
+
+export type AnalyticsRange =
+  | "today"
+  | "7d"
+  | "30d"
+  | "90d"
+  | "365d"
+  | "all";
+
+export type { AnalyticsGroupBy };
 
 export interface DailyCount {
   date: string;
@@ -52,6 +62,7 @@ export interface CloseTimeByTypeRow {
 
 export interface TicketAnalytics {
   range: AnalyticsRange;
+  groupBy: AnalyticsGroupBy;
   kpis: {
     avgTicketsPerDay: number;
     avgTimeBetweenTicketsSeconds: number | null;
@@ -92,6 +103,7 @@ export interface GamesLeaderboardRow {
 
 export interface GamesAnalytics {
   range: AnalyticsRange;
+  groupBy: AnalyticsGroupBy;
   kpis: {
     activePlayers: number;
     everPlayed: number;
@@ -146,6 +158,7 @@ export interface StaffAnalytics {
 
 export interface ModerationAnalytics {
   range: AnalyticsRange;
+  groupBy: AnalyticsGroupBy;
   kpis: {
     activeBans: number;
     totalBlacklists: number;
@@ -161,6 +174,7 @@ export interface ModerationAnalytics {
 
 export interface AuditAnalytics {
   range: AnalyticsRange;
+  groupBy: AnalyticsGroupBy;
   actionsPerDay: DailyCount[];
   topActors: { actorId: string; count: number }[];
   topActions: NamedCount[];
@@ -174,6 +188,7 @@ export interface AuditAnalytics {
 
 export interface EngagementAnalytics {
   range: AnalyticsRange;
+  groupBy: AnalyticsGroupBy;
   tablesReady: Record<string, boolean>;
   kpis: {
     staffMessagesInRange: number;

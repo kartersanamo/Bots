@@ -1,35 +1,48 @@
+import type { AnalyticsGroupBy } from "@/lib/analytics/group-by";
 import type { AnalyticsRange } from "@/lib/analytics/types";
 import type { DailyCount } from "@/lib/analytics/types";
 
-export type BucketGranularity = "day" | "week" | "month";
+export type BucketGranularity = AnalyticsGroupBy;
 
 export interface TimeBucketSpec {
   granularity: BucketGranularity;
-  /** Max points sent to charts (hard cap). */
   maxPoints: number;
 }
 
-const MAX_CHART_POINTS = 60;
+export function buildTimeBucketSpec(
+  range: AnalyticsRange,
+  groupBy: AnalyticsGroupBy
+): TimeBucketSpec {
+  return {
+    granularity: groupBy,
+    maxPoints: maxPointsFor(range, groupBy),
+  };
+}
 
-export function getTimeBucketSpec(range: AnalyticsRange): TimeBucketSpec {
-  switch (range) {
-    case "7d":
-      return { granularity: "day", maxPoints: 7 };
-    case "30d":
-      return { granularity: "day", maxPoints: 31 };
-    case "90d":
-      return { granularity: "week", maxPoints: 14 };
-    case "365d":
-      return { granularity: "week", maxPoints: 52 };
-    case "all":
-      return { granularity: "month", maxPoints: MAX_CHART_POINTS };
-    default:
-      return { granularity: "day", maxPoints: 31 };
+export function maxPointsFor(
+  range: AnalyticsRange,
+  groupBy: AnalyticsGroupBy
+): number {
+  switch (groupBy) {
+    case "day":
+      if (range === "today") return 1;
+      if (range === "7d") return 7;
+      if (range === "30d") return 31;
+      return 60;
+    case "week":
+      if (range === "90d") return 14;
+      if (range === "365d") return 53;
+      return 26;
+    case "month":
+      return 60;
   }
 }
 
 /** Bucket key from a unix timestamp column (opened_at, closed_at, timestamp, …). */
-export function bucketKeySqlFromUnix(column: string, spec: TimeBucketSpec): string {
+export function bucketKeySqlFromUnix(
+  column: string,
+  spec: TimeBucketSpec
+): string {
   const col = `CAST(${column} AS UNSIGNED)`;
   switch (spec.granularity) {
     case "day":
@@ -42,7 +55,10 @@ export function bucketKeySqlFromUnix(column: string, spec: TimeBucketSpec): stri
 }
 
 /** Bucket key from a DATE/DATETIME column. */
-export function bucketKeySqlFromDate(column: string, spec: TimeBucketSpec): string {
+export function bucketKeySqlFromDate(
+  column: string,
+  spec: TimeBucketSpec
+): string {
   switch (spec.granularity) {
     case "day":
       return `DATE(${column})`;
@@ -92,7 +108,10 @@ export function aggregateDailyCounts(
 }
 
 /** Final safety cap — merge adjacent buckets if still too many points. */
-export function capTimeSeries(points: DailyCount[], maxPoints: number): DailyCount[] {
+export function capTimeSeries(
+  points: DailyCount[],
+  maxPoints: number
+): DailyCount[] {
   if (points.length <= maxPoints) return points;
 
   const size = Math.ceil(points.length / maxPoints);
@@ -101,7 +120,10 @@ export function capTimeSeries(points: DailyCount[], maxPoints: number): DailyCou
     const chunk = points.slice(i, i + size);
     const count = chunk.reduce((s, p) => s + p.count, 0);
     out.push({
-      date: chunk.length === 1 ? chunk[0].date : `${chunk[0].date}–${chunk[chunk.length - 1].date}`,
+      date:
+        chunk.length === 1
+          ? chunk[0]!.date
+          : `${chunk[0]!.date}–${chunk[chunk.length - 1]!.date}`,
       count,
     });
   }
@@ -110,9 +132,10 @@ export function capTimeSeries(points: DailyCount[], maxPoints: number): DailyCou
 
 export function normalizeTimeSeries(
   rows: DailyCount[],
-  range: AnalyticsRange
+  range: AnalyticsRange,
+  groupBy: AnalyticsGroupBy
 ): DailyCount[] {
-  const spec = getTimeBucketSpec(range);
+  const spec = buildTimeBucketSpec(range, groupBy);
   if (!rows.length) return rows;
 
   const looksDaily = /^\d{4}-\d{2}-\d{2}$/.test(rows[0]!.date);

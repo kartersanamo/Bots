@@ -1,19 +1,21 @@
+import type { AnalyticsGroupBy } from "@/lib/analytics/group-by";
 import { rangeSinceUnix } from "@/lib/analytics/range";
 import {
   bucketKeySqlFromUnix,
-  getTimeBucketSpec,
+  buildTimeBucketSpec,
   normalizeTimeSeries,
 } from "@/lib/analytics/time-buckets";
 import type { AnalyticsRange, DailyCount, ModerationAnalytics } from "@/lib/analytics/types";
 import { query, queryOne, isDbConfigured } from "@/lib/db/pool";
 
 export async function getModerationAnalytics(
-  range: AnalyticsRange
+  range: AnalyticsRange,
+  groupBy: AnalyticsGroupBy
 ): Promise<ModerationAnalytics | null> {
   if (!isDbConfigured()) return null;
 
   const since = rangeSinceUnix(range);
-  const bucketSpec = getTimeBucketSpec(range);
+  const bucketSpec = buildTimeBucketSpec(range, groupBy);
   const blBucket = bucketKeySqlFromUnix("whenToUnbl", bucketSpec);
   const pollBucket = bucketKeySqlFromUnix("created_at", bucketSpec);
 
@@ -63,6 +65,7 @@ export async function getModerationAnalytics(
 
     return {
       range,
+      groupBy,
       kpis: {
         activeBans: Number(kpis?.activeBans ?? 0),
         totalBlacklists: Number(kpis?.totalBlacklists ?? 0),
@@ -71,12 +74,20 @@ export async function getModerationAnalytics(
         mediaEntries: Number(mediaCount?.total ?? 0),
         blacklistsWithExpiry: Number(kpis?.withExpiry ?? 0),
       },
-      blacklistsPerDay: normalizeTimeSeries(mapDaily(blacklistsPerDay), range),
+      blacklistsPerDay: normalizeTimeSeries(
+        mapDaily(blacklistsPerDay),
+        range,
+        groupBy
+      ),
       blacklistsByStaff: blacklistsByStaff.map((r) => ({
         userId: String(r.staffID),
         count: Number(r.count),
       })),
-      pollsCreatedPerDay: normalizeTimeSeries(mapDaily(pollsPerDay), range),
+      pollsCreatedPerDay: normalizeTimeSeries(
+        mapDaily(pollsPerDay),
+        range,
+        groupBy
+      ),
     };
   } catch (err) {
     console.error("[analytics] getModerationAnalytics failed:", err);

@@ -9,17 +9,21 @@ import { AnalyticsKpiGrid } from "@/components/analytics/AnalyticsKpiGrid";
 import { AnalyticsUserCountTable } from "@/components/analytics/AnalyticsUserCountTable";
 import { DailyLineChart, NamedBarChart } from "@/components/analytics/charts";
 import { DiscordUserChip } from "@/components/games/DiscordUserChip";
+import { chartTitleWithPeriod } from "@/lib/analytics/chart-period";
+import type { AnalyticsGroupBy } from "@/lib/analytics/group-by";
 import type { AnalyticsRange, GamesAnalytics } from "@/lib/analytics/types";
 import { formatNumber } from "@/lib/utils";
 
 interface GamesAnalyticsSectionProps {
   data: GamesAnalytics;
   range: AnalyticsRange;
+  groupBy: AnalyticsGroupBy;
 }
 
 export function GamesAnalyticsSection({
   data,
   range,
+  groupBy,
 }: GamesAnalyticsSectionProps) {
   const { kpis } = data;
   const retentionPct =
@@ -65,7 +69,7 @@ export function GamesAnalyticsSection({
 
       <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsChartCard
-          title="XP awarded per day"
+          title={chartTitleWithPeriod("XP awarded", groupBy)}
           exportHeaders={["date", "xp"]}
           exportFilename={`games-xp-${range}.csv`}
           exportRows={data.xpPerDay.map((r) => ({ date: r.date, xp: r.count }))}
@@ -74,7 +78,7 @@ export function GamesAnalyticsSection({
         </AnalyticsChartCard>
 
         <AnalyticsChartCard
-          title="Game sessions per day"
+          title={chartTitleWithPeriod("Game sessions", groupBy)}
           exportHeaders={["date", "sessions"]}
           exportFilename={`games-sessions-${range}.csv`}
           exportRows={data.sessionsPerDay.map((r) => ({
@@ -88,7 +92,7 @@ export function GamesAnalyticsSection({
 
       <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsChartCard
-          title="Daily reward claims per day"
+          title={chartTitleWithPeriod("Daily reward claims", groupBy)}
           exportHeaders={["date", "claims"]}
           exportFilename={`games-daily-claims-${range}.csv`}
           exportRows={data.dailyClaimsPerDay.map((r) => ({
@@ -100,7 +104,7 @@ export function GamesAnalyticsSection({
         </AnalyticsChartCard>
 
         <AnalyticsChartCard
-          title="Achievements earned per day"
+          title={chartTitleWithPeriod("Achievements earned", groupBy)}
           exportHeaders={["date", "achievements"]}
           exportFilename={`games-achievements-${range}.csv`}
           exportRows={data.achievementsPerDay.map((r) => ({
@@ -165,7 +169,7 @@ export function GamesAnalyticsSection({
       </div>
 
       <AnalyticsChartCard
-        title="New players per day (first XP)"
+        title={`${chartTitleWithPeriod("New players", groupBy)} (first XP)`}
         exportHeaders={["date", "players"]}
         exportFilename={`games-new-players-${range}.csv`}
         exportRows={data.newPlayersPerDay.map((r) => ({

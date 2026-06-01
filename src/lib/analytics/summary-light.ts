@@ -114,6 +114,7 @@ export async function getAnalyticsSummaryLight(
 
 function daysForRange(range: AnalyticsRange): number {
   const map: Record<AnalyticsRange, number> = {
+    today: 1,
     "7d": 7,
     "30d": 30,
     "90d": 90,

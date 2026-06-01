@@ -1,7 +1,7 @@
 "use client";
 
+import { AnalyticsControls } from "@/components/analytics/AnalyticsControls";
 import { AnalyticsKpiGrid } from "@/components/analytics/AnalyticsKpiGrid";
-import { AnalyticsRangeSelector } from "@/components/analytics/AnalyticsRangeSelector";
 import { AnalyticsTabPanels } from "@/components/analytics/AnalyticsTabPanels";
 import { GamesDiscordUsersProvider } from "@/components/games/GamesDiscordUsersProvider";
 import type { AnalyticsBundle } from "@/lib/analytics/bundle";
@@ -10,6 +10,10 @@ import {
   readAnalyticsCache,
   writeAnalyticsCache,
 } from "@/lib/analytics/client-cache";
+import {
+  parseAnalyticsGroupBy,
+  type AnalyticsGroupBy,
+} from "@/lib/analytics/group-by";
 import { parseAnalyticsRange } from "@/lib/analytics/range";
 import type { AnalyticsRange, AnalyticsSummary } from "@/lib/analytics/types";
 import { can, type PermissionTier } from "@/lib/permissions";
@@ -36,7 +40,6 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "audit", label: "Dashboard audit" },
 ];
 
-/** API tabs loaded per UI tab (overview uses a small subset, not all six). */
 function tabsForUiTab(uiTab: TabId): AnalyticsTab[] {
   if (uiTab === "overview") return ["metrics", "games", "staff", "audit"];
   return [uiTab];
@@ -50,6 +53,7 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const range = parseAnalyticsRange(searchParams.get("range"));
+  const groupBy = parseAnalyticsGroupBy(searchParams.get("group"), range);
   const tabParam = searchParams.get("tab");
 
   useEffect(() => {
@@ -82,12 +86,13 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
   const loadedTabsRef = useRef<string>("");
 
   const summaryCacheKey = `summary:${range}`;
-  const tabCacheKey = `tab:${range}:${tab}`;
+  const tabCacheKey = `tab:${range}:${groupBy}:${tab}`;
 
   const mergeBundle = useCallback(
     (patch: Partial<AnalyticsBundle> & { range: AnalyticsRange }) => {
       setBundle((prev) => ({
         range: patch.range,
+        groupBy: patch.groupBy ?? prev?.groupBy ?? groupBy,
         summary: patch.summary ?? prev?.summary ?? emptySummary(patch.range),
         metrics: patch.metrics !== undefined ? patch.metrics : prev?.metrics,
         games: patch.games !== undefined ? patch.games : prev?.games,
@@ -99,19 +104,31 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
           patch.engagement !== undefined ? patch.engagement : prev?.engagement,
       }));
     },
-    []
+    [groupBy]
+  );
+
+  const updateParams = useCallback(
+    (updates: { range?: AnalyticsRange; group?: string; tab?: TabId }) => {
+      const p = new URLSearchParams(searchParams.toString());
+      if (updates.range != null) p.set("range", updates.range);
+      if (updates.group != null) p.set("group", updates.group);
+      if (updates.tab != null) p.set("tab", updates.tab);
+      router.replace(`/dashboard/analytics?${p.toString()}`);
+    },
+    [router, searchParams]
   );
 
   const setRange = (r: AnalyticsRange) => {
-    const p = new URLSearchParams(searchParams.toString());
-    p.set("range", r);
-    router.replace(`/dashboard/analytics?${p.toString()}`);
+    const nextGroup = parseAnalyticsGroupBy(groupBy, r);
+    updateParams({ range: r, group: nextGroup });
+  };
+
+  const setGroupBy = (g: AnalyticsGroupBy) => {
+    updateParams({ group: g });
   };
 
   const setTab = (t: TabId) => {
-    const p = new URLSearchParams(searchParams.toString());
-    p.set("tab", t);
-    router.replace(`/dashboard/analytics?${p.toString()}`);
+    updateParams({ tab: t });
   };
 
   useEffect(() => {
@@ -153,7 +170,7 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
 
     const cachedSummary = readAnalyticsCache<AnalyticsSummary>(summaryCacheKey);
     if (cachedSummary) {
-      mergeBundle({ range, summary: cachedSummary });
+      mergeBundle({ range, groupBy, summary: cachedSummary });
       setSummaryReady(true);
       setRefreshing(true);
     } else {
@@ -178,7 +195,7 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
         if (ac.signal.aborted) return;
         const { configured, ...summary } = data;
         void configured;
-        mergeBundle({ range, summary });
+        mergeBundle({ range, groupBy, summary });
         writeAnalyticsCache(summaryCacheKey, summary);
         setSummaryReady(true);
       })
@@ -191,13 +208,13 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
       });
 
     return () => ac.abort();
-  }, [range, summaryCacheKey, mergeBundle]);
+  }, [range, groupBy, summaryCacheKey, mergeBundle]);
 
   useEffect(() => {
     if (!summaryReady) return;
 
     const apiTabs = tabsForUiTab(tab);
-    const loadKey = `${range}:${tab}`;
+    const loadKey = `${range}:${groupBy}:${tab}`;
     if (loadedTabsRef.current === loadKey) {
       setTabReady(true);
       return;
@@ -209,7 +226,7 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
 
     const cachedTab = readAnalyticsCache<Partial<AnalyticsBundle>>(tabCacheKey);
     if (cachedTab) {
-      mergeBundle({ range, ...cachedTab });
+      mergeBundle({ range, groupBy, ...cachedTab });
       setTabReady(true);
       setRefreshing(true);
     } else {
@@ -219,7 +236,7 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
 
     const tabsParam = apiTabs.join(",");
     fetch(
-      `/api/analytics/bundle?range=${range}&tabs=${tabsParam}&summary=0`,
+      `/api/analytics/bundle?range=${range}&group=${groupBy}&tabs=${tabsParam}&summary=0`,
       { signal: ac.signal }
     )
       .then(async (res) => {
@@ -238,8 +255,9 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
         void configured;
         void _ignored;
         mergeBundle(patch);
-        const { range: _r, ...tabData } = patch;
+        const { range: _r, groupBy: _g, ...tabData } = patch;
         void _r;
+        void _g;
         writeAnalyticsCache(tabCacheKey, tabData);
         loadedTabsRef.current = loadKey;
         setTabReady(true);
@@ -253,7 +271,7 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
       });
 
     return () => ac.abort();
-  }, [range, tab, summaryReady, tabCacheKey, mergeBundle]);
+  }, [range, groupBy, tab, summaryReady, tabCacheKey, mergeBundle]);
 
   const summary = bundle?.summary;
   const showSummarySkeleton = !summaryReady && refreshing;
@@ -262,9 +280,14 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
   return (
     <GamesDiscordUsersProvider>
       <div className="space-y-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <AnalyticsRangeSelector value={range} onChange={setRange} />
-          <p className="text-xs text-muted">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <AnalyticsControls
+            range={range}
+            groupBy={groupBy}
+            onRangeChange={setRange}
+            onGroupByChange={setGroupBy}
+          />
+          <p className="text-xs text-muted sm:pt-8">
             Private tickets{" "}
             {can(userTier, "tickets.view_private") ? "included" : "excluded"}
             {refreshing && summaryReady ? " · updating…" : ""}
@@ -355,6 +378,7 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
               tab={tab}
               bundle={bundle}
               range={range}
+              groupBy={groupBy}
               tabReady={tabReady}
             />
           )

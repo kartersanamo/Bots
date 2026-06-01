@@ -4,13 +4,16 @@ import { AnalyticsChartCard } from "@/components/analytics/AnalyticsChartCard";
 import { AnalyticsKpiGrid } from "@/components/analytics/AnalyticsKpiGrid";
 import { AnalyticsUserCountTable } from "@/components/analytics/AnalyticsUserCountTable";
 import { DailyLineChart, DualDailyLineChart, NamedBarChart } from "@/components/analytics/charts";
+import { chartTitleWithPeriod } from "@/lib/analytics/chart-period";
 import { formatDurationSeconds } from "@/lib/analytics/format";
+import type { AnalyticsGroupBy } from "@/lib/analytics/group-by";
 import type { AnalyticsRange, EngagementAnalytics } from "@/lib/analytics/types";
 import { formatNumber } from "@/lib/utils";
 
 interface EngagementAnalyticsSectionProps {
   data: EngagementAnalytics;
   range: AnalyticsRange;
+  groupBy: AnalyticsGroupBy;
 }
 
 function MigrationNotice({ ready }: { ready: Record<string, boolean> }) {
@@ -32,6 +35,7 @@ function MigrationNotice({ ready }: { ready: Record<string, boolean> }) {
 export function EngagementAnalyticsSection({
   data,
   range,
+  groupBy,
 }: EngagementAnalyticsSectionProps) {
   const { kpis, tablesReady } = data;
 
@@ -74,7 +78,7 @@ export function EngagementAnalyticsSection({
 
       <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsChartCard
-          title="Staff messages per day"
+          title={chartTitleWithPeriod("Staff messages", groupBy)}
           exportHeaders={["date", "messages"]}
           exportFilename={`engagement-staff-msgs-${range}.csv`}
           exportRows={data.staffMessagesPerDay.map((r) => ({
@@ -129,7 +133,7 @@ export function EngagementAnalyticsSection({
         </AnalyticsChartCard>
 
         <AnalyticsChartCard
-          title="Voice time per day (seconds)"
+          title={`${chartTitleWithPeriod("Voice time", groupBy)} (seconds)`}
           exportHeaders={["date", "seconds"]}
           exportFilename={`engagement-voice-${range}.csv`}
           exportRows={data.voiceSecondsPerDay.map((r) => ({
@@ -151,7 +155,7 @@ export function EngagementAnalyticsSection({
 
       <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsChartCard
-          title="Slash command usage per day"
+          title={chartTitleWithPeriod("Slash command usage", groupBy)}
           exportHeaders={["date", "invocations"]}
           exportFilename={`engagement-commands-${range}.csv`}
           exportRows={data.commandsPerDay.map((r) => ({
@@ -177,7 +181,7 @@ export function EngagementAnalyticsSection({
 
       <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsChartCard
-          title="Moderation actions per day"
+          title={chartTitleWithPeriod("Moderation actions", groupBy)}
           exportHeaders={["date", "actions"]}
           exportFilename={`engagement-mod-${range}.csv`}
           exportRows={data.modActionsPerDay.map((r) => ({
@@ -210,7 +214,7 @@ export function EngagementAnalyticsSection({
 
       <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsChartCard
-          title="Poll votes per day"
+          title={chartTitleWithPeriod("Poll votes", groupBy)}
           exportHeaders={["date", "votes"]}
           exportFilename={`engagement-poll-votes-${range}.csv`}
           exportRows={data.pollVotesPerDay.map((r) => ({
@@ -222,7 +226,7 @@ export function EngagementAnalyticsSection({
         </AnalyticsChartCard>
 
         <AnalyticsChartCard
-          title="Game sessions ended per day"
+          title={chartTitleWithPeriod("Game sessions ended", groupBy)}
           exportHeaders={["date", "sessions"]}
           exportFilename={`engagement-games-ended-${range}.csv`}
           exportRows={data.gameOutcomesPerDay.map((r) => ({
@@ -250,7 +254,7 @@ export function EngagementAnalyticsSection({
 
       {data.blacklistsCreatedPerDay.length > 0 && (
         <AnalyticsChartCard
-          title="Blacklists created per day"
+          title={chartTitleWithPeriod("Blacklists created", groupBy)}
           exportHeaders={["date", "count"]}
           exportFilename={`engagement-blacklists-created-${range}.csv`}
           exportRows={data.blacklistsCreatedPerDay.map((r) => ({

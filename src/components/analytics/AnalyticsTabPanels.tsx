@@ -8,6 +8,7 @@ import { OverviewAnalyticsSection } from "@/components/analytics/OverviewAnalyti
 import { StaffAnalyticsSection } from "@/components/analytics/StaffAnalyticsSection";
 import { TicketsAnalytics } from "@/components/analytics/TicketsAnalytics";
 import type { AnalyticsBundle } from "@/lib/analytics/bundle";
+import type { AnalyticsGroupBy } from "@/lib/analytics/group-by";
 import type { AnalyticsRange } from "@/lib/analytics/types";
 
 export type AnalyticsUiTab =
@@ -23,34 +24,49 @@ interface AnalyticsTabPanelsProps {
   tab: AnalyticsUiTab;
   bundle: AnalyticsBundle;
   range: AnalyticsRange;
+  groupBy: AnalyticsGroupBy;
   tabReady: boolean;
 }
 
-/** All analytics tab UIs in one module (avoids many small lazy chunks over QUIC/CDN). */
 export function AnalyticsTabPanels({
   tab,
   bundle,
   range,
+  groupBy,
   tabReady,
 }: AnalyticsTabPanelsProps) {
   if (!tabReady) return null;
 
   if (tab === "overview") {
-    return <OverviewAnalyticsSection bundle={bundle} range={range} />;
+    return (
+      <OverviewAnalyticsSection
+        bundle={bundle}
+        range={range}
+        groupBy={groupBy}
+      />
+    );
   }
 
   if (tab === "metrics") {
     if (!bundle.metrics) {
       return <p className="text-muted">No metrics data available.</p>;
     }
-    return <TicketsAnalytics data={bundle.metrics} range={range} />;
+    return (
+      <TicketsAnalytics data={bundle.metrics} range={range} groupBy={groupBy} />
+    );
   }
 
   if (tab === "games") {
     if (!bundle.games) {
       return <p className="text-muted">No games data available.</p>;
     }
-    return <GamesAnalyticsSection data={bundle.games} range={range} />;
+    return (
+      <GamesAnalyticsSection
+        data={bundle.games}
+        range={range}
+        groupBy={groupBy}
+      />
+    );
   }
 
   if (tab === "staff") {
@@ -65,7 +81,11 @@ export function AnalyticsTabPanels({
       return <p className="text-muted">No moderation data available.</p>;
     }
     return (
-      <ModerationAnalyticsSection data={bundle.moderation} range={range} />
+      <ModerationAnalyticsSection
+        data={bundle.moderation}
+        range={range}
+        groupBy={groupBy}
+      />
     );
   }
 
@@ -73,7 +93,13 @@ export function AnalyticsTabPanels({
     if (!bundle.audit) {
       return <p className="text-muted">No audit data available.</p>;
     }
-    return <AuditAnalyticsSection data={bundle.audit} range={range} />;
+    return (
+      <AuditAnalyticsSection
+        data={bundle.audit}
+        range={range}
+        groupBy={groupBy}
+      />
+    );
   }
 
   if (tab === "engagement") {
@@ -86,7 +112,11 @@ export function AnalyticsTabPanels({
       );
     }
     return (
-      <EngagementAnalyticsSection data={bundle.engagement} range={range} />
+      <EngagementAnalyticsSection
+        data={bundle.engagement}
+        range={range}
+        groupBy={groupBy}
+      />
     );
   }
 

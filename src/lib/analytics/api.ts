@@ -1,23 +1,28 @@
 import { requireAction } from "@/lib/api/helpers";
+import {
+  parseAnalyticsGroupBy,
+  type AnalyticsGroupBy,
+} from "@/lib/analytics/group-by";
 import { parseAnalyticsRange } from "@/lib/analytics/range";
 import type { AnalyticsRange } from "@/lib/analytics/types";
 import type { SessionUser } from "@/lib/auth/session";
 
-export async function requireAnalyticsSession(): Promise<{
-  session: SessionUser;
+export type AnalyticsQuery = {
   range: AnalyticsRange;
-}> {
-  const session = await requireAction("analytics.read");
-  return { session, range: "30d" };
-}
+  groupBy: AnalyticsGroupBy;
+};
 
-export function rangeFromRequest(request: Request): AnalyticsRange {
-  return parseAnalyticsRange(new URL(request.url).searchParams.get("range"));
+export function analyticsQueryFromUrl(url: string | URL): AnalyticsQuery {
+  const params = new URL(url).searchParams;
+  const range = parseAnalyticsRange(params.get("range"));
+  const groupBy = parseAnalyticsGroupBy(params.get("group"), range);
+  return { range, groupBy };
 }
 
 export async function requireAnalytics(
   request: Request
-): Promise<{ session: SessionUser; range: AnalyticsRange }> {
+): Promise<{ session: SessionUser } & AnalyticsQuery> {
   const session = await requireAction("analytics.read");
-  return { session, range: rangeFromRequest(request) };
+  const q = analyticsQueryFromUrl(request.url);
+  return { session, ...q };
 }

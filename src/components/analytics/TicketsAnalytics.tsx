@@ -13,7 +13,9 @@ import {
   NamedBarChart,
 } from "@/components/analytics/charts";
 import { DiscordUserChip } from "@/components/games/DiscordUserChip";
+import { chartTitleWithPeriod } from "@/lib/analytics/chart-period";
 import { formatDurationSeconds } from "@/lib/analytics/format";
+import type { AnalyticsGroupBy } from "@/lib/analytics/group-by";
 import type { AnalyticsRange, TicketAnalytics } from "@/lib/analytics/types";
 import { formatNumber, formatUnixTimestamp } from "@/lib/utils";
 import Link from "next/link";
@@ -21,9 +23,14 @@ import Link from "next/link";
 interface TicketsAnalyticsProps {
   data: TicketAnalytics;
   range: AnalyticsRange;
+  groupBy: AnalyticsGroupBy;
 }
 
-export function TicketsAnalytics({ data, range }: TicketsAnalyticsProps) {
+export function TicketsAnalytics({
+  data,
+  range,
+  groupBy,
+}: TicketsAnalyticsProps) {
   const { kpis } = data;
 
   return (
@@ -101,7 +108,7 @@ export function TicketsAnalytics({ data, range }: TicketsAnalyticsProps) {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsChartCard
-          title="Tickets opened & closed per day"
+          title={chartTitleWithPeriod("Tickets opened & closed", groupBy)}
           exportHeaders={["date", "opened", "closed"]}
           exportFilename={`tickets-daily-${range}.csv`}
           exportRows={mergeDailyExport(data.openedPerDay, data.closedPerDay)}
@@ -113,7 +120,7 @@ export function TicketsAnalytics({ data, range }: TicketsAnalyticsProps) {
         </AnalyticsChartCard>
 
         <AnalyticsChartCard
-          title="Opened per day"
+          title={chartTitleWithPeriod("Opened", groupBy)}
           exportHeaders={["date", "count"]}
           exportFilename={`tickets-opened-${range}.csv`}
           exportRows={data.openedPerDay.map((r) => ({
@@ -125,7 +132,7 @@ export function TicketsAnalytics({ data, range }: TicketsAnalyticsProps) {
         </AnalyticsChartCard>
 
         <AnalyticsChartCard
-          title="Net queue change per day"
+          title={chartTitleWithPeriod("Net queue change", groupBy)}
           exportHeaders={["date", "netChange"]}
           exportFilename={`tickets-net-queue-${range}.csv`}
           exportRows={data.netQueuePerDay.map((r) => ({
@@ -134,7 +141,7 @@ export function TicketsAnalytics({ data, range }: TicketsAnalyticsProps) {
           }))}
         >
           <p className="mb-2 text-xs text-muted">
-            Positive bars = more opened than closed that day.
+            Positive bars = more opened than closed in that period.
           </p>
           <DailyLineChart data={data.netQueuePerDay} color="#eab308" />
         </AnalyticsChartCard>

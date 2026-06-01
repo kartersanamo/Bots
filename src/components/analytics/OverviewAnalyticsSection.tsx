@@ -4,7 +4,9 @@ import { AnalyticsChartCard } from "@/components/analytics/AnalyticsChartCard";
 import { AnalyticsKpiGrid } from "@/components/analytics/AnalyticsKpiGrid";
 import { AnalyticsUserCountTable } from "@/components/analytics/AnalyticsUserCountTable";
 import { DailyLineChart, DualDailyLineChart, NamedBarChart } from "@/components/analytics/charts";
+import { chartTitleWithPeriod } from "@/lib/analytics/chart-period";
 import type { AnalyticsBundle } from "@/lib/analytics/bundle";
+import type { AnalyticsGroupBy } from "@/lib/analytics/group-by";
 import type { AnalyticsRange } from "@/lib/analytics/types";
 import { formatNumber } from "@/lib/utils";
 import Link from "next/link";
@@ -12,11 +14,13 @@ import Link from "next/link";
 interface OverviewAnalyticsSectionProps {
   bundle: AnalyticsBundle;
   range: AnalyticsRange;
+  groupBy: AnalyticsGroupBy;
 }
 
 export function OverviewAnalyticsSection({
   bundle,
   range,
+  groupBy,
 }: OverviewAnalyticsSectionProps) {
   const { summary, metrics, games, staff, audit } = bundle;
 
@@ -88,7 +92,7 @@ export function OverviewAnalyticsSection({
 
         {games && (
           <AnalyticsChartCard
-            title="XP awarded per day"
+            title={chartTitleWithPeriod("XP awarded", groupBy)}
             exportHeaders={["date", "xp"]}
             exportFilename={`overview-xp-${range}.csv`}
             exportRows={games.xpPerDay.map((r) => ({ date: r.date, xp: r.count }))}

@@ -10,7 +10,7 @@ import {
 import { NextResponse } from "next/server";
 
 export const GET = handleApiRoute(async (request) => {
-  const { session, range } = await requireAnalytics(request);
+  const { session, range, groupBy } = await requireAnalytics(request);
   const url = new URL(request.url);
   const format = url.searchParams.get("format");
 
@@ -19,9 +19,9 @@ export const GET = handleApiRoute(async (request) => {
   }
 
   const data = await cachedAnalytics(
-    `analytics:tickets:${range}:${session.tier}`,
+    `analytics:tickets:${range}:${groupBy}:${session.tier}`,
     ANALYTICS_CACHE_MS,
-    () => getTicketAnalytics(session.tier, range)
+    () => getTicketAnalytics(session.tier, range, groupBy)
   );
 
   if (format === "csv" && data) {

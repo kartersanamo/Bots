@@ -8,17 +8,21 @@ import {
 import { AnalyticsKpiGrid } from "@/components/analytics/AnalyticsKpiGrid";
 import { DailyLineChart, NamedBarChart } from "@/components/analytics/charts";
 import { DiscordUserChip } from "@/components/games/DiscordUserChip";
+import { chartTitleWithPeriod } from "@/lib/analytics/chart-period";
+import type { AnalyticsGroupBy } from "@/lib/analytics/group-by";
 import type { AnalyticsRange, AuditAnalytics } from "@/lib/analytics/types";
 import { formatNumber } from "@/lib/utils";
 
 interface AuditAnalyticsSectionProps {
   data: AuditAnalytics;
   range: AnalyticsRange;
+  groupBy: AnalyticsGroupBy;
 }
 
 export function AuditAnalyticsSection({
   data,
   range,
+  groupBy,
 }: AuditAnalyticsSectionProps) {
   return (
     <div className="space-y-6">
@@ -35,7 +39,7 @@ export function AuditAnalyticsSection({
       />
 
       <AnalyticsChartCard
-        title="Dashboard actions per day"
+        title={chartTitleWithPeriod("Dashboard actions", groupBy)}
         exportHeaders={["date", "count"]}
         exportFilename={`audit-actions-${range}.csv`}
         exportRows={data.actionsPerDay.map((r) => ({

@@ -8,9 +8,10 @@ import {
   openedAtRangeClause,
   rangeSinceUnix,
 } from "@/lib/analytics/range";
+import type { AnalyticsGroupBy } from "@/lib/analytics/group-by";
 import {
   bucketKeySqlFromUnix,
-  getTimeBucketSpec,
+  buildTimeBucketSpec,
   normalizeTimeSeries,
   percentileFromHistogram,
 } from "@/lib/analytics/time-buckets";
@@ -51,7 +52,8 @@ function baseWhere(tier: PermissionTier): { sql: string; params: (string | numbe
 
 export async function getTicketAnalytics(
   tier: PermissionTier,
-  range: AnalyticsRange
+  range: AnalyticsRange,
+  groupBy: AnalyticsGroupBy
 ): Promise<TicketAnalytics | null> {
   if (!isDbConfigured()) return null;
 
@@ -60,7 +62,7 @@ export async function getTicketAnalytics(
   const closedRange = closedAtRangeClause(range);
   const rangeWhere = `${base.sql}${openedRange.sql}`;
   const rangeParams = [...base.params, ...openedRange.params];
-  const bucketSpec = getTimeBucketSpec(range);
+  const bucketSpec = buildTimeBucketSpec(range, groupBy);
   const openedBucket = bucketKeySqlFromUnix("opened_at", bucketSpec);
   const closedBucket = bucketKeySqlFromUnix("closed_at", bucketSpec);
 
@@ -84,7 +86,7 @@ export async function getTicketAnalytics(
       longestOpen,
       heavyStats,
     ] = await Promise.all([
-      queryRangeSlices(rangeWhere, rangeParams, range),
+      queryRangeSlices(rangeWhere, rangeParams, range, groupBy),
       queryClosedSlices(closedWhere, closedParams),
       queryOne<{
         openCount: number;
@@ -184,8 +186,8 @@ export async function getTicketAnalytics(
       queryTimingStats(base, closedRange, range),
     ]);
 
-    const openedPerDay = normalizeTimeSeries(slices.openedPerDay, range);
-    const closedDaily = normalizeTimeSeries(mapDaily(closedPerDay), range);
+    const openedPerDay = normalizeTimeSeries(slices.openedPerDay, range, groupBy);
+    const closedDaily = normalizeTimeSeries(mapDaily(closedPerDay), range, groupBy);
     const avgTicketsPerDay =
       openedPerDay.length > 0
         ? openedPerDay.reduce((s, d) => s + d.count, 0) / openedPerDay.length
@@ -202,6 +204,7 @@ export async function getTicketAnalytics(
 
     return {
       range,
+      groupBy,
       kpis: {
         avgTicketsPerDay,
         avgTimeBetweenTicketsSeconds: heavyStats?.avgBetween ?? null,
@@ -274,14 +277,18 @@ export async function getTicketAnalytics(
 async function queryRangeSlices(
   rangeWhere: string,
   rangeParams: (string | number)[],
-  range: AnalyticsRange
+  range: AnalyticsRange,
+  groupBy: AnalyticsGroupBy
 ): Promise<{
   openedPerDay: DailyCount[];
   byHour: { hour: number; count: number }[];
   byDayOfWeek: { dow: number; count: number }[];
   byType: { name: string; count: number }[];
 }> {
-  const bucket = bucketKeySqlFromUnix("opened_at", getTimeBucketSpec(range));
+  const bucket = bucketKeySqlFromUnix(
+    "opened_at",
+    buildTimeBucketSpec(range, groupBy)
+  );
   const rows = await query<SliceRow>(
     `SELECT 'day' AS metric,
       ${bucket} AS k1,
@@ -313,8 +320,7 @@ async function queryRangeSlices(
     const val = Number(row.val);
     switch (row.metric) {
       case "day":
-        if (row.k1)
-          openedPerDay.push({ date: String(row.k1).slice(0, 10), count: val });
+        if (row.k1) openedPerDay.push({ date: String(row.k1), count: val });
         break;
       case "hour":
         byHour.push({ hour: Number(row.k1), count: val });
