@@ -6,7 +6,7 @@ import type { TicketRow } from "@/lib/tickets/types";
 import type { TicketEnrichment } from "@/lib/discord/tickets";
 import { isTicketOpen } from "@/lib/tickets/types";
 import { formatRelativeTime } from "@/lib/utils";
-import { discordChannelUrl } from "@/lib/discord/tickets";
+import { discordChannelUrl } from "@/lib/discord/guild";
 import { Avatar } from "@/components/ui/Avatar";
 import { ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";

@@ -1,9 +1,9 @@
 import { handleApiRoute, requireAction } from "@/lib/api/helpers";
 import { getTicketByChannelId } from "@/lib/db/tickets";
+import { discordChannelUrl } from "@/lib/discord/guild";
 import {
   enrichTicket,
   fetchDiscordUser,
-  discordChannelUrl,
   isDiscordConfigured,
 } from "@/lib/discord/tickets";
 import { isDbConfigured } from "@/lib/db/pool";

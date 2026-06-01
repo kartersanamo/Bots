@@ -165,44 +165,63 @@ export async function getTicketByChannelId(
   return row;
 }
 
+const statsCache = new Map<
+  string,
+  { expires: number; data: TicketStats }
+>();
+const STATS_CACHE_MS = 30_000;
+
 export async function getTicketStats(
   viewerTier: PermissionTier
 ): Promise<TicketStats | null> {
   if (!isDbConfigured()) return null;
+
+  const cacheKey = viewerTier;
+  const hit = statsCache.get(cacheKey);
+  if (hit && hit.expires > Date.now()) return hit.data;
 
   const priv = privatedClause(viewerTier);
   const privSql = priv.sql;
   const privParams = priv.params;
 
   try {
-    const counts = await queryOne<{
-      openCount: number;
-      closedCount: number;
-      openedToday: number;
-    }>(
-      `SELECT
-        (SELECT COUNT(*) FROM tickets WHERE active = 'True'${privSql}) AS openCount,
-        (SELECT COUNT(*) FROM tickets WHERE active IN ('False', '0')${privSql}) AS closedCount,
-        (SELECT COUNT(*) FROM tickets
+    const [counts, byType] = await Promise.all([
+      queryOne<{
+        openCount: number;
+        closedCount: number;
+        openedToday: number;
+      }>(
+        `SELECT
+          SUM(active = 'True') AS openCount,
+          SUM(active IN ('False', '0')) AS closedCount,
+          SUM(
+            active = 'True'
+            AND TRIM(opened_at) != ''
+            AND DATE(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED))) = CURDATE()
+          ) AS openedToday
+         FROM tickets
+         WHERE 1=1${privSql}`,
+        privParams
+      ),
+      query<{ type: string; count: number }>(
+        `SELECT type, COUNT(*) AS count FROM tickets
          WHERE active = 'True'${privSql}
-           AND TRIM(opened_at) != ''
-           AND DATE(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED))) = CURDATE()) AS openedToday`,
-      [...privParams, ...privParams, ...privParams]
-    );
+         GROUP BY type ORDER BY count DESC LIMIT 12`,
+        privParams
+      ),
+    ]);
 
-    const byType = await query<{ type: string; count: number }>(
-      `SELECT type, COUNT(*) AS count FROM tickets
-       WHERE active = 'True'${privSql}
-       GROUP BY type ORDER BY count DESC LIMIT 12`,
-      privParams
-    );
-
-    return {
-      openCount: counts?.openCount ?? 0,
-      closedCount: counts?.closedCount ?? 0,
-      openedToday: counts?.openedToday ?? 0,
+    const data: TicketStats = {
+      openCount: Number(counts?.openCount ?? 0),
+      closedCount: Number(counts?.closedCount ?? 0),
+      openedToday: Number(counts?.openedToday ?? 0),
       byType,
     };
+    statsCache.set(cacheKey, {
+      expires: Date.now() + STATS_CACHE_MS,
+      data,
+    });
+    return data;
   } catch (err) {
     console.error("[db] getTicketStats failed:", err);
     return null;

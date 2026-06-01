@@ -36,22 +36,23 @@ export const GET = handleApiRoute(async (request) => {
     });
   }
 
-  const result = await listTickets({
-    page,
-    limit,
-    sort,
-    order,
-    status,
-    type,
-    ownerId,
-    number,
-    privated,
-    q,
-    viewerTier: session.tier,
-  });
-
-  const stats = await getTicketStats(session.tier);
-  const types = await getDistinctTicketTypes(session.tier, status);
+  const [result, stats, types] = await Promise.all([
+    listTickets({
+      page,
+      limit,
+      sort,
+      order,
+      status,
+      type,
+      ownerId,
+      number,
+      privated,
+      q,
+      viewerTier: session.tier,
+    }),
+    getTicketStats(session.tier),
+    getDistinctTicketTypes(session.tier, status),
+  ]);
 
   return Response.json({
     tickets: result?.tickets ?? [],

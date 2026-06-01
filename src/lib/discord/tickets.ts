@@ -47,10 +47,7 @@ function botHeaders(): HeadersInit {
   return { Authorization: `Bot ${token}` };
 }
 
-export function discordChannelUrl(channelId: string): string {
-  const guildId = process.env.DISCORD_GUILD_ID || "";
-  return `https://discord.com/channels/${guildId}/${channelId}`;
-}
+export { discordChannelUrl } from "@/lib/discord/guild";
 
 export function isDiscordConfigured(): boolean {
   return !!(process.env.DISCORD_BOT_TOKEN || process.env.BOT_TICKETS_TOKEN);
