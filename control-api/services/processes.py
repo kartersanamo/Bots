@@ -7,7 +7,7 @@ import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Optional, Tuple
+from typing import List, Literal, Optional, Tuple
 
 from bot_registry import bot_root, get_bot, systemd_unit
 
@@ -24,7 +24,7 @@ class ProcessInfo:
     message: Optional[str]
 
 
-def _run(cmd: list[str], timeout: int = 15) -> subprocess.CompletedProcess[str]:
+def _run(cmd: list, timeout: int = 15) -> subprocess.CompletedProcess:
     return subprocess.run(
         cmd,
         capture_output=True,
@@ -33,15 +33,56 @@ def _run(cmd: list[str], timeout: int = 15) -> subprocess.CompletedProcess[str]:
     )
 
 
-def _find_pid_by_cwd(root: Path, entry_script: str) -> Optional[int]:
+def _read_cmdline(pid: int) -> str:
     try:
-        result = _run(["pgrep", "-f", str(root / entry_script)])
-        if result.returncode != 0:
-            return None
-        pids = [int(p) for p in result.stdout.strip().split() if p.strip()]
-        return pids[0] if pids else None
-    except (subprocess.TimeoutExpired, ValueError, FileNotFoundError):
+        raw = (Path(f"/proc/{pid}") / "cmdline").read_bytes()
+        return raw.replace(b"\0", b" ").decode("utf-8", errors="replace").strip()
+    except OSError:
+        return ""
+
+
+def _read_cwd(pid: int) -> Optional[Path]:
+    try:
+        return (Path(f"/proc/{pid}") / "cwd").resolve()
+    except OSError:
         return None
+
+
+def _find_pids_by_bot_dir(root: Path, entry_script: str) -> List[int]:
+    """
+    Find bot PIDs by working directory + script name.
+
+    Tmux/run.sh often runs `python3 main.py` without the full path in argv,
+    so pgrep on /path/to/main.py does not match.
+    """
+    root = root.resolve()
+    matches: List[int] = []
+
+    try:
+        proc_root = Path("/proc")
+    except OSError:
+        return matches
+
+    for entry in proc_root.iterdir():
+        if not entry.name.isdigit():
+            continue
+        pid = int(entry.name)
+        cwd = _read_cwd(pid)
+        if cwd != root:
+            continue
+        cmdline = _read_cmdline(pid)
+        if entry_script not in cmdline:
+            continue
+        if "python" not in cmdline.lower():
+            continue
+        matches.append(pid)
+
+    return sorted(matches)
+
+
+def _find_pid_by_cwd(root: Path, entry_script: str) -> Optional[int]:
+    pids = _find_pids_by_bot_dir(root, entry_script)
+    return pids[0] if pids else None
 
 
 def _systemd_active(unit: str) -> Tuple[ProcessStatus, Optional[str]]:
@@ -71,7 +112,6 @@ def _systemd_main_pid(unit: str) -> Optional[int]:
 def _process_uptime(pid: int) -> Optional[float]:
     try:
         stat = Path(f"/proc/{pid}/stat").read_text()
-        # starttime is field 22 (0-indexed 21)
         parts = stat.split()
         starttime = int(parts[21])
         clk_tck = os.sysconf("SC_CLK_TCK")
@@ -131,9 +171,11 @@ def start_bot(bot_id: str) -> ProcessInfo:
     if not run_sh.exists():
         raise FileNotFoundError(f"No run.sh at {run_sh}")
 
-    # Detached start
-    log_out = root / "logs" / "dashboard-start.log"
-    log_out.parent.mkdir(parents=True, exist_ok=True)
+    log_dir = root / "logs"
+    if not log_dir.exists():
+        log_dir = root / "Logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_out = log_dir / "dashboard-start.log"
     with open(log_out, "a") as logf:
         subprocess.Popen(
             ["/bin/bash", str(run_sh)],
@@ -159,15 +201,20 @@ def stop_bot(bot_id: str) -> ProcessInfo:
         time.sleep(0.5)
         return get_process_info(bot_id)
 
-    pid = _find_pid_by_cwd(bot_root(bot_id), entry.entry_script)
-    if pid:
+    root = bot_root(bot_id)
+    pids = _find_pids_by_bot_dir(root, entry.entry_script)
+    for pid in pids:
         try:
             os.kill(pid, signal.SIGTERM)
-            time.sleep(1)
-            if _find_pid_by_cwd(bot_root(bot_id), entry.entry_script):
-                os.kill(pid, signal.SIGKILL)
         except ProcessLookupError:
             pass
+    if pids:
+        time.sleep(1)
+        for pid in pids:
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
     time.sleep(0.5)
     return get_process_info(bot_id)
 

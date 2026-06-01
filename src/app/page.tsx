@@ -1,5 +1,4 @@
 import {
-  LandingFeatures,
   LandingFooter,
   LandingHero,
 } from "@/components/landing/LandingSections";
@@ -28,7 +27,6 @@ export default function HomePage() {
 
       <div className="pt-16">
         <LandingHero />
-        <LandingFeatures />
         <LandingFooter />
       </div>
     </main>
