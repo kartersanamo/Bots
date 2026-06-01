@@ -23,7 +23,7 @@ export function GamesAnalyticsSection({
         items={[
           { label: "Active players", value: kpis.activePlayers },
           { label: "Ever played", value: kpis.everPlayed },
-          { label: "Open game sessions", value: kpis.openSessions },
+          { label: "Total game sessions", value: kpis.openSessions },
           {
             label: "XP awarded (range)",
             value: formatNumber(kpis.totalXpInRange),
