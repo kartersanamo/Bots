@@ -53,10 +53,16 @@ export function TicketDetailDrawer({
   const [data, setData] = useState<DetailData | null>(null);
   const [loading, setLoading] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [showCloseForm, setShowCloseForm] = useState(false);
+  const [closeReason, setCloseReason] = useState("");
+  const [closeError, setCloseError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!channelId) {
       setData(null);
+      setShowCloseForm(false);
+      setCloseReason("");
+      setCloseError(null);
       return;
     }
     setLoading(true);
@@ -73,17 +79,33 @@ export function TicketDetailDrawer({
     await navigator.clipboard.writeText(text);
   }
 
-  async function closeTicket() {
-    if (!channelId || !confirm("Close this ticket in the database?")) return;
+  async function submitCloseTicket() {
+    if (!channelId) return;
+    const reason = closeReason.trim();
+    if (reason.length < 2) {
+      setCloseError("Please enter a reason (at least 2 characters).");
+      return;
+    }
+    setCloseError(null);
     setClosing(true);
     try {
       const res = await fetch(`/api/tickets/${channelId}/close`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason }),
       });
-      if (res.ok) {
-        onClosed?.();
-        onClose();
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setCloseError(
+          typeof payload.error === "string"
+            ? payload.error
+            : "Failed to close ticket"
+        );
+        return;
       }
+      setShowCloseForm(false);
+      onClosed?.();
+      onClose();
     } finally {
       setClosing(false);
     }
@@ -167,13 +189,65 @@ export function TicketDetailDrawer({
                       <Button
                         variant="danger"
                         size="sm"
-                        onClick={closeTicket}
+                        onClick={() => {
+                          setCloseError(null);
+                          setShowCloseForm(true);
+                        }}
                         disabled={closing}
                       >
                         Close ticket
                       </Button>
                     )}
                   </div>
+
+                  {showCloseForm && (
+                    <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 space-y-3">
+                      <p className="text-sm text-white font-medium">
+                        Close ticket (runs /close in Discord)
+                      </p>
+                      <p className="text-xs text-muted">
+                        This runs the same flow as{" "}
+                        <code className="text-accent-light">/close</code> in the
+                        ticket channel, attributed to your logged-in Discord
+                        account.
+                      </p>
+                      <label className="block text-xs font-medium text-muted">
+                        Reason
+                      </label>
+                      <textarea
+                        value={closeReason}
+                        onChange={(e) => setCloseReason(e.target.value)}
+                        placeholder="e.g. Resolved — player unbanned"
+                        rows={3}
+                        maxLength={500}
+                        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-white resize-none"
+                      />
+                      {closeError && (
+                        <p className="text-sm text-red-400">{closeError}</p>
+                      )}
+                      <div className="flex gap-2">
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          onClick={submitCloseTicket}
+                          disabled={closing}
+                        >
+                          {closing ? "Closing…" : "Confirm close"}
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            setShowCloseForm(false);
+                            setCloseError(null);
+                          }}
+                          disabled={closing}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
 
                   {data.owner && (
                     <div className="flex items-center gap-3">

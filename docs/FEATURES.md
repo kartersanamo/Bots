@@ -38,7 +38,7 @@
 - Paginated ticket list from MySQL (open by default)
 - Sort, filter, search with URL-synced state (`?status=open&sort=opened_at&page=1`)
 - Discord enrichment: intake embed Q&A + latest owner message (batch API, 60s cache)
-- Detail drawer: full intake, last message, all DB fields, Open in Discord, close ticket (write)
+- Detail drawer: full intake, last message, all DB fields, Open in Discord, close ticket via bot `/close` with reason (write; attributed to logged-in staff Discord user)
 - Stats bar: open count, opened today, type breakdown
 - Permission-aware: helpers cannot see Admin/Management `privated` tickets (`tickets.view_private` for admin+)
 - CSV export of current page; auto-refresh (30s); “Awaiting user” highlight when no owner message
