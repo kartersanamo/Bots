@@ -1,0 +1,116 @@
+export type PermissionTier =
+  | "owner"
+  | "manager"
+  | "admin"
+  | "moderator"
+  | "helper"
+  | "none";
+
+const TIER_RANK: Record<PermissionTier, number> = {
+  owner: 100,
+  manager: 80,
+  admin: 60,
+  moderator: 40,
+  helper: 20,
+  none: 0,
+};
+
+/** Role IDs from MinecadiaTickets config ROLE_HIERARCHY */
+export const ROLE_HIERARCHY: Record<string, string[]> = {
+  Helpers: [
+    "1223479636797685921",
+    "1223479482564739183",
+    "1223479577678970880",
+    "918899899108577290",
+  ],
+  Mods: [
+    "1223479976733446208",
+    "1223479788010737734",
+    "1223479914704146485",
+    "918899851893284935",
+  ],
+  "Sr. Mods": [
+    "1223480358339612713",
+    "1223480153464770730",
+    "1223480285212053545",
+    "918899817634218065",
+  ],
+  "Jr Admins": [
+    "1223480993470746726",
+    "1223480738133839922",
+    "1223480907172679731",
+    "952952934604369950",
+  ],
+  Admins: [
+    "1223484462617202748",
+    "1223484322871251026",
+    "1223484398750666853",
+    "918899729897779331",
+  ],
+  "Sr Admin": ["1052722994511892551"],
+  Managers: ["1221840429998411806", "693919516861923408"],
+  Owner: ["680584954136100890"],
+};
+
+const TIER_FOR_GROUP: Record<string, PermissionTier> = {
+  Helpers: "helper",
+  Mods: "moderator",
+  "Sr. Mods": "moderator",
+  "Jr Admins": "admin",
+  Admins: "admin",
+  "Sr Admin": "manager",
+  Managers: "manager",
+  Owner: "owner",
+};
+
+export function resolvePermissionTier(
+  userId: string,
+  roleIds: string[]
+): PermissionTier {
+  const ownerId = process.env.OWNER_DISCORD_ID;
+  if (ownerId && userId === ownerId) return "owner";
+
+  let highest: PermissionTier = "none";
+
+  for (const [group, ids] of Object.entries(ROLE_HIERARCHY)) {
+    const tier = TIER_FOR_GROUP[group];
+    if (ids.some((id) => roleIds.includes(id))) {
+      if (TIER_RANK[tier] > TIER_RANK[highest]) {
+        highest = tier;
+      }
+    }
+  }
+
+  return highest;
+}
+
+export function hasMinimumTier(
+  userTier: PermissionTier,
+  required: PermissionTier
+): boolean {
+  return TIER_RANK[userTier] >= TIER_RANK[required];
+}
+
+export function tierLabel(tier: PermissionTier): string {
+  const labels: Record<PermissionTier, string> = {
+    owner: "Owner",
+    manager: "Manager",
+    admin: "Admin",
+    moderator: "Moderator",
+    helper: "Helper",
+    none: "No Access",
+  };
+  return labels[tier];
+}
+
+export function tierColor(tier: PermissionTier): string {
+  const colors: Record<PermissionTier, string> = {
+    owner: "text-accent-glow",
+    manager: "text-purple-300",
+    admin: "text-violet-400",
+    moderator: "text-indigo-400",
+    helper: "text-blue-400",
+    none: "text-muted",
+  };
+  return colors[tier];
+}
