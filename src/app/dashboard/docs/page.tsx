@@ -84,7 +84,6 @@ export default function DocsPage() {
     <>
       <Header
         title="Documentation"
-        description="Architecture, roadmap, and deployment guides for the Bots dashboard."
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },
           { label: "Docs" },

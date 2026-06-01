@@ -4,7 +4,6 @@ import { StatCard } from "@/components/ui/StatCard";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { formatRelativeTime, isTicketOpen } from "@/lib/utils";
-import { motion } from "framer-motion";
 import {
   Bot,
   Ticket,
@@ -13,6 +12,7 @@ import {
   Ban,
   MessageSquare,
 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 interface OverviewStats {
@@ -40,10 +40,17 @@ interface GuildInfo {
   approximatePresenceCount?: number;
 }
 
+interface BotStatusRow {
+  id: string;
+  shortName: string;
+  status: string;
+}
+
 export function DashboardOverview() {
   const [stats, setStats] = useState<OverviewStats | null>(null);
   const [tickets, setTickets] = useState<RecentTicket[]>([]);
   const [guild, setGuild] = useState<GuildInfo | null>(null);
+  const [botRows, setBotRows] = useState<BotStatusRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [dbConfigured, setDbConfigured] = useState(true);
   const [dbConnected, setDbConnected] = useState(true);
@@ -51,10 +58,11 @@ export function DashboardOverview() {
   useEffect(() => {
     async function load() {
       try {
-        const [statsRes, ticketsRes, serverRes] = await Promise.all([
+        const [statsRes, ticketsRes, serverRes, botsRes] = await Promise.all([
           fetch("/api/stats/overview"),
           fetch("/api/tickets/recent?limit=5"),
           fetch("/api/server/info"),
+          fetch("/api/bots"),
         ]);
 
         if (statsRes.ok) {
@@ -73,6 +81,19 @@ export function DashboardOverview() {
           const data = await serverRes.json();
           if (data.guild) setGuild(data.guild);
         }
+
+        if (botsRes.ok) {
+          const data = await botsRes.json();
+          setBotRows(
+            (data.bots || []).map(
+              (b: { id: string; shortName: string; status: string }) => ({
+                id: b.id,
+                shortName: b.shortName,
+                status: b.status,
+              })
+            )
+          );
+        }
       } finally {
         setLoading(false);
       }
@@ -80,26 +101,26 @@ export function DashboardOverview() {
     load();
   }, []);
 
+  const onlineCount = botRows.filter((b) => b.status === "online").length;
+
   return (
-    <div className="space-y-8">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="space-y-6">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          label="Open Tickets"
+          label="Open tickets"
           value={stats?.openTickets ?? "—"}
           icon={Ticket}
           loading={loading}
-          trend={stats ? `${stats.ticketsToday} opened today` : undefined}
-          delay={0}
+          trend={stats ? `${stats.ticketsToday} today` : undefined}
         />
         <StatCard
-          label="Total Tickets"
+          label="Total tickets"
           value={stats?.totalTickets ?? "—"}
           icon={BarChart3}
           loading={loading}
-          delay={0.05}
         />
         <StatCard
-          label="Server Members"
+          label="Members"
           value={guild?.memberCount ?? "—"}
           icon={Users}
           loading={loading}
@@ -108,66 +129,55 @@ export function DashboardOverview() {
               ? `${guild.approximatePresenceCount} online`
               : undefined
           }
-          delay={0.1}
         />
         <StatCard
-          label="Leveling Users"
+          label="Leveling users"
           value={stats?.totalLevelingUsers ?? "—"}
           icon={MessageSquare}
           loading={loading}
-          delay={0.15}
         />
       </div>
 
       {!loading && !dbConfigured && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-400"
-        >
-          Database not configured. Add <code className="text-amber-300">DB_HOST</code>,{" "}
-          <code className="text-amber-300">DB_USER</code>, and{" "}
-          <code className="text-amber-300">DB_NAME</code> to <code className="text-amber-300">.env</code>.
-        </motion.div>
+        <p className="text-sm text-amber-400">Database not configured.</p>
       )}
       {!loading && dbConfigured && !dbConnected && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400"
-        >
-          Could not load stats from MySQL. Check credentials and restart the dashboard after changing{" "}
-          <code className="text-red-300">.env</code>.
-        </motion.div>
+        <p className="text-sm text-red-400">Database connection failed.</p>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-white">Recent Tickets</h2>
-            <Badge variant="info">Live</Badge>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-white">Recent tickets</h2>
+            <Link
+              href="/dashboard/tickets"
+              className="text-xs text-muted hover:text-white"
+            >
+              View all
+            </Link>
           </div>
           {loading ? (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="h-12 animate-pulse rounded-lg bg-surface-hover" />
+                <div
+                  key={i}
+                  className="h-10 animate-pulse rounded-md bg-surface-hover"
+                />
               ))}
             </div>
           ) : tickets.length === 0 ? (
-            <p className="text-sm text-muted">No tickets found or DB not connected.</p>
+            <p className="text-sm text-muted">No tickets.</p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1">
               {tickets.map((t) => (
                 <div
                   key={t.channelID}
-                  className="flex items-center justify-between rounded-lg bg-surface-hover px-3 py-2.5"
+                  className="flex items-center justify-between rounded-md px-2 py-2 hover:bg-surface-hover"
                 >
                   <div>
-                    <p className="text-sm font-medium capitalize text-white">
-                      {t.type}
-                    </p>
+                    <p className="text-sm capitalize text-white">{t.type}</p>
                     <p className="text-xs text-muted">
-                      {t.opened ? formatRelativeTime(t.opened) : "Unknown"}
+                      {t.opened ? formatRelativeTime(t.opened) : "—"}
                     </p>
                   </div>
                   <Badge variant={isTicketOpen(t.active) ? "success" : "default"}>
@@ -180,51 +190,62 @@ export function DashboardOverview() {
         </Card>
 
         <Card>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-white">Bot Fleet</h2>
-            <Badge variant="warning">Phase 2</Badge>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-white">Bots</h2>
+            <Link
+              href="/dashboard/bots"
+              className="text-xs text-muted hover:text-white"
+            >
+              Manage
+            </Link>
           </div>
-          <p className="mb-4 text-sm text-muted">
-            Live bot status monitoring will be available in Phase 2 via the Bot Control API.
+          <p className="mb-3 text-xs text-muted">
+            {loading
+              ? "Loading…"
+              : `${onlineCount} of ${botRows.length} online`}
           </p>
-          <div className="grid grid-cols-2 gap-2">
-            {["Games", "Tickets", "Management", "Utilities", "Staff", "Leader"].map(
-              (name) => (
-                <div
-                  key={name}
-                  className="flex items-center gap-2 rounded-lg bg-surface-hover px-3 py-2"
-                >
-                  <Bot className="h-4 w-4 text-accent-light" />
-                  <span className="text-sm text-white">{name}</span>
-                  <span className="ml-auto h-2 w-2 rounded-full bg-amber-400" />
-                </div>
-              )
-            )}
+          <div className="grid grid-cols-2 gap-1.5">
+            {botRows.map((b) => (
+              <Link
+                key={b.id}
+                href={`/dashboard/bots/${b.id}`}
+                className="flex items-center gap-2 rounded-md px-2 py-2 hover:bg-surface-hover"
+              >
+                <Bot className="h-3.5 w-3.5 text-muted" />
+                <span className="text-sm text-white">{b.shortName}</span>
+                <span
+                  className={`ml-auto h-1.5 w-1.5 rounded-full ${
+                    b.status === "online"
+                      ? "bg-green-500"
+                      : b.status === "offline"
+                        ? "bg-zinc-500"
+                        : "bg-amber-500"
+                  }`}
+                />
+              </Link>
+            ))}
           </div>
         </Card>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-3">
         <StatCard
-          label="Active Polls"
+          label="Polls"
           value={stats?.totalPolls ?? "—"}
           icon={BarChart3}
           loading={loading}
-          delay={0}
         />
         <StatCard
           label="Blacklists"
           value={stats?.totalBlacklists ?? "—"}
           icon={Ban}
           loading={loading}
-          delay={0.05}
         />
         <StatCard
-          label="Closed Tickets"
+          label="Closed tickets"
           value={stats?.closedTickets ?? "—"}
           icon={Ticket}
           loading={loading}
-          delay={0.1}
         />
       </div>
     </div>

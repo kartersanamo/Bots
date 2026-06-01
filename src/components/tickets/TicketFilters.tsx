@@ -27,7 +27,7 @@ export function TicketFilters({
   canViewPrivate,
 }: TicketFiltersProps) {
   return (
-    <div className="glass space-y-4 rounded-xl p-4">
+    <div className="space-y-3 rounded-lg border border-border bg-surface p-4">
       <div className="flex flex-wrap gap-2">
         {(["open", "closed", "all"] as const).map((s) => (
           <button
@@ -37,8 +37,8 @@ export function TicketFilters({
             className={cn(
               "rounded-lg px-3 py-1.5 text-sm font-medium capitalize transition-colors",
               state.status === s
-                ? "bg-accent/25 text-accent-light"
-                : "text-muted hover:bg-surface-hover hover:text-white"
+                ? "bg-surface-hover text-white"
+                : "text-muted hover:text-white"
             )}
           >
             {s}

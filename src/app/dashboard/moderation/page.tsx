@@ -13,7 +13,6 @@ export default async function ModerationPage() {
     <>
       <Header
         title="Moderation"
-        description="Timeout, kick, ban, and unban members via Discord API."
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },
           { label: "Moderation" },

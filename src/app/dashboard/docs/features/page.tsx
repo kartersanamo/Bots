@@ -46,7 +46,6 @@ export default function FeaturesDocPage() {
     <>
       <Header
         title="Feature Roadmap"
-        description="High-level feature inventory for current and upcoming phases."
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },
           { label: "Docs", href: "/dashboard/docs" },

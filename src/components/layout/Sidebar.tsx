@@ -40,7 +40,7 @@ export function Sidebar({ user }: SidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const nav = (
-    <nav className="flex flex-1 flex-col gap-1 p-3">
+    <nav className="flex flex-1 flex-col gap-0.5 p-2">
       {NAV_ITEMS.map((item) => {
         const active = item.exact
           ? pathname === item.href
@@ -52,10 +52,10 @@ export function Sidebar({ user }: SidebarProps) {
             href={item.href}
             onClick={() => setMobileOpen(false)}
             className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+              "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
               active
-                ? "bg-accent/20 text-accent-light shadow-glow"
-                : "text-muted hover:bg-surface-hover hover:text-white"
+                ? "border-l-2 border-accent bg-surface-hover pl-[10px] text-white"
+                : "border-l-2 border-transparent text-muted hover:bg-surface-hover hover:text-white"
             )}
           >
             <Icon className="h-4 w-4 shrink-0" />
@@ -68,11 +68,11 @@ export function Sidebar({ user }: SidebarProps) {
 
   const userBlock = (
     <div className="border-t border-border p-3">
-      <div className="flex items-center gap-3 rounded-lg px-2 py-2">
+      <div className="flex items-center gap-2.5 px-2 py-2">
         <Avatar
           userId={user.id}
           avatarHash={user.avatar}
-          size={36}
+          size={32}
           alt={user.username}
         />
         <div className="min-w-0 flex-1">
@@ -87,7 +87,7 @@ export function Sidebar({ user }: SidebarProps) {
       <Link
         href="/api/auth/logout"
         prefetch={false}
-        className="mt-1 flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted transition-colors hover:bg-surface-hover hover:text-red-400"
+        className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted hover:bg-surface-hover hover:text-white"
       >
         <LogOut className="h-4 w-4" />
         Sign out
@@ -97,14 +97,11 @@ export function Sidebar({ user }: SidebarProps) {
 
   const sidebarContent = (
     <>
-      <div className="flex items-center gap-2 border-b border-border px-4 py-5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-purple">
+      <div className="flex items-center gap-2 border-b border-border px-4 py-4">
+        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-accent">
           <Bot className="h-4 w-4 text-white" />
         </div>
-        <div>
-          <p className="text-sm font-bold text-white">Bots</p>
-          <p className="text-xs text-muted">Minecadia</p>
-        </div>
+        <span className="font-semibold text-white">Bots</span>
       </div>
       {nav}
       {userBlock}
@@ -115,13 +112,13 @@ export function Sidebar({ user }: SidebarProps) {
     <>
       <button
         onClick={() => setMobileOpen(true)}
-        className="fixed left-4 top-4 z-40 rounded-lg bg-surface p-2 lg:hidden"
+        className="fixed left-4 top-4 z-40 rounded-md border border-border bg-surface p-2 lg:hidden"
         aria-label="Open menu"
       >
         <Menu className="h-5 w-5" />
       </button>
 
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-surface/50 lg:flex">
+      <aside className="hidden w-56 shrink-0 flex-col border-r border-border bg-surface lg:flex">
         {sidebarContent}
       </aside>
 
@@ -132,19 +129,19 @@ export function Sidebar({ user }: SidebarProps) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+              className="fixed inset-0 z-40 bg-black/60 lg:hidden"
               onClick={() => setMobileOpen(false)}
             />
             <motion.aside
               initial={{ x: -280 }}
               animate={{ x: 0 }}
               exit={{ x: -280 }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed inset-y-0 left-0 z-50 flex w-60 flex-col border-r border-border bg-surface lg:hidden"
+              transition={{ type: "spring", damping: 28, stiffness: 320 }}
+              className="fixed inset-y-0 left-0 z-50 flex w-56 flex-col border-r border-border bg-surface lg:hidden"
             >
               <button
                 onClick={() => setMobileOpen(false)}
-                className="absolute right-3 top-4 rounded-lg p-1 text-muted hover:text-white"
+                className="absolute right-3 top-4 rounded-md p-1 text-muted hover:text-white"
                 aria-label="Close menu"
               >
                 <X className="h-5 w-5" />

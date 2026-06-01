@@ -7,7 +7,6 @@ export default function ControlApiDocsPage() {
     <>
       <Header
         title="Control API"
-        description="Local FastAPI service for bot process, config, log, and DM management."
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },
           { label: "Docs", href: "/dashboard/docs" },

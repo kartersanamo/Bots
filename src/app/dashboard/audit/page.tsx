@@ -13,7 +13,6 @@ export default async function AuditPage() {
     <>
       <Header
         title="Audit Log"
-        description="Recent dashboard actions by staff members."
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },
           { label: "Audit" },

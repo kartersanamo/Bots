@@ -21,31 +21,28 @@ export function Header({
   action,
 }: HeaderProps) {
   return (
-    <div className={cn("mb-8", className)}>
+    <div className={cn("mb-6", className)}>
       {breadcrumbs && breadcrumbs.length > 0 && (
-        <nav className="mb-3 flex items-center gap-1 text-sm text-muted">
+        <nav className="mb-2 flex items-center gap-1 text-xs text-muted">
           {breadcrumbs.map((crumb, i) => (
             <span key={i} className="flex items-center gap-1">
               {i > 0 && <ChevronRight className="h-3 w-3" />}
               {crumb.href ? (
-                <Link
-                  href={crumb.href}
-                  className="hover:text-accent-light transition-colors"
-                >
+                <Link href={crumb.href} className="hover:text-white">
                   {crumb.label}
                 </Link>
               ) : (
-                <span className="text-white">{crumb.label}</span>
+                <span className="text-muted">{crumb.label}</span>
               )}
             </span>
           ))}
         </nav>
       )}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white md:text-3xl">{title}</h1>
+          <h1 className="text-xl font-semibold text-white">{title}</h1>
           {description && (
-            <p className="mt-1 text-sm text-muted md:text-base">{description}</p>
+            <p className="mt-1 text-sm text-muted">{description}</p>
           )}
         </div>
         {action && <div className="shrink-0">{action}</div>}

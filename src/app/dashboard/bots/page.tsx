@@ -12,7 +12,6 @@ export default async function BotsPage() {
     <>
       <Header
         title="Bots"
-        description="Manage all Minecadia bots — process control, logs, config, DMs, and actions."
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },
           { label: "Bots" },

@@ -5,7 +5,6 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { getAllBots } from "@/lib/bots/registry";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
 import { Play, RefreshCw, Square } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -101,9 +100,7 @@ export function FleetControl({ canRestart, canRestartAll }: { canRestart: boolea
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <p className="text-sm text-muted">
-          Live process status via Control API. Auto-refreshes every 15s.
-        </p>
+        <p className="text-xs text-muted">Refreshes every 15s.</p>
         <div className="flex gap-2">
           <Button variant="secondary" size="sm" onClick={refresh} disabled={loading}>
             <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
@@ -123,17 +120,11 @@ export function FleetControl({ canRestart, canRestartAll }: { canRestart: boolea
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {registry.map((bot, i) => {
+        {registry.map((bot) => {
           const row = bots.find((b) => b.id === bot.id);
           const status = row?.status ?? "unknown";
           return (
-            <motion.div
-              key={bot.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
-            >
-              <Card className="h-full">
+            <Card key={bot.id} className="h-full">
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <h3 className="font-semibold text-white">{bot.shortName}</h3>
@@ -176,8 +167,7 @@ export function FleetControl({ canRestart, canRestartAll }: { canRestart: boolea
                     </Button>
                   </div>
                 )}
-              </Card>
-            </motion.div>
+            </Card>
           );
         })}
       </div>

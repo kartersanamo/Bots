@@ -22,11 +22,10 @@ export function BotGridLive({ bots }: { bots: BotDefinition[] }) {
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {bots.map((bot, i) => (
+      {bots.map((bot) => (
         <BotCard
           key={bot.id}
           bot={bot}
-          index={i}
           status={
             (statuses[bot.id] as
               | "online"

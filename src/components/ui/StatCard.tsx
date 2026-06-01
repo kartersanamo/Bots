@@ -1,7 +1,6 @@
 "use client";
 
 import { cn, formatNumber } from "@/lib/utils";
-import { motion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 
 interface StatCardProps {
@@ -11,7 +10,6 @@ interface StatCardProps {
   trend?: string;
   loading?: boolean;
   className?: string;
-  delay?: number;
 }
 
 export function StatCard({
@@ -21,36 +19,32 @@ export function StatCard({
   trend,
   loading,
   className,
-  delay = 0,
 }: StatCardProps) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay }}
+    <div
       className={cn(
-        "glass glow-border rounded-xl p-5",
+        "rounded-lg border border-border bg-surface p-4",
         className
       )}
     >
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm text-muted">{label}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted">
+            {label}
+          </p>
           {loading ? (
-            <div className="mt-2 h-8 w-24 animate-pulse rounded bg-surface-hover" />
+            <div className="mt-2 h-7 w-20 animate-pulse rounded bg-surface-hover" />
           ) : (
-            <p className="mt-1 text-3xl font-bold text-white">
+            <p className="mt-1 text-2xl font-semibold text-white">
               {typeof value === "number" ? formatNumber(value) : value}
             </p>
           )}
           {trend && !loading && (
-            <p className="mt-1 text-xs text-accent-light">{trend}</p>
+            <p className="mt-0.5 text-xs text-muted">{trend}</p>
           )}
         </div>
-        <div className="rounded-lg bg-accent/10 p-2.5">
-          <Icon className="h-5 w-5 text-accent-light" />
-        </div>
+        <Icon className="h-4 w-4 shrink-0 text-muted" />
       </div>
-    </motion.div>
+    </div>
   );
 }

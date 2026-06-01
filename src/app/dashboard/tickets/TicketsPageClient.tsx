@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/Button";
 import type { TicketRow } from "@/lib/tickets/types";
 import { can, type PermissionTier } from "@/lib/permissions";
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface TicketsPageClientProps {
   userTier: PermissionTier;
@@ -47,69 +47,18 @@ export function TicketsPageClient({ userTier }: TicketsPageClientProps) {
     return () => clearInterval(t);
   }, [autoRefresh, refresh, refreshEnrich]);
 
-  function exportCsv() {
-    const headers = [
-      "number",
-      "type",
-      "ownerID",
-      "channelID",
-      "opened_at",
-      "active",
-      "intake",
-      "lastMessage",
-    ];
-    const rows = tickets.map((t) => {
-      const e = enrichments[t.channelID];
-      return [
-        t.number,
-        t.type,
-        t.ownerID,
-        t.channelID,
-        t.opened_at,
-        t.active,
-        (e?.intakePreview || "").replace(/"/g, '""'),
-        (e?.lastOwnerPreview || "").replace(/"/g, '""'),
-      ];
-    });
-    const csv = [
-      headers.join(","),
-      ...rows.map((r) => r.map((c) => `"${c}"`).join(",")),
-    ].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `tickets-${state.status}-page${state.page}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
   return (
     <>
       <Header
         title="Tickets"
-        description="Command center for support tickets — intake, activity, and quick access to Discord."
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },
           { label: "Tickets" },
         ]}
-        action={
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={exportCsv}
-            disabled={!tickets.length}
-          >
-            <Download className="h-4 w-4" />
-            Export page
-          </Button>
-        }
       />
 
       {!configured && (
-        <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-400">
-          Database not configured. Check your .env file.
-        </div>
+        <p className="mb-4 text-sm text-amber-400">Database not configured.</p>
       )}
 
       <div className="mb-6">

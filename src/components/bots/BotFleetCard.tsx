@@ -13,15 +13,11 @@ import {
   Gamepad2,
   Play,
   RefreshCw,
-  ScrollText,
   Shield,
   Square,
   Ticket,
   Users,
   Wrench,
-  FileJson,
-  Inbox,
-  ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
 import type { ElementType } from "react";
@@ -65,64 +61,44 @@ export function BotFleetCard({
   const status = row?.status ?? "unknown";
 
   return (
-    <Card className="flex h-full flex-col">
-      <Link
-        href={`/dashboard/bots/${bot.id}`}
-        className="group flex flex-1 flex-col"
-      >
-        <div className="flex items-start justify-between gap-2">
-          <div
-            className="flex h-12 w-12 items-center justify-center rounded-xl transition-transform group-hover:scale-105"
-            style={{ backgroundColor: `${bot.accentColor}20` }}
-          >
-            <Icon className="h-6 w-6" style={{ color: bot.accentColor }} />
+    <Card className="flex h-full flex-col p-4">
+      <Link href={`/dashboard/bots/${bot.id}`} className="block">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Icon className="h-4 w-4 text-muted" style={{ color: bot.accentColor }} />
+            <span className="font-medium text-white">{bot.shortName}</span>
           </div>
           <Badge variant={STATUS_VARIANT[status]}>{status}</Badge>
         </div>
-        <h3 className="mt-4 text-lg font-semibold text-white group-hover:text-accent-light">
-          {bot.shortName}
-        </h3>
-        <p className="text-xs text-muted">{bot.name}</p>
-        <p className="mt-2 line-clamp-2 flex-1 text-sm text-muted">
-          {bot.description}
+        <p className="mt-1 text-xs text-muted">
+          {formatBotUptime(row?.uptimeSeconds)}
+          {row?.pid ? ` · ${row.pid}` : ""}
         </p>
-        <p className="mt-2 text-xs text-muted">
-          Uptime {formatBotUptime(row?.uptimeSeconds)}
-          {row?.pid ? ` · PID ${row.pid}` : ""}
-        </p>
-        <span className="mt-2 flex items-center gap-1 text-sm text-accent-light opacity-0 transition-opacity group-hover:opacity-100">
-          Open workspace
-          <ChevronRight className="h-4 w-4" />
-        </span>
       </Link>
 
-      <div className="mt-3 flex flex-wrap gap-1 border-t border-border pt-3">
+      <div className="mt-3 flex gap-2 text-xs">
         <Link
           href={`/dashboard/bots/${bot.id}?tab=console`}
-          className="rounded-md px-2 py-1 text-xs text-muted hover:bg-surface-hover hover:text-white"
-          onClick={(e) => e.stopPropagation()}
+          className="text-muted hover:text-white"
         >
-          <ScrollText className="mr-1 inline h-3 w-3" />
           Console
         </Link>
         <Link
           href={`/dashboard/bots/${bot.id}?tab=config`}
-          className="rounded-md px-2 py-1 text-xs text-muted hover:bg-surface-hover hover:text-white"
+          className="text-muted hover:text-white"
         >
-          <FileJson className="mr-1 inline h-3 w-3" />
           Config
         </Link>
         <Link
           href={`/dashboard/bots/${bot.id}?tab=inbox`}
-          className="rounded-md px-2 py-1 text-xs text-muted hover:bg-surface-hover hover:text-white"
+          className="text-muted hover:text-white"
         >
-          <Inbox className="mr-1 inline h-3 w-3" />
           DMs
         </Link>
       </div>
 
       {canRestart && (
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-3 flex gap-1 border-t border-border pt-3">
           <Button
             size="sm"
             variant="secondary"

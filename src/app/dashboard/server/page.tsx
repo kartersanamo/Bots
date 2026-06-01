@@ -6,7 +6,6 @@ export default function ServerPage() {
     <>
       <Header
         title="Server"
-        description="Minecadia Discord server overview — members, channels, and roles."
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },
           { label: "Server" },

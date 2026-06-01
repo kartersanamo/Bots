@@ -143,10 +143,6 @@ export function BotActionsTab({ bot }: BotActionsTabProps) {
       {(bot.id === "tickets" || bot.id === "management") && (
         <Card>
           <h3 className="mb-3 font-medium text-white">Close ticket</h3>
-          <p className="mb-3 text-xs text-muted">
-            Runs the bot <code className="text-accent-light">/close</code> flow
-            in Discord as your account.
-          </p>
           <div className="flex flex-col gap-2">
             <input
               placeholder="Ticket channel ID"

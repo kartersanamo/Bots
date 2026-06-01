@@ -13,8 +13,7 @@ export const metadata: Metadata = {
     default: "Bots — Minecadia Dashboard",
     template: "%s | Bots",
   },
-  description:
-    "Manage all Minecadia Discord bots and your server from one modern dashboard.",
+  description: "Minecadia staff dashboard for Discord bots.",
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_APP_URL || "https://bots.kartersanamo.com"
   ),

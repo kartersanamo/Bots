@@ -201,19 +201,9 @@ export function TicketDetailDrawer({
                   </div>
 
                   {showCloseForm && (
-                    <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 space-y-3">
-                      <p className="text-sm text-white font-medium">
-                        Close ticket (runs /close in Discord)
-                      </p>
-                      <p className="text-xs text-muted">
-                        This runs the same flow as{" "}
-                        <code className="text-accent-light">/close</code> in the
-                        ticket channel, attributed to your logged-in Discord
-                        account.
-                      </p>
-                      <label className="block text-xs font-medium text-muted">
-                        Reason
-                      </label>
+                    <div className="rounded-lg border border-border p-4 space-y-3">
+                      <p className="text-sm font-medium text-white">Close ticket</p>
+                      <label className="block text-xs text-muted">Reason</label>
                       <textarea
                         value={closeReason}
                         onChange={(e) => setCloseReason(e.target.value)}
@@ -232,7 +222,7 @@ export function TicketDetailDrawer({
                           onClick={submitCloseTicket}
                           disabled={closing}
                         >
-                          {closing ? "Closing…" : "Confirm close"}
+                          {closing ? "Closing…" : "Close"}
                         </Button>
                         <Button
                           variant="secondary"

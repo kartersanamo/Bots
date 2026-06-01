@@ -6,7 +6,6 @@ export default function ArchitectureDocPage() {
     <>
       <Header
         title="Architecture"
-        description="How authentication, authorization, and data flow work in Bots."
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },
           { label: "Docs", href: "/dashboard/docs" },

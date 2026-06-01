@@ -6,7 +6,6 @@ export default function DeploymentDocPage() {
     <>
       <Header
         title="Deployment"
-        description="Production deployment checklist for bots.kartersanamo.com."
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },
           { label: "Docs", href: "/dashboard/docs" },

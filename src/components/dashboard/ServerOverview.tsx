@@ -5,7 +5,6 @@ import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CHANNEL_TYPE_LABELS } from "@/lib/discord/api";
 import { formatNumber } from "@/lib/utils";
-import { motion } from "framer-motion";
 import { Hash, Server, Users, Volume2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -66,7 +65,7 @@ export function ServerOverview() {
       <EmptyState
         icon={Server}
         title="Discord API not configured"
-        description="Add DISCORD_BOT_TOKEN and DISCORD_GUILD_ID to your .env file to view server information."
+        description="Set DISCORD_BOT_TOKEN and DISCORD_GUILD_ID in .env."
       />
     );
   }
@@ -87,23 +86,14 @@ export function ServerOverview() {
             icon: Users,
           },
           { label: "Boost Tier", value: `Tier ${guild.premiumTier}`, icon: Server },
-        ].map((stat, i) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.08 }}
-          >
-            <Card className="flex items-center gap-4">
-              <div className="rounded-lg bg-accent/10 p-3">
-                <stat.icon className="h-5 w-5 text-accent-light" />
-              </div>
-              <div>
-                <p className="text-sm text-muted">{stat.label}</p>
-                <p className="text-2xl font-bold text-white">{stat.value}</p>
-              </div>
-            </Card>
-          </motion.div>
+        ].map((stat) => (
+          <Card key={stat.label} className="flex items-center gap-3 p-4">
+            <stat.icon className="h-4 w-4 text-muted" />
+            <div>
+              <p className="text-xs text-muted">{stat.label}</p>
+              <p className="text-xl font-semibold text-white">{stat.value}</p>
+            </div>
+          </Card>
         ))}
       </div>
 
@@ -111,7 +101,7 @@ export function ServerOverview() {
         <Card>
           <div className="mb-4 flex items-center gap-2">
             <Hash className="h-4 w-4 text-accent-light" />
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-sm font-semibold text-white">
               Channels ({textChannels.length + voiceChannels.length})
             </h2>
           </div>
@@ -143,7 +133,7 @@ export function ServerOverview() {
         <Card>
           <div className="mb-4 flex items-center gap-2">
             <Users className="h-4 w-4 text-accent-light" />
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-sm font-semibold text-white">
               Roles ({roles.length})
             </h2>
           </div>

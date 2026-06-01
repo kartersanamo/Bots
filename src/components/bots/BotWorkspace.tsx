@@ -110,21 +110,15 @@ export function BotWorkspace({
         </Link>
       </div>
 
-      <div className="glass sticky top-0 z-10 rounded-xl border border-border/80 p-4 backdrop-blur-md">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div
-              className="flex h-14 w-14 items-center justify-center rounded-xl"
-              style={{ backgroundColor: `${bot.accentColor}20` }}
-            >
-              <Icon className="h-7 w-7" style={{ color: bot.accentColor }} />
-            </div>
+      <div className="sticky top-0 z-10 border-b border-border bg-background pb-0">
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-3">
+          <div className="flex items-center gap-3">
+            <Icon className="h-5 w-5" style={{ color: bot.accentColor }} />
             <div>
-              <h1 className="text-xl font-bold text-white">{bot.shortName}</h1>
-              <p className="text-sm text-muted">{bot.name}</p>
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
+              <h1 className="text-lg font-semibold text-white">{bot.shortName}</h1>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
                 <Badge variant={STATUS_VARIANT[status]}>{status}</Badge>
-                <span>Uptime {formatBotUptime(row?.uptimeSeconds)}</span>
+                <span>{formatBotUptime(row?.uptimeSeconds)}</span>
                 {row?.pid ? <span>PID {row.pid}</span> : null}
               </div>
             </div>
@@ -159,17 +153,17 @@ export function BotWorkspace({
           )}
         </div>
 
-        <nav className="mt-4 flex flex-wrap gap-1 border-t border-border pt-4">
+        <nav className="flex gap-4">
           {visibleTabs.map((t) => (
             <button
               key={t.id}
               type="button"
               onClick={() => setTab(t.id)}
               className={cn(
-                "rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                "border-b-2 pb-2 text-sm transition-colors",
                 activeTab === t.id
-                  ? "bg-accent/25 text-accent-light"
-                  : "text-muted hover:bg-surface-hover hover:text-white"
+                  ? "border-accent text-white"
+                  : "border-transparent text-muted hover:text-white"
               )}
             >
               {t.label}

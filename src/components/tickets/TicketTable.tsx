@@ -10,7 +10,6 @@ import { discordChannelUrl } from "@/lib/discord/guild";
 import { Avatar } from "@/components/ui/Avatar";
 import { ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
 
 interface TicketTableProps {
   tickets: TicketRow[];
@@ -39,7 +38,7 @@ export function TicketTable({
         {[...Array(5)].map((_, i) => (
           <div
             key={i}
-            className="h-20 animate-pulse rounded-xl bg-surface-hover"
+            className="h-16 animate-pulse rounded-md bg-surface-hover"
           />
         ))}
       </div>
@@ -48,8 +47,8 @@ export function TicketTable({
 
   if (!tickets.length) {
     return (
-      <div className="rounded-xl border border-border py-16 text-center text-muted">
-        No tickets match your filters.
+      <div className="rounded-lg border border-border py-12 text-center text-sm text-muted">
+        No tickets found.
       </div>
     );
   }
@@ -71,18 +70,15 @@ export function TicketTable({
             </tr>
           </thead>
           <tbody>
-            {tickets.map((t, i) => {
+            {tickets.map((t) => {
               const e = enrichments[t.channelID];
               const awaiting = e?.awaitingUser && !e?.enrichmentError;
               return (
-                <motion.tr
+                <tr
                   key={t.channelID}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.02 }}
                   onClick={() => onSelect(t)}
                   className={cn(
-                    "cursor-pointer border-b border-border/50 transition-colors hover:bg-accent/5",
+                    "cursor-pointer border-b border-border transition-colors hover:bg-surface-hover",
                     awaiting && "bg-amber-500/5"
                   )}
                 >
@@ -152,7 +148,7 @@ export function TicketTable({
                       </Button>
                     </a>
                   </td>
-                </motion.tr>
+                </tr>
               );
             })}
           </tbody>
@@ -167,7 +163,7 @@ export function TicketTable({
               key={t.channelID}
               type="button"
               onClick={() => onSelect(t)}
-              className="glass w-full rounded-xl p-4 text-left"
+              className="w-full rounded-lg border border-border bg-surface p-4 text-left hover:bg-surface-hover"
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="font-mono text-accent-light">#{t.number}</span>
