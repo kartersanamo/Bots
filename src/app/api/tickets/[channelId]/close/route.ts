@@ -64,9 +64,19 @@ export const POST = handleApiRoute(async (request, { params }) => {
     });
   } catch (err) {
     if (err instanceof TicketsBotApiError) {
-      return Response.json({ error: err.message }, { status: err.status });
+      const status = err.status >= 400 && err.status < 600 ? err.status : 503;
+      return Response.json({ error: err.message }, { status });
     }
-    throw err;
+    console.error("[tickets] close failed:", err);
+    return Response.json(
+      {
+        error:
+          err instanceof Error
+            ? err.message
+            : "Failed to close ticket",
+      },
+      { status: 500 }
+    );
   }
 
   return Response.json({ ok: true });

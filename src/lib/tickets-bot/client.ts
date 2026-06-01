@@ -34,19 +34,29 @@ export async function closeTicketViaBot(params: {
   reason: string;
 }): Promise<void> {
   const url = `${baseUrl()}/close-ticket`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "X-Tickets-Key": secret(),
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      channel_id: params.channelId,
-      closed_by_id: params.closedById,
-      reason: params.reason,
-    }),
-    cache: "no-store",
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "X-Tickets-Key": secret(),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        channel_id: params.channelId,
+        closed_by_id: params.closedById,
+        reason: params.reason,
+      }),
+      cache: "no-store",
+    });
+  } catch (err) {
+    const msg =
+      err instanceof Error ? err.message : "Connection failed";
+    throw new TicketsBotApiError(
+      `Cannot reach MinecadiaTickets API at ${baseUrl()} (${msg}). Restart the tickets bot so the dashboard close server starts on port 8788.`,
+      503
+    );
+  }
 
   const text = await res.text();
   let data: unknown;
