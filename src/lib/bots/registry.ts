@@ -41,10 +41,13 @@ export const BOT_REGISTRY: BotDefinition[] = [
     configFiles: [
       "assets/Configs/bot.json",
       "assets/Configs/discord.json",
-      "assets/Configs/chat_games.json",
-      "assets/Configs/dm_games.json",
+      "assets/Configs/games/chat.json",
+      "assets/Configs/games/dm.json",
       "assets/Configs/leveling.json",
       "assets/Configs/milestones.json",
+      "assets/Configs/rewards.json",
+      "assets/Configs/games/trivia.json",
+      "assets/Configs/winners.json",
     ],
     databaseTables: [
       "leveling",

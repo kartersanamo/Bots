@@ -1,9 +1,14 @@
 "use client";
 
 import { BotActionsTab } from "@/components/bots/BotActionsTab";
+import { BotGamesTab } from "@/components/games/BotGamesTab";
 import { BotInfoTab } from "@/components/bots/BotInfoTab";
 import { BotOverviewTab } from "@/components/bots/BotOverviewTab";
-import { BOT_TABS, parseBotTab, type BotTab } from "@/components/bots/bot-tabs";
+import {
+  parseBotTab,
+  tabsForBot,
+  type BotTab,
+} from "@/components/bots/bot-tabs";
 import { ConfigEditor } from "@/components/fleet/ConfigEditor";
 import { DmInbox } from "@/components/fleet/DmInbox";
 import { LogViewer } from "@/components/fleet/LogViewer";
@@ -72,7 +77,11 @@ export function BotWorkspace({
 }: BotWorkspaceProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const tab = parseBotTab(searchParams.get("tab"));
+  const isGamesBot = bot.id === "games";
+  const tab = parseBotTab(searchParams.get("tab"), {
+    isGamesBot,
+    defaultTab: isGamesBot ? "games" : "overview",
+  });
   const fleet = useBotFleet(30_000);
   const { bots, actionLoading, runAction } = fleet;
   const row = bots.find((b) => b.id === bot.id);
@@ -81,20 +90,24 @@ export function BotWorkspace({
 
   const visibleTabs = useMemo(
     () =>
-      BOT_TABS.filter(
+      tabsForBot(bot.id).filter(
         (t) => !t.permission || can(userTier, t.permission)
       ),
-    [userTier]
+    [bot.id, userTier]
   );
 
   const activeTab: BotTab = visibleTabs.some((t) => t.id === tab)
     ? tab
-    : visibleTabs[0]?.id ?? "overview";
+    : visibleTabs[0]?.id ?? (isGamesBot ? "games" : "overview");
 
   function setTab(next: BotTab) {
     const params = new URLSearchParams(searchParams.toString());
-    if (next === "overview") params.delete("tab");
-    else params.set("tab", next);
+    if (next === (isGamesBot ? "games" : "overview")) {
+      params.delete("tab");
+      if (isGamesBot) params.delete("section");
+    } else {
+      params.set("tab", next);
+    }
     const qs = params.toString();
     router.push(`/dashboard/bots/${bot.id}${qs ? `?${qs}` : ""}`);
   }
@@ -173,6 +186,9 @@ export function BotWorkspace({
         </nav>
       </div>
 
+      {activeTab === "games" && isGamesBot && can(userTier, "games.read") && (
+        <BotGamesTab userTier={userTier} botId={bot.id} />
+      )}
       {activeTab === "overview" && (
         <BotOverviewTab bot={bot} canRestart={canRestart} fleet={fleet} />
       )}

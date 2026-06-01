@@ -81,6 +81,72 @@ export async function addLevelingXp(userId: string, amount: number) {
   return { xp, level };
 }
 
+export async function awardXpWithLog(
+  userId: string,
+  amount: number,
+  opts: { source?: string; gameId?: number; channelId?: string } = {}
+) {
+  assertWriteDb();
+  const result = await addLevelingXp(userId, amount);
+  await writeQuery(
+    `INSERT INTO xp_logs (game_id, user_id, xp, channel_id, source, timestamp)
+     VALUES (?, ?, ?, ?, ?, UNIX_TIMESTAMP())`,
+    [
+      opts.gameId ?? 0,
+      userId,
+      amount,
+      opts.channelId ?? null,
+      opts.source ?? "dashboard",
+    ]
+  );
+  await writeQuery(
+    `UPDATE leveling SET active = 1, ever_played = 1 WHERE user_id = ?`,
+    [userId]
+  );
+  return result;
+}
+
+export async function setDailyClaim(
+  userId: string,
+  streak: number,
+  lastClaimed: string | null
+) {
+  assertWriteDb();
+  await writeQuery(
+    `INSERT INTO daily_claims (user_id, streak, last_claimed)
+     VALUES (?, ?, ?)
+     ON DUPLICATE KEY UPDATE streak = ?, last_claimed = ?`,
+    [userId, streak, lastClaimed, streak, lastClaimed]
+  );
+}
+
+export async function resetCountingServer(guildId: string) {
+  assertWriteDb();
+  await writeQuery(
+    `UPDATE counting_server SET last_number = 0, total_counts = 0, highest_count = 0
+     WHERE guild_id = ?`,
+    [guildId]
+  );
+  await writeQuery(`DELETE FROM counting_users WHERE guild_id = ?`, [guildId]);
+}
+
+export async function grantAchievement(userId: string, achievementId: string) {
+  assertWriteDb();
+  await writeQuery(
+    `INSERT IGNORE INTO user_achievements (user_id, achievement_id, earned_at)
+     VALUES (?, ?, NOW())`,
+    [userId, achievementId]
+  );
+}
+
+export async function revokeAchievement(userId: string, achievementId: string) {
+  assertWriteDb();
+  await writeQuery(
+    `DELETE FROM user_achievements WHERE user_id = ? AND achievement_id = ?`,
+    [userId, achievementId]
+  );
+}
+
 export async function closePoll(pollId: string | number) {
   assertWriteDb();
   await writeQuery(`UPDATE polls SET active = 0 WHERE id = ?`, [pollId]);

@@ -26,8 +26,6 @@ export function BotActionsTab({ bot }: BotActionsTabProps) {
   const [userId, setUserId] = useState("");
   const [channelId, setChannelId] = useState("");
   const [closeReason, setCloseReason] = useState("");
-  const [xp, setXp] = useState("");
-  const [level, setLevel] = useState("1");
   const [pollId, setPollId] = useState("");
   const [factionId, setFactionId] = useState("");
   const [statField, setStatField] = useState("tickets_closed");
@@ -53,21 +51,6 @@ export function BotActionsTab({ bot }: BotActionsTabProps) {
           ? "Ticket close dispatched via bot /close"
           : `Error: ${data.error || "Failed"}`
       );
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function setLeveling() {
-    if (!userId.trim()) return;
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/leveling/${userId.trim()}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ xp: Number(xp), level: Number(level) }),
-      });
-      setMessage(res.ok ? "Leveling updated" : "Error: failed to update");
     } finally {
       setLoading(false);
     }
@@ -168,35 +151,6 @@ export function BotActionsTab({ bot }: BotActionsTabProps) {
                 </Button>
               </Link>
             </div>
-          </div>
-        </Card>
-      )}
-
-      {bot.id === "games" && (
-        <Card>
-          <h3 className="mb-3 font-medium text-white">Leveling</h3>
-          <div className="flex flex-wrap gap-2">
-            <input
-              placeholder="User ID"
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              className={inputClass}
-            />
-            <input
-              placeholder="XP"
-              value={xp}
-              onChange={(e) => setXp(e.target.value)}
-              className={`w-24 ${inputClass}`}
-            />
-            <input
-              placeholder="Level"
-              value={level}
-              onChange={(e) => setLevel(e.target.value)}
-              className={`w-20 ${inputClass}`}
-            />
-            <Button size="sm" onClick={setLeveling} disabled={loading}>
-              Set XP / level
-            </Button>
           </div>
         </Card>
       )}

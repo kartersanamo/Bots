@@ -1,0 +1,299 @@
+import { query, queryOne, isDbConfigured } from "@/lib/db/pool";
+import type {
+  AllTimeLeaderboardType,
+  CountingServerRow,
+  CountingUserRow,
+  DailyClaimRow,
+  GameSessionRow,
+  GamesOverview,
+  LeaderboardEntry,
+  LevelingRow,
+  UserAchievementRow,
+  XpLogRow,
+} from "@/lib/games/types";
+
+const CHAT_WIN_SOURCES: Record<string, string> = {
+  trivia_wins: "Trivia",
+  math_quiz_wins: "Math Quiz",
+  flag_guesser_wins: "Flag Guesser",
+  unscramble_wins: "Unscramble",
+  emoji_quiz_wins: "Emoji Quiz",
+};
+
+const DM_WIN_TABLES: Record<string, { table: string; wonCol: string }> = {
+  tictactoe_wins: { table: "users_tictactoe", wonCol: "won" },
+  wordle_wins: { table: "users_wordle", wonCol: "won" },
+  connect_four_wins: { table: "users_connectfour", wonCol: "status" },
+  memory_wins: { table: "users_memory", wonCol: "won" },
+  "2048_wins": { table: "users_2048", wonCol: "status" },
+  minesweeper_wins: { table: "users_minesweeper", wonCol: "won" },
+  hangman_wins: { table: "users_hangman", wonCol: "won" },
+};
+
+export async function getGamesOverview(): Promise<GamesOverview | null> {
+  if (!isDbConfigured()) return null;
+  try {
+    const row = await queryOne<{
+      activePlayers: number;
+      everPlayed: number;
+      openSessions: number;
+      totalXpLogs: number;
+    }>(
+      `SELECT
+        (SELECT COUNT(*) FROM leveling WHERE active = '1' OR active = 1) AS activePlayers,
+        (SELECT COUNT(*) FROM leveling WHERE ever_played = '1' OR ever_played = 1) AS everPlayed,
+        (SELECT COUNT(*) FROM games WHERE game_id != -999999) AS openSessions,
+        (SELECT COUNT(*) FROM xp_logs) AS totalXpLogs`
+    );
+    return row;
+  } catch (err) {
+    console.error("[db] getGamesOverview failed:", err);
+    return null;
+  }
+}
+
+export async function listMonthlyLeaderboard(opts: {
+  page?: number;
+  limit?: number;
+  search?: string;
+}): Promise<{ rows: LevelingRow[]; total: number }> {
+  if (!isDbConfigured()) return { rows: [], total: 0 };
+
+  const page = Math.max(1, opts.page ?? 1);
+  const limit = Math.min(200, Math.max(1, opts.limit ?? 50));
+  const offset = (page - 1) * limit;
+
+  const conditions = ["1=1"];
+  const params: string[] = [];
+  if (opts.search?.trim()) {
+    conditions.push("user_id LIKE ?");
+    params.push(`%${opts.search.trim()}%`);
+  }
+  const where = conditions.join(" AND ");
+
+  const countRow = await queryOne<{ total: number }>(
+    `SELECT COUNT(*) AS total FROM leveling WHERE ${where}`,
+    params
+  );
+  const rows = await query<LevelingRow>(
+    `SELECT user_id, xp, level, active, ever_played
+     FROM leveling
+     WHERE ${where}
+     ORDER BY CAST(level AS UNSIGNED) DESC, CAST(xp AS UNSIGNED) DESC
+     LIMIT ? OFFSET ?`,
+    [...params, limit, offset]
+  );
+  return { rows, total: countRow?.total ?? 0 };
+}
+
+export async function getAllTimeLeaderboard(
+  type: AllTimeLeaderboardType,
+  limit = 100
+): Promise<LeaderboardEntry[]> {
+  if (!isDbConfigured()) return [];
+
+  if (type === "all_time_xp") {
+    const rows = await query<{ user_id: string; value: number }>(
+      `SELECT user_id, SUM(xp) AS value FROM xp_logs
+       GROUP BY user_id ORDER BY value DESC LIMIT ?`,
+      [limit]
+    );
+    return rows.map((r, i) => ({
+      userId: String(r.user_id),
+      value: Number(r.value),
+      rank: i + 1,
+    }));
+  }
+
+  if (type === "all_time_level") {
+    const rows = await query<{ user_id: string; total_xp: number }>(
+      `SELECT user_id, SUM(xp) AS total_xp FROM xp_logs
+       GROUP BY user_id ORDER BY total_xp DESC LIMIT ?`,
+      [limit]
+    );
+    return rows.map((r, i) => ({
+      userId: String(r.user_id),
+      value: Number(r.total_xp),
+      rank: i + 1,
+      extra: "xp",
+    }));
+  }
+
+  if (type === "2048_best_score") {
+    const rows = await query<{ user_id: string; value: number }>(
+      `SELECT user_id, MAX(score) AS value FROM users_2048
+       GROUP BY user_id ORDER BY value DESC LIMIT ?`,
+      [limit]
+    );
+    return rows.map((r, i) => ({
+      userId: String(r.user_id),
+      value: Number(r.value),
+      rank: i + 1,
+    }));
+  }
+
+  const chatSource = CHAT_WIN_SOURCES[type];
+  if (chatSource) {
+    const rows = await query<{ user_id: string; value: number }>(
+      `SELECT user_id, COUNT(*) AS value FROM xp_logs
+       WHERE source = ? GROUP BY user_id ORDER BY value DESC LIMIT ?`,
+      [chatSource, limit]
+    );
+    return rows.map((r, i) => ({
+      userId: String(r.user_id),
+      value: Number(r.value),
+      rank: i + 1,
+    }));
+  }
+
+  const dm = DM_WIN_TABLES[type];
+  if (dm) {
+    const wonFilter =
+      dm.wonCol === "status"
+        ? "status = 'Won'"
+        : `${dm.wonCol} = 1`;
+    const rows = await query<{ user_id: string; value: number }>(
+      `SELECT user_id, COUNT(*) AS value FROM ${dm.table}
+       WHERE ${wonFilter} GROUP BY user_id ORDER BY value DESC LIMIT ?`,
+      [limit]
+    );
+    return rows.map((r, i) => ({
+      userId: String(r.user_id),
+      value: Number(r.value),
+      rank: i + 1,
+    }));
+  }
+
+  return [];
+}
+
+export async function listXpLogs(opts: {
+  page?: number;
+  limit?: number;
+  userId?: string;
+  source?: string;
+  gameId?: string;
+}): Promise<{ rows: XpLogRow[]; total: number }> {
+  if (!isDbConfigured()) return { rows: [], total: 0 };
+
+  const page = Math.max(1, opts.page ?? 1);
+  const limit = Math.min(100, Math.max(1, opts.limit ?? 50));
+  const offset = (page - 1) * limit;
+  const conditions = ["game_id != -999999"];
+  const params: (string | number)[] = [];
+
+  if (opts.userId) {
+    conditions.push("user_id = ?");
+    params.push(opts.userId);
+  }
+  if (opts.source) {
+    conditions.push("source = ?");
+    params.push(opts.source);
+  }
+  if (opts.gameId) {
+    conditions.push("game_id = ?");
+    params.push(Number(opts.gameId));
+  }
+
+  const where = conditions.join(" AND ");
+  const countRow = await queryOne<{ total: number }>(
+    `SELECT COUNT(*) AS total FROM xp_logs WHERE ${where}`,
+    params
+  );
+  const rows = await query<XpLogRow>(
+    `SELECT game_id, user_id, xp, channel_id, source, timestamp
+     FROM xp_logs WHERE ${where}
+     ORDER BY timestamp DESC LIMIT ? OFFSET ?`,
+    [...params, limit, offset]
+  );
+  return { rows, total: countRow?.total ?? 0 };
+}
+
+export async function listGameSessions(limit = 50): Promise<GameSessionRow[]> {
+  if (!isDbConfigured()) return [];
+  return query<GameSessionRow>(
+    `SELECT game_id, game_name, refreshed_at, dm_game
+     FROM games WHERE game_id != -999999
+     ORDER BY refreshed_at DESC LIMIT ?`,
+    [limit]
+  );
+}
+
+export async function getUserGamesProfile(userId: string) {
+  if (!isDbConfigured()) return null;
+
+  const leveling = await queryOne<LevelingRow>(
+    `SELECT user_id, xp, level, active, ever_played FROM leveling WHERE user_id = ?`,
+    [userId]
+  );
+  const daily = await queryOne<DailyClaimRow>(
+    `SELECT user_id, last_claimed, streak FROM daily_claims WHERE user_id = ?`,
+    [userId]
+  );
+  const achievements = await query<UserAchievementRow>(
+    `SELECT user_id, achievement_id, earned_at FROM user_achievements WHERE user_id = ?`,
+    [userId]
+  );
+  const badge = await queryOne<{ selected_badge_id: string }>(
+    `SELECT selected_badge_id FROM user_badge_preferences WHERE user_id = ?`,
+    [userId]
+  );
+  const totalXp = await queryOne<{ total: number }>(
+    `SELECT COALESCE(SUM(xp), 0) AS total FROM xp_logs WHERE user_id = ?`,
+    [userId]
+  );
+
+  return {
+    leveling: leveling ?? { user_id: userId, xp: 0, level: 1, active: 0, ever_played: 0 },
+    daily,
+    achievements,
+    selectedBadgeId: badge?.selected_badge_id ?? null,
+    allTimeXp: Number(totalXp?.total ?? 0),
+  };
+}
+
+export async function listDailyClaims(opts: {
+  page?: number;
+  limit?: number;
+}): Promise<{ rows: DailyClaimRow[]; total: number }> {
+  if (!isDbConfigured()) return { rows: [], total: 0 };
+  const page = Math.max(1, opts.page ?? 1);
+  const limit = Math.min(100, opts.limit ?? 50);
+  const offset = (page - 1) * limit;
+  const countRow = await queryOne<{ total: number }>(
+    `SELECT COUNT(*) AS total FROM daily_claims`
+  );
+  const rows = await query<DailyClaimRow>(
+    `SELECT user_id, last_claimed, streak FROM daily_claims
+     ORDER BY streak DESC LIMIT ? OFFSET ?`,
+    [limit, offset]
+  );
+  return { rows, total: countRow?.total ?? 0 };
+}
+
+export async function getCountingData(guildId: string) {
+  if (!isDbConfigured()) return { server: null, users: [] as CountingUserRow[] };
+
+  const server = await queryOne<CountingServerRow>(
+    `SELECT guild_id, last_number, total_counts, highest_count
+     FROM counting_server WHERE guild_id = ?`,
+    [guildId]
+  );
+  const users = await query<CountingUserRow>(
+    `SELECT user_id, total_counts, highest_count, mistakes
+     FROM counting_users WHERE guild_id = ?
+     ORDER BY total_counts DESC LIMIT 50`,
+    [guildId]
+  );
+  return { server, users };
+}
+
+export async function listRecentXpLogs(limit = 10): Promise<XpLogRow[]> {
+  if (!isDbConfigured()) return [];
+  return query<XpLogRow>(
+    `SELECT game_id, user_id, xp, channel_id, source, timestamp
+     FROM xp_logs WHERE game_id != -999999
+     ORDER BY timestamp DESC LIMIT ?`,
+    [limit]
+  );
+}

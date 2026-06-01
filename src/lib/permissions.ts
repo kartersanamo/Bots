@@ -27,7 +27,11 @@ export type PermissionAction =
   | "factions.write"
   | "discord.moderate"
   | "discord.channels"
-  | "bot.panels";
+  | "bot.panels"
+  | "games.read"
+  | "games.write"
+  | "games.control"
+  | "games.wipe";
 
 const TIER_RANK: Record<PermissionTier, number> = {
   owner: 100,
@@ -61,6 +65,10 @@ export const ACTION_TIER: Record<PermissionAction, PermissionTier> = {
   "discord.moderate": "admin",
   "discord.channels": "manager",
   "bot.panels": "admin",
+  "games.read": "helper",
+  "games.write": "admin",
+  "games.control": "admin",
+  "games.wipe": "manager",
 };
 
 /** Role IDs from MinecadiaTickets config ROLE_HIERARCHY */
