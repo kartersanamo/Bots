@@ -1,7 +1,9 @@
 "use client";
 
 import { Card } from "@/components/ui/Card";
+import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { can, type PermissionTier } from "@/lib/permissions";
+import { formatUnixTimestamp } from "@/lib/utils";
 import { useEffect, useState } from "react";
 
 export function GamesAchievementsSection({
@@ -37,10 +39,12 @@ export function GamesAchievementsSection({
           <tbody>
             {grants.map((g, i) => (
               <tr key={i} className="border-b border-border/50">
-                <td className="py-2 pr-4 font-mono text-xs">{g.user_id}</td>
+                <td className="py-2 pr-4">
+                  <DiscordUserChip userId={g.user_id} />
+                </td>
                 <td className="py-2 pr-4 text-xs">{g.achievement_id}</td>
                 <td className="py-2 text-xs text-muted">
-                  {g.earned_at || "—"}
+                  {formatUnixTimestamp(g.earned_at)}
                 </td>
               </tr>
             ))}

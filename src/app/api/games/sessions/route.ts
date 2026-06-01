@@ -4,12 +4,17 @@ import { isDbConfigured } from "@/lib/db/pool";
 
 export const GET = handleApiRoute(async (request) => {
   await requireAction("games.read");
-  const limit = Number(new URL(request.url).searchParams.get("limit") || 50);
+  const url = new URL(request.url);
+  const limit = Number(url.searchParams.get("limit") || 80);
+  const search = url.searchParams.get("search") || undefined;
+  const dmParam = url.searchParams.get("dm");
+  const dm =
+    dmParam === "chat" || dmParam === "dm" ? dmParam : ("all" as const);
 
   if (!isDbConfigured()) {
     return Response.json({ sessions: [], configured: false });
   }
 
-  const sessions = await listGameSessions(limit);
+  const sessions = await listGameSessions({ limit, search, dm });
   return Response.json({ sessions, configured: true });
 });

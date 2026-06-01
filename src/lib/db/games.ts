@@ -209,13 +209,65 @@ export async function listXpLogs(opts: {
   return { rows, total: countRow?.total ?? 0 };
 }
 
-export async function listGameSessions(limit = 50): Promise<GameSessionRow[]> {
+export async function listGameSessions(opts: {
+  limit?: number;
+  dm?: "all" | "chat" | "dm";
+  search?: string;
+} = {}): Promise<GameSessionRow[]> {
   if (!isDbConfigured()) return [];
+  const limit = Math.min(200, Math.max(1, opts.limit ?? 50));
+  const conditions = ["game_id != -999999"];
+  const params: (string | number)[] = [];
+
+  if (opts.dm === "chat") {
+    conditions.push("(dm_game = 0 OR dm_game = FALSE OR dm_game = '0')");
+  } else if (opts.dm === "dm") {
+    conditions.push("(dm_game = 1 OR dm_game = TRUE OR dm_game = '1')");
+  }
+
+  if (opts.search?.trim()) {
+    const q = `%${opts.search.trim()}%`;
+    conditions.push("(CAST(game_id AS CHAR) LIKE ? OR game_name LIKE ?)");
+    params.push(q, q);
+  }
+
   return query<GameSessionRow>(
     `SELECT game_id, game_name, refreshed_at, dm_game
-     FROM games WHERE game_id != -999999
+     FROM games WHERE ${conditions.join(" AND ")}
      ORDER BY refreshed_at DESC LIMIT ?`,
-    [limit]
+    [...params, limit]
+  );
+}
+
+export async function getGameSession(gameId: number) {
+  if (!isDbConfigured()) return null;
+  const game = await queryOne<GameSessionRow>(
+    `SELECT game_id, game_name, refreshed_at, dm_game
+     FROM games WHERE game_id = ?`,
+    [gameId]
+  );
+  if (!game) return null;
+
+  const xpLogs = await query<XpLogRow>(
+    `SELECT game_id, user_id, xp, channel_id, source, timestamp
+     FROM xp_logs WHERE game_id = ?
+     ORDER BY timestamp DESC LIMIT 100`,
+    [gameId]
+  );
+
+  return { game, xpLogs };
+}
+
+export async function listDmSessionEntries(
+  gameId: number,
+  table: string,
+  columns: string[]
+) {
+  if (!isDbConfigured()) return [];
+  const cols = columns.join(", ");
+  return query<Record<string, string | number | null>>(
+    `SELECT ${cols} FROM ${table} WHERE game_id = ? ORDER BY started_at DESC`,
+    [gameId]
   );
 }
 

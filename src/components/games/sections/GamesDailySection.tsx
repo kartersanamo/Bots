@@ -1,7 +1,9 @@
 "use client";
 
 import { Card } from "@/components/ui/Card";
+import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { can, type PermissionTier } from "@/lib/permissions";
+import { formatUnixTimestamp } from "@/lib/utils";
 import { useEffect, useState } from "react";
 
 export function GamesDailySection({ userTier }: { userTier: PermissionTier }) {
@@ -32,9 +34,13 @@ export function GamesDailySection({ userTier }: { userTier: PermissionTier }) {
           <tbody>
             {rows.map((r) => (
               <tr key={r.user_id} className="border-b border-border/50">
-                <td className="py-2 pr-4 font-mono text-xs">{r.user_id}</td>
+                <td className="py-2 pr-4">
+                  <DiscordUserChip userId={r.user_id} />
+                </td>
                 <td className="py-2 pr-4">{r.streak}</td>
-                <td className="py-2 text-muted">{r.last_claimed || "—"}</td>
+                <td className="py-2 text-muted">
+                  {formatUnixTimestamp(r.last_claimed)}
+                </td>
               </tr>
             ))}
           </tbody>

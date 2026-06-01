@@ -1,6 +1,7 @@
 "use client";
 
 import { Card } from "@/components/ui/Card";
+import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { ALL_TIME_LEADERBOARD_TYPES } from "@/lib/games/types";
 import { useEffect, useState } from "react";
 
@@ -45,7 +46,9 @@ export function GamesAllTimeSection() {
             {entries.map((e) => (
               <tr key={e.userId} className="border-b border-border/50">
                 <td className="py-2 pr-4">{e.rank}</td>
-                <td className="py-2 pr-4 font-mono text-xs">{e.userId}</td>
+                <td className="py-2 pr-4">
+                  <DiscordUserChip userId={e.userId} />
+                </td>
                 <td className="py-2">{e.value.toLocaleString()}</td>
               </tr>
             ))}

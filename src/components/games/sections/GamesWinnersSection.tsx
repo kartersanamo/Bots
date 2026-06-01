@@ -1,6 +1,7 @@
 "use client";
 
 import { Card } from "@/components/ui/Card";
+import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { useEffect, useState } from "react";
 
 export function GamesWinnersSection() {
@@ -30,9 +31,9 @@ export function GamesWinnersSection() {
               <h3 className="text-sm font-semibold text-white">{month}</h3>
               <ul className="mt-1 space-y-0.5 text-xs text-muted">
                 {Object.entries(winners).map(([uid, lvl]) => (
-                  <li key={uid}>
-                    <span className="font-mono text-accent-light">{uid}</span>{" "}
-                    — level {lvl}
+                  <li key={uid} className="flex items-center gap-2">
+                    <DiscordUserChip userId={uid} />
+                    <span>— level {lvl}</span>
                   </li>
                 ))}
               </ul>

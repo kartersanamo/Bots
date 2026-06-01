@@ -2,6 +2,8 @@
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { DiscordUserChip } from "@/components/games/DiscordUserChip";
+import { formatUnixTimestamp } from "@/lib/utils";
 import { useCallback, useEffect, useState } from "react";
 
 interface GamesUserDrawerProps {
@@ -66,7 +68,7 @@ export function GamesUserDrawer({
     <div className="fixed inset-0 z-50 flex justify-end bg-black/50">
       <Card className="h-full w-full max-w-md overflow-y-auto rounded-none border-l p-6">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-semibold text-white">User {userId}</h2>
+          <DiscordUserChip userId={userId} showId className="font-semibold" />
           <Button size="sm" variant="ghost" onClick={onClose}>
             Close
           </Button>
@@ -82,7 +84,7 @@ export function GamesUserDrawer({
             {profile.daily && (
               <p className="text-muted">
                 Daily streak {profile.daily.streak} · last{" "}
-                {profile.daily.last_claimed || "—"}
+                {formatUnixTimestamp(profile.daily.last_claimed)}
               </p>
             )}
             <p className="text-muted">

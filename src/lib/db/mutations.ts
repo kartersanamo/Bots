@@ -184,6 +184,67 @@ export async function deleteFaction(factionId: number) {
   await writeQuery(`DELETE FROM leader_factions WHERE id = ?`, [factionId]);
 }
 
+const DM_TABLE_WHITELIST = new Set([
+  "users_tictactoe",
+  "users_wordle",
+  "users_connectfour",
+  "users_memory",
+  "users_2048",
+  "users_minesweeper",
+  "users_hangman",
+]);
+
+const DM_EDITABLE_COLS = new Set([
+  "won",
+  "status",
+  "word",
+  "attempts",
+  "score",
+  "moves",
+  "started_at",
+  "ended_at",
+]);
+
+export async function updateDmSessionEntry(
+  table: string,
+  gameId: number,
+  userId: string,
+  updates: Record<string, string | number | null>
+) {
+  assertWriteDb();
+  if (!DM_TABLE_WHITELIST.has(table)) {
+    throw new Error("Invalid DM table");
+  }
+  const sets: string[] = [];
+  const vals: (string | number | null)[] = [];
+  for (const [col, val] of Object.entries(updates)) {
+    if (!DM_EDITABLE_COLS.has(col)) continue;
+    sets.push(`${col} = ?`);
+    vals.push(val);
+  }
+  if (!sets.length) return;
+  vals.push(gameId, userId);
+  await writeQuery(
+    `UPDATE ${table} SET ${sets.join(", ")} WHERE game_id = ? AND user_id = ?`,
+    vals
+  );
+}
+
+export async function deleteDmSessionEntry(
+  table: string,
+  gameId: number,
+  userId: string
+) {
+  assertWriteDb();
+  if (!DM_TABLE_WHITELIST.has(table)) {
+    throw new Error("Invalid DM table");
+  }
+  await writeQuery(
+    `DELETE FROM ${table} WHERE game_id = ? AND user_id = ?`,
+    [gameId, userId]
+  );
+}
+
 export async function adjustStatistics(
   userId: string,
   field: string,

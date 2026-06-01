@@ -55,15 +55,23 @@ function parseSection(value: string | null): GamesSection {
   return "overview";
 }
 
-interface BotGamesTabProps {
-  userTier: PermissionTier;
-  botId: string;
+function sectionFromSearchParams(searchParams: URLSearchParams): GamesSection {
+  return parseSection(
+    searchParams.get("section") || searchParams.get("tab")
+  );
 }
 
-export function BotGamesTab({ userTier, botId }: BotGamesTabProps) {
+const GAMES_BOT_ID = "games";
+
+interface BotGamesTabProps {
+  userTier: PermissionTier;
+}
+
+export function BotGamesTab({ userTier }: BotGamesTabProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const section = parseSection(searchParams.get("section"));
+  const section = sectionFromSearchParams(searchParams);
+  const configPath = searchParams.get("path");
 
   const visibleSections = SECTIONS.filter(
     (s) => !s.minAction || can(userTier, s.minAction)
@@ -71,10 +79,16 @@ export function BotGamesTab({ userTier, botId }: BotGamesTabProps) {
 
   function setSection(next: GamesSection) {
     const params = new URLSearchParams(searchParams.toString());
-    params.set("tab", "games");
-    if (next === "overview") params.delete("section");
-    else params.set("section", next);
-    router.push(`/dashboard/bots/${botId}?${params.toString()}`);
+    params.delete("tab");
+    if (next === "overview") {
+      params.delete("section");
+      params.delete("path");
+    } else {
+      params.set("section", next);
+      if (next !== "config") params.delete("path");
+    }
+    const qs = params.toString();
+    router.push(`/dashboard/games${qs ? `?${qs}` : ""}`);
   }
 
   return (
@@ -105,7 +119,7 @@ export function BotGamesTab({ userTier, botId }: BotGamesTabProps) {
         {section === "alltime" && <GamesAllTimeSection />}
         {section === "users" && <GamesUsersSection userTier={userTier} />}
         {section === "xplogs" && <GamesXpLogsSection />}
-        {section === "sessions" && <GamesSessionsSection />}
+        {section === "sessions" && <GamesSessionsSection userTier={userTier} />}
         {section === "daily" && <GamesDailySection userTier={userTier} />}
         {section === "counting" && <GamesCountingSection userTier={userTier} />}
         {section === "achievements" && (
@@ -115,7 +129,11 @@ export function BotGamesTab({ userTier, botId }: BotGamesTabProps) {
           <GamesControlSection />
         )}
         {section === "config" && can(userTier, "games.write") && (
-          <GamesConfigSection botId={botId} canEdit={can(userTier, "config.edit")} />
+          <GamesConfigSection
+            botId={GAMES_BOT_ID}
+            canEdit={can(userTier, "config.edit")}
+            configPath={configPath}
+          />
         )}
         {section === "wipe" && can(userTier, "games.wipe") && (
           <GamesWipeSection />

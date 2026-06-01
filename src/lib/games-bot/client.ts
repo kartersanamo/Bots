@@ -114,3 +114,26 @@ export async function wipeLevels(
 export async function reloadGamesConfig(): Promise<void> {
   await gamesFetch("/reload-config", { method: "POST" });
 }
+
+export async function getSessionLiveState(gameId: number): Promise<{
+  active: boolean;
+  messageId?: string;
+  messageUrl?: string;
+  gameType?: string;
+  xpMultiplier?: number;
+  testMode?: boolean;
+  winners?: { user_id: string | null; xp: number }[];
+  activityLog?: unknown[];
+}> {
+  return gamesFetch(`/session/${gameId}`);
+}
+
+export async function sessionChatAction(
+  gameId: number,
+  action: string
+): Promise<unknown> {
+  return gamesFetch("/session/chat-action", {
+    method: "POST",
+    body: JSON.stringify({ game_id: gameId, action }),
+  });
+}

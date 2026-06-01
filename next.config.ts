@@ -10,6 +10,11 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        source: "/dashboard/bots/games",
+        destination: "/dashboard/games",
+        permanent: false,
+      },
+      {
         source: "/dashboard/bots/:botId/logs",
         destination: "/dashboard/bots/:botId?tab=console",
         permanent: false,

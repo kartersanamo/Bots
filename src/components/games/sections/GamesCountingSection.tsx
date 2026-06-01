@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { can, type PermissionTier } from "@/lib/permissions";
 import { useEffect, useState } from "react";
 
@@ -68,7 +69,9 @@ export function GamesCountingSection({ userTier }: { userTier: PermissionTier })
           <tbody>
             {users.map((u) => (
               <tr key={u.user_id} className="border-b border-border/50">
-                <td className="py-2 pr-4 font-mono text-xs">{u.user_id}</td>
+                <td className="py-2 pr-4">
+                  <DiscordUserChip userId={u.user_id} />
+                </td>
                 <td className="py-2 pr-4">{u.total_counts}</td>
                 <td className="py-2">{u.mistakes}</td>
               </tr>

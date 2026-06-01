@@ -2,6 +2,8 @@
 
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { DiscordUserChip } from "@/components/games/DiscordUserChip";
+import { formatUnixTimestamp } from "@/lib/utils";
 import { useEffect, useState } from "react";
 
 export function GamesXpLogsSection() {
@@ -58,9 +60,11 @@ export function GamesXpLogsSection() {
             {rows.map((r, i) => (
               <tr key={i} className="border-b border-border/50">
                 <td className="py-2 pr-4 text-xs text-muted">
-                  {r.timestamp || "—"}
+                  {formatUnixTimestamp(r.timestamp)}
                 </td>
-                <td className="py-2 pr-4 font-mono text-xs">{r.user_id}</td>
+                <td className="py-2 pr-4">
+                  <DiscordUserChip userId={r.user_id} />
+                </td>
                 <td className="py-2 pr-4">{r.xp}</td>
                 <td className="py-2 pr-4">{r.source || "—"}</td>
                 <td className="py-2">{r.game_id}</td>

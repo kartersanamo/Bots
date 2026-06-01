@@ -9,6 +9,34 @@ export function isTicketOpen(active: string | number): boolean {
   return active === "True" || active === 1 || active === "1";
 }
 
+/** Leveling / games `active` and similar 0/1 flags */
+export function isTruthyFlag(value: string | number | boolean | null | undefined): boolean {
+  if (value === true) return true;
+  if (value === false || value == null) return false;
+  const s = String(value).toLowerCase();
+  return s === "1" || s === "true" || s === "yes";
+}
+
+export function formatBoolFlag(value: string | number | boolean | null | undefined): string {
+  return isTruthyFlag(value) ? "True" : "False";
+}
+
+/** Unix epoch seconds (or ms if value > 1e12) */
+export function formatUnixTimestamp(
+  value: string | number | null | undefined
+): string {
+  if (value == null || value === "") return "—";
+  let n = typeof value === "string" ? Number(value) : value;
+  if (!Number.isFinite(n)) return String(value);
+  if (n > 1e12) n = Math.floor(n / 1000);
+  const d = new Date(n * 1000);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
 export function formatNumber(n: number): string {
   return new Intl.NumberFormat("en-US").format(n);
 }

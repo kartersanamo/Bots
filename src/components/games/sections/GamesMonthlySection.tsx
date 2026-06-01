@@ -2,8 +2,10 @@
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { GamesUserDrawer } from "@/components/games/GamesUserDrawer";
 import { can, type PermissionTier } from "@/lib/permissions";
+import { formatBoolFlag } from "@/lib/utils";
 import { useEffect, useState } from "react";
 
 interface Row {
@@ -77,10 +79,12 @@ export function GamesMonthlySection({ userTier }: { userTier: PermissionTier }) 
                   <td className="py-2 pr-4 text-muted">
                     {(page - 1) * 50 + i + 1}
                   </td>
-                  <td className="py-2 pr-4 font-mono text-xs">{r.user_id}</td>
+                  <td className="py-2 pr-4">
+                    <DiscordUserChip userId={r.user_id} onClick={() => setSelectedUser(r.user_id)} />
+                  </td>
                   <td className="py-2 pr-4">{r.level}</td>
                   <td className="py-2 pr-4">{r.xp}</td>
-                  <td className="py-2">{String(r.active)}</td>
+                  <td className="py-2">{formatBoolFlag(r.active)}</td>
                 </tr>
               ))}
             </tbody>

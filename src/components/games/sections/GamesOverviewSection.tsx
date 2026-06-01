@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
 import { can, type PermissionTier } from "@/lib/permissions";
 import { BarChart3, Gamepad2, Users, Zap } from "lucide-react";
+import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { useEffect, useState } from "react";
 
 export function GamesOverviewSection({ userTier }: { userTier: PermissionTier }) {
@@ -83,7 +84,7 @@ export function GamesOverviewSection({ userTier }: { userTier: PermissionTier })
                 key={i}
                 className="flex justify-between text-sm text-muted"
               >
-                <span className="font-mono text-xs">{log.user_id}</span>
+                <DiscordUserChip userId={log.user_id} />
                 <span>
                   +{log.xp} {log.source || ""}
                 </span>

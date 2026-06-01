@@ -7,6 +7,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Bot,
+  Gamepad2,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -16,6 +17,7 @@ import {
   Ticket,
   X,
 } from "lucide-react";
+import { can } from "@/lib/permissions";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -23,6 +25,12 @@ import { useState } from "react";
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
   { href: "/dashboard/tickets", label: "Tickets", icon: Ticket },
+  {
+    href: "/dashboard/games",
+    label: "Games",
+    icon: Gamepad2,
+    permission: "games.read" as const,
+  },
   { href: "/dashboard/bots", label: "Bots", icon: Bot },
   { href: "/dashboard/server", label: "Server", icon: Server },
   { href: "/dashboard/moderation", label: "Moderation", icon: Shield },
@@ -39,7 +47,11 @@ export function Sidebar({ user }: SidebarProps) {
 
   const nav = (
     <nav className="flex flex-1 flex-col gap-0.5 p-2">
-      {NAV_ITEMS.map((item) => {
+      {NAV_ITEMS.filter(
+        (item) =>
+          !("permission" in item && item.permission) ||
+          can(user.tier, item.permission)
+      ).map((item) => {
         const active = item.exact
           ? pathname === item.href
           : pathname.startsWith(item.href);

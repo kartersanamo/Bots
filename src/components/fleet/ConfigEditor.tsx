@@ -9,11 +9,22 @@ import { useEffect, useState } from "react";
 interface ConfigEditorProps {
   botId: string;
   canEdit: boolean;
+  initialPath?: string | null;
 }
 
-export function ConfigEditor({ botId, canEdit }: ConfigEditorProps) {
+export function ConfigEditor({ botId, canEdit, initialPath }: ConfigEditorProps) {
   const bot = getBotById(botId);
-  const [selectedPath, setSelectedPath] = useState(bot?.configFiles[0] || "");
+  const [selectedPath, setSelectedPath] = useState(
+    initialPath || bot?.configFiles[0] || ""
+  );
+
+  useEffect(() => {
+    if (!initialPath) return;
+    const known = bot?.configFiles.includes(initialPath);
+    if (known || initialPath.startsWith("assets/Configs/")) {
+      setSelectedPath(initialPath);
+    }
+  }, [initialPath, bot]);
   const [raw, setRaw] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
