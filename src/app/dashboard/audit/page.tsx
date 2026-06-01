@@ -1,4 +1,4 @@
-import { AuditLogClient } from "@/components/audit/AuditLogClient";
+import { AuditPageClient } from "@/components/audit/AuditPageClient";
 import { Header } from "@/components/layout/Header";
 import { getSession } from "@/lib/auth/session";
 import { can } from "@/lib/permissions";
@@ -18,7 +18,7 @@ export default async function AuditPage() {
           { label: "Audit" },
         ]}
       />
-      <AuditLogClient />
+      <AuditPageClient />
     </>
   );
 }

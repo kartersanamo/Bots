@@ -5,17 +5,22 @@ import { Badge } from "@/components/ui/Badge";
 import { useEffect, useState } from "react";
 import type { AuditEntry } from "@/lib/audit";
 
-export function AuditLogClient() {
+export function DashboardAuditLog() {
   const [entries, setEntries] = useState<AuditEntry[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch("/api/audit?limit=200")
       .then((r) => r.json())
-      .then((d) => setEntries(d.entries || []));
+      .then((d) => setEntries(d.entries || []))
+      .finally(() => setLoading(false));
   }, []);
 
   return (
     <Card>
+      <p className="mb-4 text-sm text-muted">
+        Actions taken in this dashboard (config edits, moderation, bot controls).
+      </p>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -52,7 +57,10 @@ export function AuditLogClient() {
             ))}
           </tbody>
         </table>
-        {!entries.length && (
+        {loading && (
+          <p className="py-8 text-center text-muted">Loading…</p>
+        )}
+        {!loading && !entries.length && (
           <p className="py-8 text-center text-muted">No audit entries yet.</p>
         )}
       </div>

@@ -12,3 +12,9 @@ export function discordChannelUrl(channelId: string): string {
   const guildId = discordGuildId();
   return `https://discord.com/channels/${guildId}/${channelId}`;
 }
+
+/** Opens the guild in Discord (audit log is under Server Settings). */
+export function discordGuildUrl(): string {
+  const guildId = discordGuildId();
+  return guildId ? `https://discord.com/channels/${guildId}` : "";
+}

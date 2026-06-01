@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  BookOpen,
   Bot,
   LayoutDashboard,
   LogOut,
@@ -28,7 +27,6 @@ const NAV_ITEMS = [
   { href: "/dashboard/server", label: "Server", icon: Server },
   { href: "/dashboard/moderation", label: "Moderation", icon: Shield },
   { href: "/dashboard/audit", label: "Audit", icon: ScrollText },
-  { href: "/dashboard/docs", label: "Docs", icon: BookOpen },
 ];
 
 interface SidebarProps {
