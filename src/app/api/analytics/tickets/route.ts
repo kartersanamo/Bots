@@ -3,10 +3,11 @@ import { requireAnalytics } from "@/lib/analytics/api";
 import { csvResponse, rowsToCsv } from "@/lib/analytics/export";
 import { getTicketAnalytics } from "@/lib/analytics/tickets";
 import { isDbConfigured } from "@/lib/db/pool";
-import { cached } from "@/lib/server-cache";
+import {
+  ANALYTICS_CACHE_MS,
+  cachedAnalytics,
+} from "@/lib/analytics/inflight-cache";
 import { NextResponse } from "next/server";
-
-const CACHE_MS = 60_000;
 
 export const GET = handleApiRoute(async (request) => {
   const { session, range } = await requireAnalytics(request);
@@ -17,9 +18,9 @@ export const GET = handleApiRoute(async (request) => {
     return NextResponse.json({ configured: false, data: null });
   }
 
-  const data = await cached(
+  const data = await cachedAnalytics(
     `analytics:tickets:${range}:${session.tier}`,
-    CACHE_MS,
+    ANALYTICS_CACHE_MS,
     () => getTicketAnalytics(session.tier, range)
   );
 

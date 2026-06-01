@@ -2,6 +2,7 @@ import { analyticsPrivatedClause } from "@/lib/analytics/privated";
 import {
   closedAtRangeClause,
   openedAtRangeClause,
+  rangeSinceUnix,
 } from "@/lib/analytics/range";
 import type {
   AnalyticsRange,
@@ -14,11 +15,19 @@ import type {
 import { query, queryOne, isDbConfigured } from "@/lib/db/pool";
 import type { PermissionTier } from "@/lib/permissions";
 
-/** Staff / test accounts excluded from "most tickets in one day" (matches Discord bot) */
 const EXCLUDED_OPENER_IDS = ["837793755838939157", "220576008372355072"];
 
 const VALID_CLOSED =
   "TRIM(closed_at) != '' AND closed_at IS NOT NULL AND closed_at NOT IN ('0', '00000000')";
+
+const HEAVY_RANGES: AnalyticsRange[] = ["7d", "30d", "90d"];
+
+type SliceRow = {
+  metric: string;
+  k1: string | null;
+  k2: string | null;
+  val: number;
+};
 
 function baseWhere(tier: PermissionTier): { sql: string; params: (string | number)[] } {
   const priv = analyticsPrivatedClause(tier);
@@ -37,66 +46,22 @@ export async function getTicketAnalytics(
   const base = baseWhere(tier);
   const openedRange = openedAtRangeClause(range);
   const closedRange = closedAtRangeClause(range);
-
   const rangeWhere = `${base.sql}${openedRange.sql}`;
   const rangeParams = [...base.params, ...openedRange.params];
+  const runHeavy = HEAVY_RANGES.includes(range);
 
   try {
     const [
-      avgRow,
-      avgBetweenRow,
-      gapRow,
+      slices,
       countsRow,
-      openedPerDay,
       closedPerDay,
-      byType,
-      byHour,
-      byDayOfWeek,
       topInRange,
       topAllTime,
       mostInDay,
       longestOpen,
-      percentiles,
+      heavyStats,
     ] = await Promise.all([
-      queryOne<{ avg: number | null }>(
-        `SELECT AVG(daily_count) AS avg FROM (
-          SELECT DATE(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED))) AS d, COUNT(*) AS daily_count
-          FROM tickets ${rangeWhere}
-          GROUP BY d
-        ) daily`,
-        rangeParams
-      ),
-      queryOne<{ avg: number | null }>(
-        `WITH diff AS (
-          SELECT CAST(opened_at AS UNSIGNED) AS ts,
-            LAG(CAST(opened_at AS UNSIGNED)) OVER (ORDER BY CAST(opened_at AS UNSIGNED)) AS prev
-          FROM tickets ${base.sql}
-        )
-        SELECT AVG(ts - prev) AS avg FROM diff WHERE prev IS NOT NULL`,
-        base.params
-      ),
-      queryOne<{
-        current_channelID: string;
-        current_opened_at: string;
-        previous_channelID: string;
-        previous_opened_at: string;
-        max_gap: number;
-      }>(
-        `WITH diff AS (
-          SELECT channelID, CAST(opened_at AS UNSIGNED) AS ts,
-            LAG(channelID) OVER (ORDER BY CAST(opened_at AS UNSIGNED)) AS prev_channel,
-            LAG(CAST(opened_at AS UNSIGNED)) OVER (ORDER BY CAST(opened_at AS UNSIGNED)) AS prev_ts
-          FROM tickets ${base.sql}
-        ),
-        gaps AS (
-          SELECT channelID, ts, prev_channel, prev_ts, ts - prev_ts AS gap
-          FROM diff WHERE prev_ts IS NOT NULL
-        )
-        SELECT channelID AS current_channelID, ts AS current_opened_at,
-          prev_channel AS previous_channelID, prev_ts AS previous_opened_at, gap AS max_gap
-        FROM gaps ORDER BY gap DESC LIMIT 1`,
-        base.params
-      ),
+      queryRangeSlices(rangeWhere, rangeParams),
       queryOne<{
         openCount: number;
         openedInRange: number;
@@ -109,35 +74,10 @@ export async function getTicketAnalytics(
         [...base.params, ...rangeParams, ...base.params, ...closedRange.params]
       ),
       query<{ date: string; count: number }>(
-        `SELECT DATE(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED))) AS date, COUNT(*) AS count
-         FROM tickets ${rangeWhere}
-         GROUP BY date ORDER BY date`,
-        rangeParams
-      ),
-      query<{ date: string; count: number }>(
         `SELECT DATE(FROM_UNIXTIME(CAST(closed_at AS UNSIGNED))) AS date, COUNT(*) AS count
          FROM tickets ${base.sql} AND ${VALID_CLOSED}${closedRange.sql}
          GROUP BY date ORDER BY date`,
         [...base.params, ...closedRange.params]
-      ),
-      query<{ name: string; count: number }>(
-        `SELECT type AS name, COUNT(*) AS count FROM tickets ${rangeWhere}
-         GROUP BY type ORDER BY count DESC LIMIT 16`,
-        rangeParams
-      ),
-      query<{ hour: number; count: number }>(
-        `SELECT HOUR(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED))) AS hour, COUNT(*) AS count
-         FROM tickets ${rangeWhere}
-         GROUP BY hour
-         ORDER BY hour`,
-        rangeParams
-      ),
-      query<{ dow: number; count: number }>(
-        `SELECT DAYOFWEEK(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED))) AS dow, COUNT(*) AS count
-         FROM tickets ${rangeWhere}
-         GROUP BY dow
-         ORDER BY dow`,
-        rangeParams
       ),
       query<{ ownerID: string; ticket_count: number }>(
         `SELECT ownerID, COUNT(*) AS ticket_count FROM tickets ${rangeWhere}
@@ -153,11 +93,11 @@ export async function getTicketAnalytics(
         `SELECT ownerID,
           DATE(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED))) AS ticket_date,
           COUNT(*) AS ticket_count
-         FROM tickets ${base.sql}
+         FROM tickets ${rangeWhere}
          AND ownerID NOT IN (?, ?)
          GROUP BY ownerID, ticket_date
          ORDER BY ticket_count DESC LIMIT 10`,
-        [...base.params, ...EXCLUDED_OPENER_IDS]
+        [...rangeParams, ...EXCLUDED_OPENER_IDS]
       ),
       query<{
         channelID: string;
@@ -177,56 +117,36 @@ export async function getTicketAnalytics(
          ORDER BY ticket_duration DESC LIMIT 5`,
         base.params
       ),
-      queryOne<{ median_s: number | null; p90_s: number | null }>(
-        `SELECT
-          AVG(CASE WHEN rn = CEIL(0.5 * cnt) THEN dur END) AS median_s,
-          AVG(CASE WHEN rn = CEIL(0.9 * cnt) THEN dur END) AS p90_s
-        FROM (
-          SELECT TIMESTAMPDIFF(SECOND,
-            FROM_UNIXTIME(CAST(opened_at AS UNSIGNED)),
-            FROM_UNIXTIME(CAST(closed_at AS UNSIGNED))
-          ) AS dur,
-          ROW_NUMBER() OVER (ORDER BY TIMESTAMPDIFF(SECOND,
-            FROM_UNIXTIME(CAST(opened_at AS UNSIGNED)),
-            FROM_UNIXTIME(CAST(closed_at AS UNSIGNED))
-          )) AS rn,
-          COUNT(*) OVER () AS cnt
-          FROM tickets ${base.sql} AND ${VALID_CLOSED}${closedRange.sql}
-        ) ranked`,
-        [...base.params, ...closedRange.params]
-      ),
+      runHeavy
+        ? queryHeavyTiming(base, closedRange, range)
+        : Promise.resolve(null),
     ]);
 
-    const longestGap: TicketGapRow | null = gapRow
-      ? {
-          currentChannelId: String(gapRow.current_channelID),
-          currentOpenedAt: Number(gapRow.current_opened_at),
-          previousChannelId: String(gapRow.previous_channelID),
-          previousOpenedAt: Number(gapRow.previous_opened_at),
-          gapSeconds: Number(gapRow.max_gap),
-        }
-      : null;
+    const openedPerDay = slices.openedPerDay;
+    const avgTicketsPerDay =
+      openedPerDay.length > 0
+        ? openedPerDay.reduce((s, d) => s + d.count, 0) / openedPerDay.length
+        : 0;
+
+    const longestGap = heavyStats?.longestGap ?? null;
 
     return {
       range,
       kpis: {
-        avgTicketsPerDay: Number(avgRow?.avg ?? 0),
-        avgTimeBetweenTicketsSeconds:
-          avgBetweenRow?.avg != null ? Number(avgBetweenRow.avg) : null,
+        avgTicketsPerDay,
+        avgTimeBetweenTicketsSeconds: heavyStats?.avgBetween ?? null,
         longestGapSeconds: longestGap?.gapSeconds ?? null,
         openCount: Number(countsRow?.openCount ?? 0),
         closedInRange: Number(countsRow?.closedInRange ?? 0),
         openedInRange: Number(countsRow?.openedInRange ?? 0),
-        medianCloseSeconds:
-          percentiles?.median_s != null ? Number(percentiles.median_s) : null,
-        p90CloseSeconds:
-          percentiles?.p90_s != null ? Number(percentiles.p90_s) : null,
+        medianCloseSeconds: heavyStats?.medianClose ?? null,
+        p90CloseSeconds: heavyStats?.p90Close ?? null,
       },
-      openedPerDay: mapDaily(openedPerDay),
+      openedPerDay,
       closedPerDay: mapDaily(closedPerDay),
-      byType: byType.map((r) => ({ name: r.name, count: Number(r.count) })),
-      byHour: fillHourOfDayBuckets(byHour),
-      byDayOfWeek: fillDayOfWeekBuckets(byDayOfWeek),
+      byType: slices.byType,
+      byHour: fillHourOfDayBuckets(slices.byHour),
+      byDayOfWeek: fillDayOfWeekBuckets(slices.byDayOfWeek),
       topOpenersInRange: mapOpeners(topInRange),
       topOpenersAllTime: mapOpeners(topAllTime),
       mostTicketsInOneDay: mostInDay.map((r) => ({
@@ -253,6 +173,163 @@ export async function getTicketAnalytics(
   }
 }
 
+async function queryRangeSlices(
+  rangeWhere: string,
+  rangeParams: (string | number)[]
+): Promise<{
+  openedPerDay: DailyCount[];
+  byHour: { hour: number; count: number }[];
+  byDayOfWeek: { dow: number; count: number }[];
+  byType: { name: string; count: number }[];
+}> {
+  const rows = await query<SliceRow>(
+    `SELECT 'day' AS metric,
+      DATE(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED))) AS k1,
+      NULL AS k2,
+      COUNT(*) AS val
+     FROM tickets ${rangeWhere}
+     GROUP BY k1
+     UNION ALL
+     SELECT 'hour', CAST(HOUR(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED))) AS CHAR), NULL, COUNT(*)
+     FROM tickets ${rangeWhere}
+     GROUP BY HOUR(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED)))
+     UNION ALL
+     SELECT 'dow', CAST(DAYOFWEEK(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED))) AS CHAR), NULL, COUNT(*)
+     FROM tickets ${rangeWhere}
+     GROUP BY DAYOFWEEK(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED)))
+     UNION ALL
+     SELECT 'type', type, NULL, COUNT(*)
+     FROM tickets ${rangeWhere}
+     GROUP BY type`,
+    [...rangeParams, ...rangeParams, ...rangeParams, ...rangeParams]
+  );
+
+  const openedPerDay: DailyCount[] = [];
+  const byHour: { hour: number; count: number }[] = [];
+  const byDayOfWeek: { dow: number; count: number }[] = [];
+  const byType: { name: string; count: number }[] = [];
+
+  for (const row of rows) {
+    const val = Number(row.val);
+    switch (row.metric) {
+      case "day":
+        if (row.k1)
+          openedPerDay.push({ date: String(row.k1).slice(0, 10), count: val });
+        break;
+      case "hour":
+        byHour.push({ hour: Number(row.k1), count: val });
+        break;
+      case "dow":
+        byDayOfWeek.push({ dow: Number(row.k1), count: val });
+        break;
+      case "type":
+        if (row.k1) byType.push({ name: row.k1, count: val });
+        break;
+    }
+  }
+
+  openedPerDay.sort((a, b) => a.date.localeCompare(b.date));
+  byType.sort((a, b) => b.count - a.count);
+
+  return {
+    openedPerDay,
+    byHour,
+    byDayOfWeek,
+    byType: byType.slice(0, 16),
+  };
+}
+
+async function queryHeavyTiming(
+  base: { sql: string; params: (string | number)[] },
+  closedRange: { sql: string; params: number[] },
+  range: AnalyticsRange
+): Promise<{
+  avgBetween: number | null;
+  longestGap: TicketGapRow | null;
+  medianClose: number | null;
+  p90Close: number | null;
+}> {
+  const since = rangeSinceUnix(range);
+  const rangeTs =
+    since != null
+      ? ` AND CAST(opened_at AS UNSIGNED) >= ${since}`
+      : "";
+
+  const [gapRow, timingRow, closeRow] = await Promise.all([
+    queryOne<{
+      current_channelID: string;
+      current_opened_at: string;
+      previous_channelID: string;
+      previous_opened_at: string;
+      max_gap: number;
+    }>(
+      `WITH ordered AS (
+        SELECT channelID, CAST(opened_at AS UNSIGNED) AS ts
+        FROM tickets ${base.sql}${rangeTs}
+        ORDER BY ts
+      ),
+      gaps AS (
+        SELECT channelID AS current_channelID, ts AS current_opened_at,
+          LAG(channelID) OVER (ORDER BY ts) AS previous_channelID,
+          LAG(ts) OVER (ORDER BY ts) AS previous_opened_at,
+          ts - LAG(ts) OVER (ORDER BY ts) AS gap
+        FROM ordered
+      )
+      SELECT current_channelID, current_opened_at, previous_channelID,
+        previous_opened_at, gap AS max_gap
+      FROM gaps WHERE gap IS NOT NULL ORDER BY gap DESC LIMIT 1`,
+      base.params
+    ),
+    queryOne<{ avg_between: number | null }>(
+      `WITH ordered AS (
+        SELECT CAST(opened_at AS UNSIGNED) AS ts
+        FROM tickets ${base.sql}${rangeTs}
+        ORDER BY ts
+      )
+      SELECT AVG(ts - prev_ts) AS avg_between FROM (
+        SELECT ts, LAG(ts) OVER (ORDER BY ts) AS prev_ts FROM ordered
+      ) d WHERE prev_ts IS NOT NULL`,
+      base.params
+    ),
+    queryOne<{ median_s: number | null; p90_s: number | null }>(
+      `SELECT
+        AVG(CASE WHEN rn = CEIL(0.5 * cnt) THEN dur END) AS median_s,
+        AVG(CASE WHEN rn = CEIL(0.9 * cnt) THEN dur END) AS p90_s
+      FROM (
+        SELECT TIMESTAMPDIFF(SECOND,
+          FROM_UNIXTIME(CAST(opened_at AS UNSIGNED)),
+          FROM_UNIXTIME(CAST(closed_at AS UNSIGNED))
+        ) AS dur,
+        ROW_NUMBER() OVER (ORDER BY TIMESTAMPDIFF(SECOND,
+          FROM_UNIXTIME(CAST(opened_at AS UNSIGNED)),
+          FROM_UNIXTIME(CAST(closed_at AS UNSIGNED))
+        )) AS rn,
+        COUNT(*) OVER () AS cnt
+        FROM tickets ${base.sql} AND ${VALID_CLOSED}${closedRange.sql}
+      ) ranked`,
+      [...base.params, ...closedRange.params]
+    ),
+  ]);
+
+  const longestGap: TicketGapRow | null = gapRow?.max_gap
+    ? {
+        currentChannelId: String(gapRow.current_channelID),
+        currentOpenedAt: Number(gapRow.current_opened_at),
+        previousChannelId: String(gapRow.previous_channelID),
+        previousOpenedAt: Number(gapRow.previous_opened_at),
+        gapSeconds: Number(gapRow.max_gap),
+      }
+    : null;
+
+  return {
+    avgBetween:
+      timingRow?.avg_between != null ? Number(timingRow.avg_between) : null,
+    longestGap,
+    medianClose: closeRow?.median_s != null ? Number(closeRow.median_s) : null,
+    p90Close: closeRow?.p90_s != null ? Number(closeRow.p90_s) : null,
+  };
+}
+
 function mapDaily(rows: { date: string | Date; count: number }[]): DailyCount[] {
   return rows.map((r) => ({
     date:
@@ -272,7 +349,6 @@ function mapOpeners(
   }));
 }
 
-/** Sum tickets at each hour (0–23) across every day in the selected range. */
 function fillHourOfDayBuckets(
   rows: { hour: number; count: number }[]
 ): { name: string; count: number }[] {
@@ -288,7 +364,6 @@ function fillHourOfDayBuckets(
   }));
 }
 
-/** Sum tickets for each weekday (Sun–Sat) across every day in the selected range. */
 function fillDayOfWeekBuckets(
   rows: { dow: number; count: number }[]
 ): { name: string; count: number }[] {

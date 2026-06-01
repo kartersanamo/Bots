@@ -13,10 +13,9 @@ export async function getGamesAnalytics(
 
   const since = rangeSinceUnix(range);
   const tsClause =
-    since != null
-      ? " AND CAST(timestamp AS UNSIGNED) >= ?"
-      : "";
+    since != null ? " AND CAST(timestamp AS UNSIGNED) >= ?" : "";
   const tsParams = since != null ? [since] : [];
+  const skipNewPlayers = range === "all" || range === "365d";
 
   const sessionClause =
     since != null
@@ -29,7 +28,7 @@ export async function getGamesAnalytics(
       await Promise.all([
         queryOne<{ total: number; events: number }>(
           `SELECT COALESCE(SUM(xp), 0) AS total, COUNT(*) AS events
-           FROM xp_logs WHERE 1=1${tsClause}`,
+           FROM xp_logs WHERE CAST(timestamp AS UNSIGNED) > 0${tsClause}`,
           tsParams
         ),
         query<{ date: string; count: number }>(
@@ -48,19 +47,21 @@ export async function getGamesAnalytics(
         ),
         query<{ name: string; count: number }>(
           `SELECT COALESCE(NULLIF(TRIM(source), ''), 'unknown') AS name, COUNT(*) AS count
-           FROM xp_logs WHERE 1=1${tsClause}
+           FROM xp_logs WHERE CAST(timestamp AS UNSIGNED) > 0${tsClause}
            GROUP BY name ORDER BY count DESC LIMIT 12`,
           tsParams
         ),
-        query<{ date: string; count: number }>(
-          `SELECT DATE(FROM_UNIXTIME(first_ts)) AS date, COUNT(*) AS count FROM (
-            SELECT user_id, MIN(CAST(timestamp AS UNSIGNED)) AS first_ts
-            FROM xp_logs WHERE CAST(timestamp AS UNSIGNED) > 0${tsClause}
-            GROUP BY user_id
-          ) firsts
-          GROUP BY date ORDER BY date`,
-          tsParams
-        ),
+        skipNewPlayers
+          ? Promise.resolve([] as { date: string; count: number }[])
+          : query<{ date: string; count: number }>(
+              `SELECT DATE(FROM_UNIXTIME(first_ts)) AS date, COUNT(*) AS count FROM (
+                SELECT user_id, MIN(CAST(timestamp AS UNSIGNED)) AS first_ts
+                FROM xp_logs WHERE CAST(timestamp AS UNSIGNED) > 0${tsClause}
+                GROUP BY user_id
+              ) firsts
+              GROUP BY date ORDER BY date`,
+              tsParams
+            ),
       ]);
 
     return {

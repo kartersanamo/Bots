@@ -8,20 +8,17 @@ import { ModerationAnalyticsSection } from "@/components/analytics/ModerationAna
 import { StaffAnalyticsSection } from "@/components/analytics/StaffAnalyticsSection";
 import { TicketsAnalytics } from "@/components/analytics/TicketsAnalytics";
 import { GamesDiscordUsersProvider } from "@/components/games/GamesDiscordUsersProvider";
+import type { AnalyticsBundle } from "@/lib/analytics/bundle";
+import {
+  readAnalyticsCache,
+  writeAnalyticsCache,
+} from "@/lib/analytics/client-cache";
 import { parseAnalyticsRange } from "@/lib/analytics/range";
-import type {
-  AnalyticsRange,
-  AnalyticsSummary,
-  AuditAnalytics,
-  GamesAnalytics,
-  ModerationAnalytics,
-  StaffAnalytics,
-  TicketAnalytics,
-} from "@/lib/analytics/types";
+import type { AnalyticsRange } from "@/lib/analytics/types";
 import { can, type PermissionTier } from "@/lib/permissions";
 import { cn, formatNumber } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type TabId = "tickets" | "games" | "staff" | "moderation" | "audit";
 
@@ -33,6 +30,8 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "audit", label: "Dashboard audit" },
 ];
 
+const ALL_TABS = TABS.map((t) => t.id).join(",");
+
 interface AnalyticsPageClientProps {
   userTier: PermissionTier;
 }
@@ -43,15 +42,18 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
   const range = parseAnalyticsRange(searchParams.get("range"));
   const tab = (searchParams.get("tab") as TabId) || "tickets";
 
-  const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
-  const [tickets, setTickets] = useState<TicketAnalytics | null>(null);
-  const [games, setGames] = useState<GamesAnalytics | null>(null);
-  const [staff, setStaff] = useState<StaffAnalytics | null>(null);
-  const [moderation, setModeration] = useState<ModerationAnalytics | null>(null);
-  const [audit, setAudit] = useState<AuditAnalytics | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [tabLoading, setTabLoading] = useState(false);
+  const [bundle, setBundle] = useState<AnalyticsBundle | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const cacheKey = `bundle:${range}`;
+
+  const applyBundle = useCallback((data: AnalyticsBundle) => {
+    setBundle(data);
+    setHydrated(true);
+  }, []);
 
   const setRange = (r: AnalyticsRange) => {
     const p = new URLSearchParams(searchParams.toString());
@@ -65,83 +67,54 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
     router.replace(`/dashboard/analytics?${p.toString()}`);
   };
 
-  const fetchJson = useCallback(async <T,>(url: string): Promise<T | null> => {
-    const res = await fetch(url);
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(
-        (body as { error?: string }).error ?? `Request failed (${res.status})`
-      );
-    }
-    return res.json() as Promise<T>;
-  }, []);
-
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
+
+    const cached = readAnalyticsCache<AnalyticsBundle>(cacheKey);
+    if (cached) {
+      applyBundle(cached);
+      setRefreshing(true);
+    } else {
+      setHydrated(false);
+      setRefreshing(true);
+    }
     setError(null);
-    fetchJson<AnalyticsSummary>(`/api/analytics/summary?range=${range}`)
+
+    fetch(`/api/analytics/bundle?range=${range}&tabs=${ALL_TABS}`, {
+      signal: ac.signal,
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(
+            (body as { error?: string }).error ??
+              `Request failed (${res.status})`
+          );
+        }
+        return res.json() as Promise<AnalyticsBundle & { configured?: boolean }>;
+      })
       .then((data) => {
-        if (!cancelled && data) setSummary(data);
+        if (ac.signal.aborted) return;
+        const { configured, ...rest } = data;
+        void configured;
+        applyBundle(rest as AnalyticsBundle);
+        writeAnalyticsCache(cacheKey, rest as AnalyticsBundle);
       })
       .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load");
+        if (ac.signal.aborted || (e as Error).name === "AbortError") return;
+        setError(e instanceof Error ? e.message : "Failed to load analytics");
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!ac.signal.aborted) setRefreshing(false);
       });
-    return () => {
-      cancelled = true;
-    };
-  }, [range, fetchJson]);
 
-  useEffect(() => {
-    let cancelled = false;
-    setTabLoading(true);
-    setError(null);
+    return () => ac.abort();
+  }, [range, cacheKey, applyBundle]);
 
-    const load = async () => {
-      try {
-        if (tab === "tickets") {
-          const res = await fetchJson<{ data: TicketAnalytics | null }>(
-            `/api/analytics/tickets?range=${range}`
-          );
-          if (!cancelled) setTickets(res?.data ?? null);
-        } else if (tab === "games") {
-          const res = await fetchJson<{ data: GamesAnalytics | null }>(
-            `/api/analytics/games?range=${range}`
-          );
-          if (!cancelled) setGames(res?.data ?? null);
-        } else if (tab === "staff") {
-          const res = await fetchJson<{ data: StaffAnalytics | null }>(
-            `/api/analytics/staff`
-          );
-          if (!cancelled) setStaff(res?.data ?? null);
-        } else if (tab === "moderation") {
-          const res = await fetchJson<{ data: ModerationAnalytics | null }>(
-            `/api/analytics/moderation?range=${range}`
-          );
-          if (!cancelled) setModeration(res?.data ?? null);
-        } else if (tab === "audit") {
-          const res = await fetchJson<{ data: AuditAnalytics }>(
-            `/api/analytics/audit?range=${range}`
-          );
-          if (!cancelled) setAudit(res?.data ?? null);
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : "Failed to load tab");
-        }
-      } finally {
-        if (!cancelled) setTabLoading(false);
-      }
-    };
-
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [tab, range, fetchJson]);
+  const summary = bundle?.summary;
+  const showSkeleton = !hydrated && refreshing;
 
   return (
     <GamesDiscordUsersProvider>
@@ -149,19 +122,26 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <AnalyticsRangeSelector value={range} onChange={setRange} />
           <p className="text-xs text-muted">
-            Private tickets {can(userTier, "tickets.view_private") ? "included" : "excluded"} · data cached ~60s
+            Private tickets{" "}
+            {can(userTier, "tickets.view_private") ? "included" : "excluded"}
+            {refreshing && hydrated ? " · updating…" : ""}
+            {!refreshing && hydrated ? " · cached" : ""}
           </p>
         </div>
 
-        {loading && !summary ? (
-          <div className="animate-pulse text-muted">Loading summary…</div>
+        {showSkeleton ? (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-20 animate-pulse rounded-lg border border-border bg-surface"
+              />
+            ))}
+          </div>
         ) : summary ? (
           <AnalyticsKpiGrid
             items={[
-              {
-                label: "Open tickets",
-                value: summary.tickets.openCount,
-              },
+              { label: "Open tickets", value: summary.tickets.openCount },
               {
                 label: "Opened (range)",
                 value: summary.tickets.openedInRange,
@@ -210,34 +190,42 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
           </div>
         )}
 
-        {tabLoading ? (
-          <div className="animate-pulse text-muted">Loading {tab}…</div>
+        {showSkeleton ? (
+          <div className="space-y-4">
+            <div className="h-64 animate-pulse rounded-lg border border-border bg-surface" />
+            <div className="h-48 animate-pulse rounded-lg border border-border bg-surface" />
+          </div>
         ) : (
           <>
-            {tab === "tickets" && tickets && (
-              <TicketsAnalytics data={tickets} range={range} />
+            {tab === "tickets" && bundle?.tickets && (
+              <TicketsAnalytics data={bundle.tickets} range={range} />
             )}
-            {tab === "tickets" && !tickets && !tabLoading && (
-              <p className="text-muted">No ticket data (database not configured?).</p>
+            {tab === "tickets" && hydrated && !bundle?.tickets && (
+              <p className="text-muted">No ticket data available.</p>
             )}
-            {tab === "games" && games && (
-              <GamesAnalyticsSection data={games} range={range} />
+            {tab === "games" && bundle?.games && (
+              <GamesAnalyticsSection data={bundle.games} range={range} />
             )}
-            {tab === "games" && !games && !tabLoading && (
+            {tab === "games" && hydrated && !bundle?.games && (
               <p className="text-muted">No games data available.</p>
             )}
-            {tab === "staff" && staff && <StaffAnalyticsSection data={staff} />}
-            {tab === "staff" && !staff && !tabLoading && (
+            {tab === "staff" && bundle?.staff && (
+              <StaffAnalyticsSection data={bundle.staff} />
+            )}
+            {tab === "staff" && hydrated && !bundle?.staff && (
               <p className="text-muted">No staff statistics available.</p>
             )}
-            {tab === "moderation" && moderation && (
-              <ModerationAnalyticsSection data={moderation} range={range} />
+            {tab === "moderation" && bundle?.moderation && (
+              <ModerationAnalyticsSection
+                data={bundle.moderation}
+                range={range}
+              />
             )}
-            {tab === "moderation" && !moderation && !tabLoading && (
+            {tab === "moderation" && hydrated && !bundle?.moderation && (
               <p className="text-muted">No moderation data available.</p>
             )}
-            {tab === "audit" && audit && (
-              <AuditAnalyticsSection data={audit} range={range} />
+            {tab === "audit" && bundle?.audit && (
+              <AuditAnalyticsSection data={bundle.audit} range={range} />
             )}
           </>
         )}
