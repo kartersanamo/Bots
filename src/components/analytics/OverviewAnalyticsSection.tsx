@@ -40,7 +40,7 @@ export function OverviewAnalyticsSection({
                 ? `${summary.tickets.closeRatePercent}%`
                 : "—",
           },
-          { label: "Active users", value: summary.games.activePlayers },
+          { label: "Leveling users", value: summary.games.activePlayers },
           { label: "XP in range", value: formatNumber(summary.games.xpInRange) },
           { label: "XP events", value: summary.games.xpEventsInRange },
           { label: "Active bans", value: summary.moderation.activeBans },
