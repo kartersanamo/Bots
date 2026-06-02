@@ -44,7 +44,7 @@ export function GamesAnalyticsSection({
                 ? `${formatNumber(kpis.activePlayers)} / ${formatNumber(kpis.everPlayed)}`
                 : undefined,
           },
-          { label: "Open game sessions", value: kpis.openSessions },
+          { label: "Total game sessions", value: kpis.openSessions },
           {
             label: "XP awarded (range)",
             value: formatNumber(kpis.totalXpInRange),
