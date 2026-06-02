@@ -25,6 +25,10 @@ import type {
   TicketGapRow,
   UserCountRow,
 } from "@/lib/analytics/types";
+import {
+  ANALYTICS_CACHE_MS,
+  cachedAnalytics,
+} from "@/lib/analytics/inflight-cache";
 import { query, queryOne, isDbConfigured } from "@/lib/db/pool";
 import type { PermissionTier } from "@/lib/permissions";
 
@@ -40,6 +44,16 @@ type SliceRow = {
   k1: string | null;
   k2: string | null;
   val: number;
+};
+
+type TicketHeavySnapshot = {
+  avgBetween: number | null;
+  longestGap: TicketGapRow | null;
+  medianClose: number | null;
+  p90Close: number | null;
+  closeTimeByType: CloseTimeByTypeRow[];
+  mostTicketsInOneDay: { ownerId: string; date: string; count: number }[];
+  longestOpenTickets: LongestTicketRow[];
 };
 
 function baseWhere(tier: PermissionTier): { sql: string; params: (string | number)[] } {
@@ -69,6 +83,7 @@ export async function getTicketAnalytics(
   try {
     const closedWhere = `${base.sql} AND ${VALID_CLOSED}${closedRange.sql}`;
     const closedParams = [...base.params, ...closedRange.params];
+    const heavySnapshotPromise = getTicketHeavySnapshot(tier);
 
     const [
       slices,
@@ -81,10 +96,7 @@ export async function getTicketAnalytics(
       topReasons,
       visibility,
       transcriptRow,
-      closeByType,
-      mostInDay,
-      longestOpen,
-      heavyStats,
+      heavySnapshot,
     ] = await Promise.all([
       queryRangeSlices(rangeWhere, rangeParams, range, groupBy),
       queryClosedSlices(closedWhere, closedParams),
@@ -143,47 +155,7 @@ export async function getTicketAnalytics(
          AND TRIM(transcript) LIKE 'http%'`,
         closedParams
       ),
-      query<{ type: string; median_s: number; cnt: number }>(
-        `SELECT type, AVG(dur) AS median_s, COUNT(*) AS cnt FROM (
-           SELECT type,
-             TIMESTAMPDIFF(SECOND,
-               FROM_UNIXTIME(CAST(opened_at AS UNSIGNED)),
-               FROM_UNIXTIME(CAST(closed_at AS UNSIGNED))
-             ) AS dur
-           FROM tickets ${closedWhere}
-         ) t WHERE dur > 0
-         GROUP BY type ORDER BY cnt DESC LIMIT 12`,
-        closedParams
-      ),
-      query<{ ownerID: string; ticket_date: string; ticket_count: number }>(
-        `SELECT ownerID,
-          DATE(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED))) AS ticket_date,
-          COUNT(*) AS ticket_count
-         FROM tickets ${rangeWhere}
-         AND ownerID NOT IN (?, ?)
-         GROUP BY ownerID, ticket_date
-         ORDER BY ticket_count DESC LIMIT 10`,
-        [...rangeParams, ...EXCLUDED_OPENER_IDS]
-      ),
-      query<{
-        channelID: string;
-        ownerID: string;
-        type: string;
-        number: string;
-        opened_at: string;
-        closed_at: string;
-        ticket_duration: number;
-      }>(
-        `SELECT channelID, ownerID, type, number, opened_at, closed_at,
-          TIMESTAMPDIFF(SECOND,
-            FROM_UNIXTIME(CAST(opened_at AS UNSIGNED)),
-            FROM_UNIXTIME(CAST(closed_at AS UNSIGNED))
-          ) AS ticket_duration
-         FROM tickets ${base.sql} AND ${VALID_CLOSED}
-         ORDER BY ticket_duration DESC LIMIT 5`,
-        base.params
-      ),
-      queryTimingStats(base, closedRange, range),
+      heavySnapshotPromise,
     ]);
 
     const openedPerDay = normalizeTimeSeries(slices.openedPerDay, range, groupBy);
@@ -200,20 +172,20 @@ export async function getTicketAnalytics(
         ? Math.round((closedInRange / openedInRange) * 1000) / 10
         : null;
 
-    const longestGap = heavyStats?.longestGap ?? null;
+    const longestGap = heavySnapshot?.longestGap ?? null;
 
     return {
       range,
       groupBy,
       kpis: {
         avgTicketsPerDay,
-        avgTimeBetweenTicketsSeconds: heavyStats?.avgBetween ?? null,
+        avgTimeBetweenTicketsSeconds: heavySnapshot?.avgBetween ?? null,
         longestGapSeconds: longestGap?.gapSeconds ?? null,
         openCount: Number(countsRow?.openCount ?? 0),
         closedInRange,
         openedInRange,
-        medianCloseSeconds: heavyStats?.medianClose ?? null,
-        p90CloseSeconds: heavyStats?.p90Close ?? null,
+        medianCloseSeconds: heavySnapshot?.medianClose ?? null,
+        p90CloseSeconds: heavySnapshot?.p90Close ?? null,
         closeRatePercent,
         withTranscriptCount: Number(transcriptRow?.count ?? 0),
         backlogDelta: openedInRange - closedInRange,
@@ -243,35 +215,94 @@ export async function getTicketAnalytics(
         name: r.name,
         count: Number(r.count),
       })),
-      mostTicketsInOneDay: mostInDay.map((r) => ({
-        ownerId: String(r.ownerID),
-        date: String(r.ticket_date),
-        count: Number(r.ticket_count),
-      })),
-      longestOpenTickets: longestOpen.map(
-        (r): LongestTicketRow => ({
-          channelId: String(r.channelID),
-          ownerId: String(r.ownerID),
-          type: String(r.type),
-          number: String(r.number),
-          openedAt: Number(r.opened_at),
-          closedAt: Number(r.closed_at),
-          durationSeconds: Number(r.ticket_duration),
-        })
-      ),
-      closeTimeByType: closeByType.map(
-        (r): CloseTimeByTypeRow => ({
-          type: String(r.type),
-          medianSeconds: Math.round(Number(r.median_s)),
-          count: Number(r.cnt),
-        })
-      ),
+      mostTicketsInOneDay: heavySnapshot?.mostTicketsInOneDay ?? [],
+      longestOpenTickets: heavySnapshot?.longestOpenTickets ?? [],
+      closeTimeByType: heavySnapshot?.closeTimeByType ?? [],
       longestGap,
     };
   } catch (err) {
     console.error("[analytics] getTicketAnalytics failed:", err);
     return null;
   }
+}
+
+async function getTicketHeavySnapshot(
+  tier: PermissionTier
+): Promise<TicketHeavySnapshot> {
+  const cacheKey = `analytics:tickets:heavy:${tier}`;
+  return cachedAnalytics(cacheKey, ANALYTICS_CACHE_MS, async () => {
+    const base = baseWhere(tier);
+    const allClosedRange = closedAtRangeClause("all");
+    const [closeByType, mostInDay, longestOpen, heavyStats] = await Promise.all([
+      query<{ type: string; median_s: number; cnt: number }>(
+        `SELECT type, AVG(dur) AS median_s, COUNT(*) AS cnt FROM (
+           SELECT type,
+             TIMESTAMPDIFF(SECOND,
+               FROM_UNIXTIME(CAST(opened_at AS UNSIGNED)),
+               FROM_UNIXTIME(CAST(closed_at AS UNSIGNED))
+             ) AS dur
+           FROM tickets ${base.sql} AND ${VALID_CLOSED}
+         ) t WHERE dur > 0
+         GROUP BY type ORDER BY cnt DESC LIMIT 12`,
+        base.params
+      ),
+      query<{ ownerID: string; ticket_date: string; ticket_count: number }>(
+        `SELECT ownerID,
+          DATE(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED))) AS ticket_date,
+          COUNT(*) AS ticket_count
+         FROM tickets ${base.sql}
+         AND ownerID NOT IN (?, ?)
+         GROUP BY ownerID, ticket_date
+         ORDER BY ticket_count DESC LIMIT 10`,
+        [...base.params, ...EXCLUDED_OPENER_IDS]
+      ),
+      query<{
+        channelID: string;
+        ownerID: string;
+        type: string;
+        number: string;
+        opened_at: string;
+        closed_at: string;
+        ticket_duration: number;
+      }>(
+        `SELECT channelID, ownerID, type, number, opened_at, closed_at,
+          TIMESTAMPDIFF(SECOND,
+            FROM_UNIXTIME(CAST(opened_at AS UNSIGNED)),
+            FROM_UNIXTIME(CAST(closed_at AS UNSIGNED))
+          ) AS ticket_duration
+         FROM tickets ${base.sql} AND ${VALID_CLOSED}
+         ORDER BY ticket_duration DESC LIMIT 5`,
+        base.params
+      ),
+      queryTimingStats(base, allClosedRange, "all"),
+    ]);
+
+    return {
+      avgBetween: heavyStats?.avgBetween ?? null,
+      longestGap: heavyStats?.longestGap ?? null,
+      medianClose: heavyStats?.medianClose ?? null,
+      p90Close: heavyStats?.p90Close ?? null,
+      closeTimeByType: closeByType.map((r): CloseTimeByTypeRow => ({
+        type: String(r.type),
+        medianSeconds: Math.round(Number(r.median_s)),
+        count: Number(r.cnt),
+      })),
+      mostTicketsInOneDay: mostInDay.map((r) => ({
+        ownerId: String(r.ownerID),
+        date: String(r.ticket_date),
+        count: Number(r.ticket_count),
+      })),
+      longestOpenTickets: longestOpen.map((r): LongestTicketRow => ({
+        channelId: String(r.channelID),
+        ownerId: String(r.ownerID),
+        type: String(r.type),
+        number: String(r.number),
+        openedAt: Number(r.opened_at),
+        closedAt: Number(r.closed_at),
+        durationSeconds: Number(r.ticket_duration),
+      })),
+    };
+  });
 }
 
 async function queryRangeSlices(

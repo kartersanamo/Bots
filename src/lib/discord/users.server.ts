@@ -110,6 +110,8 @@ async function fetchDiscordUserRaw(
     displayName: String(u.global_name || u.username || "unknown"),
     avatar: u.avatar ?? null,
     nick: null,
+    roles: [],
+    joinedAt: null,
   };
 }
 
@@ -125,6 +127,8 @@ async function fetchGuildMemberRaw(userId: string) {
   if (status !== 200 || !body || typeof body !== "object") return null;
   return body as {
     nick?: string | null;
+    roles?: string[];
+    joined_at?: string | null;
     user: {
       id: string;
       username?: string;
@@ -153,6 +157,10 @@ async function resolveDiscordUserUncached(
       displayName: nick || globalName || username,
       avatar: u.avatar ?? null,
       nick,
+      roles: Array.isArray(member.roles)
+        ? member.roles.map((r) => String(r))
+        : [],
+      joinedAt: member.joined_at ?? null,
     };
   }
 

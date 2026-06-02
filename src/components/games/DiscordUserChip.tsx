@@ -1,9 +1,11 @@
 "use client";
 
 import { Avatar } from "@/components/ui/Avatar";
+import { DiscordUserProfileCard } from "@/components/games/DiscordUserProfileCard";
 import { useGamesDiscordUsers, useResolveDiscordUsers } from "@/components/games/GamesDiscordUsersProvider";
 import { snowflakeString } from "@/lib/games/snowflake";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
 
 interface DiscordUserChipProps {
   userId: string;
@@ -18,6 +20,7 @@ export function DiscordUserChip({
   showId = false,
   onClick,
 }: DiscordUserChipProps) {
+  const [openProfile, setOpenProfile] = useState(false);
   const id = snowflakeString(userId);
   useResolveDiscordUsers([id]);
   const { users } = useGamesDiscordUsers();
@@ -46,11 +49,14 @@ export function DiscordUserChip({
     </>
   );
 
-  if (onClick) {
-    return (
+  return (
+    <>
       <button
         type="button"
-        onClick={onClick}
+        onClick={() => {
+          onClick?.();
+          setOpenProfile(true);
+        }}
         className={cn(
           "flex max-w-full items-center gap-2 text-left text-sm hover:opacity-90",
           className
@@ -58,12 +64,22 @@ export function DiscordUserChip({
       >
         {inner}
       </button>
-    );
-  }
-
-  return (
-    <div className={cn("flex max-w-full items-center gap-2 text-sm", className)}>
-      {inner}
-    </div>
+      {openProfile && (
+        <DiscordUserProfileCard
+          user={
+            user ?? {
+              id,
+              username: "unknown",
+              displayName: id,
+              avatar: null,
+              nick: null,
+              roles: [],
+              joinedAt: null,
+            }
+          }
+          onClose={() => setOpenProfile(false)}
+        />
+      )}
+    </>
   );
 }

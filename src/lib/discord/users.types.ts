@@ -4,4 +4,6 @@ export interface ResolvedDiscordUser {
   displayName: string;
   avatar: string | null;
   nick: string | null;
+  roles: string[];
+  joinedAt: string | null;
 }
