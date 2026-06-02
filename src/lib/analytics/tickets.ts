@@ -149,9 +149,22 @@ export async function getTicketAnalytics(
         closedParams
       ),
       query<{ name: string; count: number }>(
-        `SELECT COALESCE(NULLIF(TRIM(reason), ''), 'No reason') AS name, COUNT(*) AS count
-         FROM tickets ${closedWhere}
-         GROUP BY name ORDER BY count DESC LIMIT 12`,
+        `SELECT
+          CASE
+            WHEN reason_norm = '' THEN 'No reason'
+            ELSE CONCAT(
+              UPPER(LEFT(reason_norm, 1)),
+              SUBSTRING(reason_norm, 2)
+            )
+          END AS name,
+          COUNT(*) AS count
+         FROM (
+           SELECT LOWER(TRIM(COALESCE(reason, ''))) AS reason_norm
+           FROM tickets ${closedWhere}
+         ) AS normalized_reasons
+         GROUP BY reason_norm
+         ORDER BY count DESC
+         LIMIT 24`,
         closedParams
       ),
       query<{ visibility: string; count: number }>(
@@ -228,10 +241,7 @@ export async function getTicketAnalytics(
           count: Number(r.ticket_count),
         })
       ),
-      topCloseReasons: topReasons.map((r) => ({
-        name: r.name,
-        count: Number(r.count),
-      })),
+      topCloseReasons: mergeCloseReasonCounts(topReasons, 12),
       mostTicketsInOneDay: heavySnapshot?.mostTicketsInOneDay ?? [],
       longestOpenTickets: heavySnapshot?.longestOpenTickets ?? [],
       closeTimeByType: heavySnapshot?.closeTimeByType ?? [],
@@ -548,6 +558,36 @@ async function queryTimingStats(
     medianClose: percentileFromHistogram(histRows, 0.5),
     p90Close: percentileFromHistogram(histRows, 0.9),
   };
+}
+
+function normalizeCloseReasonKey(reason: string): string {
+  return reason.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/** Merge duplicate reasons (case / whitespace) for charts and export. */
+function mergeCloseReasonCounts(
+  rows: { name: string; count: number }[],
+  limit: number
+): NamedCount[] {
+  const merged = new Map<string, NamedCount>();
+  for (const row of rows) {
+    const key = normalizeCloseReasonKey(row.name);
+    const safeKey = key === "" || key === "no reason" ? "no reason" : key;
+    const display =
+      safeKey === "no reason"
+        ? "No reason"
+        : safeKey.charAt(0).toUpperCase() + safeKey.slice(1);
+    const prev = merged.get(safeKey);
+    const count = Number(row.count);
+    if (prev) {
+      prev.count += count;
+    } else {
+      merged.set(safeKey, { name: display, count });
+    }
+  }
+  return [...merged.values()]
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit);
 }
 
 /** Days in range for per-day averages — independent of chart group-by buckets. */
