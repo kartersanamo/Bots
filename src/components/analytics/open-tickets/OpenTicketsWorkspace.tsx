@@ -12,10 +12,9 @@ import { can, type PermissionTier } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import { ticketAgeHours } from "@/lib/tickets/age";
 import {
+  ArrowLeft,
   ChevronLeft,
   ChevronRight,
-  Grid3X3,
-  List,
   RefreshCw,
   Search,
 } from "lucide-react";
@@ -140,7 +139,7 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [discordPreviews, setDiscordPreviews] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [mobileDrawer, setMobileDrawer] = useState(false);
+  const [showTicketView, setShowTicketView] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const enrichEnabled = discordPreviews && tickets.length > 0;
@@ -168,6 +167,9 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
     }
     if (selectedId && !visibleTickets.find((t) => t.channelID === selectedId)) {
       setSelectedId(visibleTickets[0]?.channelID ?? null);
+    }
+    if (!visibleTickets.length) {
+      setShowTicketView(false);
     }
   }, [visibleTickets, selectedId]);
 
@@ -208,7 +210,7 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
 
   const selectTicket = (t: TicketRow) => {
     setSelectedId(t.channelID);
-    if (window.innerWidth < 1024) setMobileDrawer(true);
+    setShowTicketView(true);
   };
 
   const queue = (
@@ -477,7 +479,31 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(380px,440px)]">
+      {showTicketView && selectedId ? (
+        <div className="space-y-3">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setShowTicketView(false)}
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to queue
+          </Button>
+          <div className="min-h-[calc(100vh-250px)]">
+            <TicketDetailDrawer
+              embedded
+              channelId={selectedId}
+              onClose={() => setShowTicketView(false)}
+              userTier={userTier}
+              onClosed={() => {
+                refresh();
+                setShowTicketView(false);
+                setSelectedId(null);
+              }}
+            />
+          </div>
+        </div>
+      ) : (
         <div className="max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
           {queue}
           {pageCount > 1 && (
@@ -506,32 +532,6 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
             </div>
           )}
         </div>
-
-        <div className="hidden lg:block sticky top-4 max-h-[calc(100vh-200px)]">
-          <TicketDetailDrawer
-            embedded
-            channelId={selectedId}
-            onClose={() => setSelectedId(null)}
-            userTier={userTier}
-            onClosed={() => {
-              refresh();
-              setSelectedId(null);
-            }}
-          />
-        </div>
-      </div>
-
-      {mobileDrawer && selectedId && (
-        <TicketDetailDrawer
-          channelId={selectedId}
-          onClose={() => setMobileDrawer(false)}
-          userTier={userTier}
-          onClosed={() => {
-            refresh();
-            setMobileDrawer(false);
-            setSelectedId(null);
-          }}
-        />
       )}
     </div>
   );
