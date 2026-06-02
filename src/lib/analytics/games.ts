@@ -187,9 +187,9 @@ export async function getGamesAnalytics(
       range,
       groupBy,
       kpis: {
-        activePlayers: overview.activePlayers,
-        everPlayed: overview.everPlayed,
-        openSessions: overview.openSessions,
+        activePlayers: Number(overview.activePlayers),
+        everPlayed: Number(overview.everPlayed),
+        openSessions: Number(overview.openSessions),
         totalXpInRange: totalXp,
         xpLogEventsInRange: events,
         avgXpPerEvent: events > 0 ? Math.round(totalXp / events) : 0,

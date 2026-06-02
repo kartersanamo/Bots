@@ -43,13 +43,15 @@ export function formatNumber(n: number): string {
 
 /** Percent from a ratio with extra precision when the value is small (e.g. 22/5667). */
 export function formatPercentRatio(
-  numerator: number,
-  denominator: number
+  numerator: number | string,
+  denominator: number | string
 ): string {
-  if (!Number.isFinite(denominator) || denominator <= 0) return "—";
-  if (!Number.isFinite(numerator) || numerator < 0) return "—";
-  const pct = (numerator / denominator) * 100;
-  if (pct === 0) return numerator > 0 ? "<0.0001%" : "0%";
+  const num = Number(numerator);
+  const den = Number(denominator);
+  if (!Number.isFinite(den) || den <= 0) return "—";
+  if (!Number.isFinite(num) || num < 0) return "—";
+  const pct = (num / den) * 100;
+  if (pct === 0) return num > 0 ? "<0.0001%" : "0%";
   if (pct < 0.01) return `${pct.toFixed(4)}%`;
   if (pct < 1) return `${pct.toFixed(2)}%`;
   if (pct < 10) return `${pct.toFixed(1)}%`;
