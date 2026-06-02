@@ -1,7 +1,6 @@
 "use client";
 
 import { AnalyticsControls } from "@/components/analytics/AnalyticsControls";
-import { AnalyticsKpiGrid } from "@/components/analytics/AnalyticsKpiGrid";
 import { AnalyticsTabPanels } from "@/components/analytics/AnalyticsTabPanels";
 import { GamesDiscordUsersProvider } from "@/components/games/GamesDiscordUsersProvider";
 import type { AnalyticsBundle } from "@/lib/analytics/bundle";
@@ -17,7 +16,7 @@ import {
 import { parseAnalyticsRange } from "@/lib/analytics/range";
 import type { AnalyticsRange, AnalyticsSummary } from "@/lib/analytics/types";
 import { can, type PermissionTier } from "@/lib/permissions";
-import { cn, formatNumber } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -273,8 +272,6 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
     return () => ac.abort();
   }, [range, groupBy, tab, summaryReady, tabCacheKey, mergeBundle]);
 
-  const summary = bundle?.summary;
-  const showSummarySkeleton = !summaryReady && refreshing;
   const showTabSkeleton = summaryReady && !tabReady && refreshing;
 
   return (
@@ -294,42 +291,6 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
             {!refreshing && summaryReady && tabReady ? " · cached" : ""}
           </p>
         </div>
-
-        {showSummarySkeleton ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-20 animate-pulse rounded-lg border border-border bg-surface"
-              />
-            ))}
-          </div>
-        ) : summary && tab !== "overview" ? (
-          <AnalyticsKpiGrid
-            items={[
-              { label: "Open tickets", value: summary.tickets.openCount },
-              { label: "Opened (range)", value: summary.tickets.openedInRange },
-              { label: "Closed (range)", value: summary.tickets.closedInRange },
-              {
-                label: "Close rate",
-                value:
-                  summary.tickets.closeRatePercent != null
-                    ? `${summary.tickets.closeRatePercent}%`
-                    : "—",
-              },
-              { label: "Active users", value: summary.games.activePlayers },
-              {
-                label: "XP in range",
-                value: formatNumber(summary.games.xpInRange),
-              },
-              { label: "Active bans", value: summary.moderation.activeBans },
-              {
-                label: "Dashboard actions",
-                value: summary.audit.actionsInRange,
-              },
-            ]}
-          />
-        ) : null}
 
         <div className="flex flex-wrap gap-1 border-b border-border">
           {TABS.map((t) => (
