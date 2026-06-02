@@ -20,6 +20,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { can } from "@/lib/permissions";
 import type { PermissionTier } from "@/lib/permissions";
+import { TICKET_BOT_COMMANDS } from "@/lib/tickets/commands";
 
 interface TicketDetailDrawerProps {
   channelId: string | null;
@@ -433,6 +434,7 @@ export function TicketDetailDrawer({
   const [selectedProfileUserId, setSelectedProfileUserId] = useState<string | null>(
     null
   );
+  const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
 
   const roleById = useMemo(
     () => new Map(guildRoles.map((r) => [r.id, r])),
@@ -620,6 +622,14 @@ export function TicketDetailDrawer({
 
   const canWrite = can(userTier, "tickets.write");
   const ticketOpen = data ? isTicketOpen(data.ticket.active) : false;
+  const commandQuery = composer.trimStart();
+  const isCommandMode = commandQuery.startsWith("/");
+  const typedCommand = isCommandMode
+    ? commandQuery.slice(1).split(/\s+/)[0]?.toLowerCase() ?? ""
+    : "";
+  const filteredCommands = isCommandMode
+    ? TICKET_BOT_COMMANDS.filter((c) => c.name.startsWith(typedCommand))
+    : [];
 
   const body = (
     <>
@@ -890,15 +900,54 @@ export function TicketDetailDrawer({
                               Messages sent here use ticket webhooks to mimic your staff name/avatar when possible.
                             </p>
                             <p className="text-xs text-muted">
-                              Commands: <code>/close [reason]</code>,{" "}
-                              <code>/rename name</code>, <code>/slowmode seconds</code>,{" "}
-                              <code>/topic text</code>
+                              Commands: <code>/close</code>, <code>/rename</code>,{" "}
+                              <code>/add</code>, <code>/remove</code>, <code>/move</code>,{" "}
+                              <code>/private</code>, <code>/management</code>
                             </p>
-                            <div className="flex gap-2">
+                            <div className="relative flex gap-2">
                               <textarea
                                 value={composer}
-                                onChange={(e) => setComposer(e.target.value)}
+                                onChange={(e) => {
+                                  setComposer(e.target.value);
+                                  setSelectedCommandIndex(0);
+                                }}
                                 onKeyDown={(e) => {
+                                  if (
+                                    isCommandMode &&
+                                    filteredCommands.length > 0 &&
+                                    (e.key === "ArrowDown" || e.key === "ArrowUp")
+                                  ) {
+                                    e.preventDefault();
+                                    const delta = e.key === "ArrowDown" ? 1 : -1;
+                                    setSelectedCommandIndex((prev) => {
+                                      const next = prev + delta;
+                                      if (next < 0) return filteredCommands.length - 1;
+                                      if (next >= filteredCommands.length) return 0;
+                                      return next;
+                                    });
+                                    return;
+                                  }
+                                  if (
+                                    isCommandMode &&
+                                    filteredCommands.length > 0 &&
+                                    (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey))
+                                  ) {
+                                    const onlyCommandTyped = /^\/\S*$/.test(commandQuery);
+                                    if (onlyCommandTyped) {
+                                      e.preventDefault();
+                                      const picked =
+                                        filteredCommands[
+                                          Math.min(
+                                            selectedCommandIndex,
+                                            filteredCommands.length - 1
+                                          )
+                                        ];
+                                      if (picked) {
+                                        setComposer(`/${picked.name} `);
+                                      }
+                                      return;
+                                    }
+                                  }
                                   if (e.key !== "Enter" || e.shiftKey) return;
                                   e.preventDefault();
                                   if (!sending && composer.trim()) {
@@ -910,6 +959,37 @@ export function TicketDetailDrawer({
                                 maxLength={2000}
                                 className="flex-1 resize-none rounded-lg border border-border bg-surface px-3 py-2 text-sm text-white"
                               />
+                              {isCommandMode && filteredCommands.length > 0 && (
+                                <div className="absolute bottom-[calc(100%+8px)] left-0 right-0 z-20 overflow-hidden rounded-lg border border-border bg-surface shadow-xl">
+                                  {filteredCommands.slice(0, 8).map((cmd, idx) => (
+                                    <button
+                                      key={cmd.name}
+                                      type="button"
+                                      onMouseDown={(e) => e.preventDefault()}
+                                      onClick={() => {
+                                        setComposer(`/${cmd.name} `);
+                                      }}
+                                      className={`flex w-full items-start justify-between gap-3 px-3 py-2 text-left ${
+                                        idx === selectedCommandIndex
+                                          ? "bg-surface-hover"
+                                          : "hover:bg-surface-hover"
+                                      }`}
+                                    >
+                                      <div className="min-w-0">
+                                        <p className="text-xs font-semibold text-white">
+                                          /{cmd.name}
+                                        </p>
+                                        <p className="truncate text-[11px] text-muted">
+                                          {cmd.description}
+                                        </p>
+                                      </div>
+                                      <span className="shrink-0 text-[10px] text-muted">
+                                        {cmd.usage}
+                                      </span>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
                               <Button
                                 variant="primary"
                                 onClick={sendMessage}

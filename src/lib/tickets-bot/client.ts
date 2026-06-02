@@ -73,3 +73,51 @@ export async function closeTicketViaBot(params: {
     throw new TicketsBotApiError(detail, res.status, data);
   }
 }
+
+export async function executeTicketCommandViaBot(params: {
+  channelId: string;
+  actorId: string;
+  command: string;
+  args: string;
+}): Promise<{ ok: true; detail: string; command: string }> {
+  const url = `${baseUrl()}/ticket-command`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "X-Tickets-Key": secret(),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        channel_id: params.channelId,
+        actor_id: params.actorId,
+        command: params.command,
+        args: params.args,
+      }),
+      cache: "no-store",
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Connection failed";
+    throw new TicketsBotApiError(
+      `Cannot reach MinecadiaTickets API at ${baseUrl()} (${msg}). Restart the tickets bot so the dashboard command server starts on port 8788.`,
+      503
+    );
+  }
+
+  const text = await res.text();
+  let data: unknown;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text;
+  }
+  if (!res.ok) {
+    const detail =
+      typeof data === "object" && data && "error" in data
+        ? String((data as { error: unknown }).error)
+        : `Tickets bot API error (${res.status})`;
+    throw new TicketsBotApiError(detail, res.status, data);
+  }
+  return data as { ok: true; detail: string; command: string };
+}
