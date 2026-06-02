@@ -1,7 +1,12 @@
 "use client";
 
 import { AnalyticsChartCard } from "@/components/analytics/AnalyticsChartCard";
-import { kpi } from "@/components/analytics/bind-metric-hints";
+import {
+  chartHint,
+  chartHintFromDates,
+  kpi,
+} from "@/components/analytics/bind-metric-hints";
+import type { AnalyticsDataMeta } from "@/lib/analytics/hint";
 import {
   AnalyticsDataTable,
   AnalyticsTable,
@@ -37,6 +42,7 @@ export function TicketsAnalytics({
   groupBy,
 }: TicketsAnalyticsProps) {
   const { kpis } = data;
+  const ticketDaily = [data.openedPerDay, data.closedPerDay];
   const closeRatePerDay = useMemo(
     () => computeCloseRatePerDay(data.openedPerDay, data.closedPerDay),
     [data.openedPerDay, data.closedPerDay]
@@ -54,8 +60,12 @@ export function TicketsAnalytics({
             kpis.avgTicketsPerDay.toFixed(2),
             "tickets.avgPerDay"
           ),
-          kpi("Opened in range", kpis.openedInRange, "tickets.openedRange"),
-          kpi("Closed in range", kpis.closedInRange, "tickets.closedRange"),
+          kpi("Opened in range", kpis.openedInRange, "tickets.openedRange", {
+            hintSeries: data.openedPerDay,
+          }),
+          kpi("Closed in range", kpis.closedInRange, "tickets.closedRange", {
+            hintSeries: data.closedPerDay,
+          }),
           kpi("Currently open", kpis.openCount, "tickets.openNow"),
           kpi(
             "Avg time between tickets",
@@ -100,10 +110,12 @@ export function TicketsAnalytics({
           kpi(
             "Close rate",
             kpis.closeRatePercent != null ? `${kpis.closeRatePercent}%` : "—",
-            "tickets.closeRate"
+            "tickets.closeRate",
+            { hintSeries: ticketDaily }
           ),
           kpi("Net backlog (opened − closed)", kpis.backlogDelta, "tickets.backlog", {
             subtitle: "Positive = queue grew in range",
+            hintSeries: data.netQueuePerDay,
           }),
           kpi("Transcripts saved", kpis.withTranscriptCount, "tickets.transcripts"),
         ]}
@@ -112,7 +124,7 @@ export function TicketsAnalytics({
       <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsChartCard
           title={chartTitleWithPeriod("Tickets opened & closed", groupBy)}
-          dataHint="tickets.chart.flow"
+          dataHint={chartHint("tickets.chart.flow", ticketDaily)}
           exportHeaders={["date", "opened", "closed"]}
           exportFilename={`tickets-daily-${range}.csv`}
           exportRows={mergeDailyExport(data.openedPerDay, data.closedPerDay)}
@@ -125,7 +137,7 @@ export function TicketsAnalytics({
 
         <AnalyticsChartCard
           title={chartTitleWithPeriod("Opened", groupBy)}
-          dataHint="tickets.chart.opened"
+          dataHint={chartHint("tickets.chart.opened", data.openedPerDay)}
           exportHeaders={["date", "count"]}
           exportFilename={`tickets-opened-${range}.csv`}
           exportRows={data.openedPerDay.map((r) => ({
@@ -138,7 +150,7 @@ export function TicketsAnalytics({
 
         <AnalyticsChartCard
           title={chartTitleWithPeriod("Net queue change", groupBy)}
-          dataHint="tickets.chart.netQueue"
+          dataHint={chartHint("tickets.chart.netQueue", data.netQueuePerDay)}
           exportHeaders={["date", "netChange"]}
           exportFilename={`tickets-net-queue-${range}.csv`}
           exportRows={data.netQueuePerDay.map((r) => ({
@@ -154,7 +166,7 @@ export function TicketsAnalytics({
 
         <AnalyticsChartCard
           title={chartTitleWithPeriod("Close rate", groupBy)}
-          dataHint="tickets.chart.closeRate"
+          dataHint={chartHint("tickets.chart.closeRate", ticketDaily)}
           exportHeaders={["date", "opened", "closed", "closeRatePercent"]}
           exportFilename={`tickets-close-rate-${range}.csv`}
           exportRows={closeRatePerDay.map((r) => {
@@ -185,7 +197,7 @@ export function TicketsAnalytics({
       <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsChartCard
           title="By ticket type"
-          dataHint="tickets.chart.byType"
+          dataHint={chartHint("tickets.chart.byType", data.openedPerDay)}
           exportHeaders={["type", "count"]}
           exportFilename={`tickets-by-type-${range}.csv`}
           exportRows={data.byType.map((r) => ({ type: r.name, count: r.count }))}
@@ -195,7 +207,7 @@ export function TicketsAnalytics({
 
         <AnalyticsChartCard
           title="Closed by type"
-          dataHint="tickets.chart.byTypeClosed"
+          dataHint={chartHint("tickets.chart.byTypeClosed", data.closedPerDay)}
           exportHeaders={["type", "count"]}
           exportFilename={`tickets-closed-by-type-${range}.csv`}
           exportRows={data.byTypeClosed.map((r) => ({
@@ -210,7 +222,7 @@ export function TicketsAnalytics({
       <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsChartCard
           title="By hour of day — opened (combined)"
-          dataHint="tickets.chart.hourOpened"
+          dataHint={chartHint("tickets.chart.hourOpened", data.openedPerDay)}
           exportHeaders={["hour", "totalTickets"]}
           exportFilename={`tickets-by-hour-${range}.csv`}
           exportRows={data.byHour.map((r) => ({
@@ -227,7 +239,7 @@ export function TicketsAnalytics({
 
         <AnalyticsChartCard
           title="By hour of day — closed (combined)"
-          dataHint="tickets.chart.hourClosed"
+          dataHint={chartHint("tickets.chart.hourClosed", data.closedPerDay)}
           exportHeaders={["hour", "totalTickets"]}
           exportFilename={`tickets-closed-by-hour-${range}.csv`}
           exportRows={data.byHourClosed.map((r) => ({
@@ -242,7 +254,7 @@ export function TicketsAnalytics({
       <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsChartCard
           title="By day of week — opened (combined)"
-          dataHint="tickets.chart.dowOpened"
+          dataHint={chartHint("tickets.chart.dowOpened", data.openedPerDay)}
           exportHeaders={["weekday", "totalTickets"]}
           exportFilename={`tickets-by-dow-${range}.csv`}
           exportRows={data.byDayOfWeek.map((r) => ({
@@ -259,7 +271,7 @@ export function TicketsAnalytics({
 
         <AnalyticsChartCard
           title="By day of week — closed (combined)"
-          dataHint="tickets.chart.dowClosed"
+          dataHint={chartHint("tickets.chart.dowClosed", data.closedPerDay)}
           exportHeaders={["weekday", "totalTickets"]}
           exportFilename={`tickets-closed-by-dow-${range}.csv`}
           exportRows={data.byDayOfWeekClosed.map((r) => ({
@@ -275,7 +287,7 @@ export function TicketsAnalytics({
         {data.visibilitySplit.length > 0 && (
           <AnalyticsChartCard
             title="Tickets by privacy (opened in range)"
-            dataHint="tickets.chart.privacy"
+            dataHint={chartHint("tickets.chart.privacy", data.openedPerDay)}
             exportHeaders={["privacy", "count"]}
             exportFilename={`tickets-privacy-${range}.csv`}
             exportRows={data.visibilitySplit.map((r) => ({
@@ -294,7 +306,7 @@ export function TicketsAnalytics({
         {data.topCloseReasons.length > 0 && (
           <AnalyticsChartCard
             title="Top close reasons"
-            dataHint="tickets.chart.closeReasons"
+            dataHint={chartHint("tickets.chart.closeReasons", data.closedPerDay)}
             exportHeaders={["reason", "count"]}
             exportFilename={`tickets-close-reasons-${range}.csv`}
             exportRows={data.topCloseReasons.map((r) => ({
@@ -310,13 +322,13 @@ export function TicketsAnalytics({
       <div className="grid gap-4 lg:grid-cols-2">
         <OpenerTable
           title={`Top ticket openers (${range})`}
-          dataHint="tickets.table.topOpenersRange"
+          dataHint={chartHint("tickets.table.topOpenersRange", data.openedPerDay)}
           rows={data.topOpenersInRange}
           filename={`top-openers-${range}.csv`}
         />
         <OpenerTable
           title="Top ticket openers (all time)"
-          dataHint="tickets.table.topOpenersAll"
+          dataHint={chartHint("tickets.table.topOpenersAll", data.openedPerDay)}
           rows={data.topOpenersAllTime}
           filename="top-openers-all-time.csv"
         />
@@ -324,7 +336,7 @@ export function TicketsAnalytics({
 
       <AnalyticsUserCountTable
         title="Top staff — tickets closed (range)"
-        dataHint="tickets.table.topStaffClosed"
+        dataHint={chartHint("tickets.table.topStaffClosed", data.closedPerDay)}
         rows={data.topClosersInRange}
         exportFilename={`top-closers-${range}.csv`}
         countLabel="Closed"
@@ -333,7 +345,7 @@ export function TicketsAnalytics({
       {data.closeTimeByType.length > 0 && (
         <AnalyticsDataTable
           title="Median time to close by ticket type"
-          dataHint="tickets.table.closeByType"
+          dataHint={chartHint("tickets.table.closeByType", data.closedPerDay)}
           headers={["type", "medianSeconds", "count"]}
           exportFilename={`close-time-by-type-${range}.csv`}
           exportRows={data.closeTimeByType.map((r) => ({
@@ -368,7 +380,10 @@ export function TicketsAnalytics({
 
       <AnalyticsDataTable
         title="Most tickets opened in a single day"
-        dataHint="tickets.table.mostOneDay"
+        dataHint={chartHintFromDates(
+          "tickets.table.mostOneDay",
+          data.mostTicketsInOneDay.map((r) => r.date)
+        )}
         headers={["ownerId", "date", "count"]}
         exportFilename={`most-tickets-one-day.csv`}
         exportRows={data.mostTicketsInOneDay.map((r) => ({
@@ -406,7 +421,7 @@ export function TicketsAnalytics({
 
       <AnalyticsDataTable
         title="Top 5 longest open tickets"
-        dataHint="tickets.table.longestOpen"
+        dataHint={chartHint("tickets.table.longestOpen", data.openedPerDay)}
         headers={[
           "channelId",
           "ownerId",
@@ -488,7 +503,7 @@ function OpenerTable({
   filename,
 }: {
   title: string;
-  dataHint: string;
+  dataHint: AnalyticsDataMeta | string;
   rows: { ownerId: string; count: number }[];
   filename: string;
 }) {

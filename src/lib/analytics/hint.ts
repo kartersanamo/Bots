@@ -1,14 +1,27 @@
 import { groupByLabel, type AnalyticsGroupBy } from "@/lib/analytics/group-by";
-import { rangeLabel, rangeSinceUnix } from "@/lib/analytics/range";
-import type { AnalyticsRange } from "@/lib/analytics/types";
+import {
+  dataSpanFromDaily,
+  dataSpanFromDailies,
+  dataSpanFromUnixTimestamps,
+  formatBucketDate,
+  type DataSpan,
+} from "@/lib/analytics/data-span";
+import { rangeLabel } from "@/lib/analytics/range";
+import type { AnalyticsRange, DailyCount } from "@/lib/analytics/types";
 
 export interface AnalyticsDataMeta {
   /** What this number or chart measures. */
   description: string;
-  /** Replaces the auto-generated period line when set. */
+  /** Fixed period text when data has no dates (snapshots, staff period, etc.). */
   rangeLabel?: string;
   /** Defaults to context.rangeApplies when omitted. */
   rangeApplies?: boolean;
+  /** Oldest/newest bucket dates present in the loaded dataset. */
+  dataSpan?: DataSpan | null;
+  /** Builds dataSpan from daily series (non-zero points only). */
+  hintSeries?: DailyCount[] | DailyCount[][];
+  /** Builds dataSpan from unix timestamps on underlying rows. */
+  hintTimestamps?: number[];
 }
 
 export interface AnalyticsHintContext {
@@ -31,35 +44,63 @@ export function formatRefreshedAgo(fetchedAt: number, now = Date.now()): string 
   return `${hours} hour${hours === 1 ? "" : "s"} ago`;
 }
 
-export function formatRangeSinceDate(range: AnalyticsRange): string | null {
-  const since = rangeSinceUnix(range);
-  if (since == null) return null;
-  return new Date(since * 1000).toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+export function resolveDataSpan(meta?: AnalyticsDataMeta): DataSpan | null {
+  if (!meta) return null;
+  if (meta.dataSpan !== undefined) return meta.dataSpan;
+  if (meta.hintTimestamps?.length) {
+    return dataSpanFromUnixTimestamps(meta.hintTimestamps);
+  }
+  if (meta.hintSeries) {
+    const series = meta.hintSeries;
+    if (Array.isArray(series) && Array.isArray(series[0])) {
+      return dataSpanFromDailies(...(series as DailyCount[][]));
+    }
+    if (Array.isArray(series)) {
+      return dataSpanFromDaily(series as DailyCount[]);
+    }
+  }
+  return null;
 }
 
 export function formatHintRangeLine(
   ctx: AnalyticsHintContext,
   meta?: AnalyticsDataMeta
 ): string {
-  if (meta?.rangeLabel) return meta.rangeLabel;
+  const span = resolveDataSpan(meta);
+  if (meta?.rangeLabel && !span) {
+    return meta.rangeLabel;
+  }
 
   const applies = meta?.rangeApplies ?? ctx.rangeApplies;
-  if (!applies) {
-    return "Period: Current bi-weekly statistics period since the last MinecadiaStaff /wipe. Not controlled by the dashboard range selector.";
+  const filterNote = applies
+    ? `Dashboard filter: ${rangeLabel(ctx.range)}.`
+    : "";
+
+  if (!applies && meta?.rangeLabel) {
+    return meta.rangeLabel;
   }
 
-  const label = rangeLabel(ctx.range);
-  const since = formatRangeSinceDate(ctx.range);
-
-  if (ctx.range === "all") {
-    return `Period: ${label}. ${ALL_TIME_DATA_CAVEAT} Time-series charts are grouped by ${groupByLabel(ctx.groupBy)}.`;
+  if (!span) {
+    if (ctx.range === "all" && applies) {
+      return `No dated points in the loaded chart. ${ALL_TIME_DATA_CAVEAT} ${filterNote}`.trim();
+    }
+    if (filterNote) {
+      return `No data in the loaded result. ${filterNote}`.trim();
+    }
+    return "No data in the loaded result.";
   }
 
-  const start = since ? ` From ${since} UTC.` : "";
-  return `Period: ${label}.${start} Time-series charts use ${groupByLabel(ctx.groupBy)} buckets.`;
+  const oldest = formatBucketDate(span.oldest);
+  const newest = formatBucketDate(span.newest);
+  const same =
+    span.oldest === span.newest ||
+    oldest === newest;
+
+  if (same) {
+    return `Oldest data shown: ${oldest}. ${filterNote}`.trim();
+  }
+
+  return `Data from ${oldest} through ${newest}. ${filterNote}`.trim();
 }
 
 export function buildHintTooltip(
@@ -74,4 +115,12 @@ export function buildHintTooltip(
     "",
     `Last refreshed: ${formatRefreshedAgo(ctx.fetchedAt, now)}`,
   ].join("\n");
+}
+
+export function enrichHint(
+  meta: AnalyticsDataMeta,
+  hintSeries?: DailyCount[] | DailyCount[][]
+): AnalyticsDataMeta {
+  if (!hintSeries) return meta;
+  return { ...meta, hintSeries };
 }

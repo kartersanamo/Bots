@@ -1,7 +1,7 @@
 "use client";
 
 import { AnalyticsChartCard } from "@/components/analytics/AnalyticsChartCard";
-import { kpi } from "@/components/analytics/bind-metric-hints";
+import { chartHint, kpi } from "@/components/analytics/bind-metric-hints";
 import {
   AnalyticsDataTable,
   AnalyticsTable,
@@ -32,16 +32,24 @@ export function AuditAnalyticsSection({
     <div className="space-y-6">
       <AnalyticsKpiGrid
         items={[
-          kpi("Dashboard actions (range)", data.totalInRange, "audit.actions"),
-          kpi("Fleet restarts (range)", data.fleetRestarts, "audit.restarts"),
-          kpi("Failed actions", data.failedActions, "audit.failed"),
-          kpi("Success rate", `${data.successRatePercent}%`, "audit.successRate"),
+          kpi("Dashboard actions (range)", data.totalInRange, "audit.actions", {
+            hintSeries: data.actionsPerDay,
+          }),
+          kpi("Fleet restarts (range)", data.fleetRestarts, "audit.restarts", {
+            hintSeries: data.actionsPerDay,
+          }),
+          kpi("Failed actions", data.failedActions, "audit.failed", {
+            hintSeries: data.actionsPerDay,
+          }),
+          kpi("Success rate", `${data.successRatePercent}%`, "audit.successRate", {
+            hintSeries: data.actionsPerDay,
+          }),
         ]}
       />
 
       <AnalyticsChartCard
         title={chartTitleWithPeriod("Dashboard actions", groupBy)}
-        dataHint="audit.chart.actions"
+        dataHint={chartHint("audit.chart.actions", data.actionsPerDay)}
         exportHeaders={["date", "count"]}
         exportFilename={`audit-actions-${range}.csv`}
         exportRows={data.actionsPerDay.map((r) => ({
@@ -55,7 +63,7 @@ export function AuditAnalyticsSection({
       <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsChartCard
           title="Actions by hour (UTC, combined)"
-          dataHint="audit.chart.byHour"
+          dataHint={chartHint("audit.chart.byHour", data.actionsPerDay)}
           exportHeaders={["hour", "actions"]}
           exportFilename={`audit-by-hour-${range}.csv`}
           exportRows={data.byHour.map((r) => ({
@@ -68,7 +76,7 @@ export function AuditAnalyticsSection({
 
         <AnalyticsChartCard
           title="Top action types"
-          dataHint="audit.chart.topTypes"
+          dataHint={chartHint("audit.chart.topTypes", data.actionsPerDay)}
           exportHeaders={["action", "count"]}
           exportFilename={`audit-actions-types-${range}.csv`}
           exportRows={data.topActions.map((r) => ({
@@ -83,7 +91,7 @@ export function AuditAnalyticsSection({
       <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsDataTable
           title="Top dashboard actors"
-          dataHint="audit.table.actors"
+          dataHint={chartHint("audit.table.actors", data.actionsPerDay)}
           headers={["actorId", "count"]}
           exportFilename={`audit-actors-${range}.csv`}
           exportRows={data.topActors.map((r) => ({
@@ -119,7 +127,7 @@ export function AuditAnalyticsSection({
         {data.topTargets.length > 0 && (
           <AnalyticsChartCard
             title="Most targeted resources"
-            dataHint="audit.chart.resources"
+            dataHint={chartHint("audit.chart.resources", data.actionsPerDay)}
             exportHeaders={["target", "count"]}
             exportFilename={`audit-targets-${range}.csv`}
             exportRows={data.topTargets.map((r) => ({

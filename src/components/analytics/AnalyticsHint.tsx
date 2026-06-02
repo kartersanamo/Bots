@@ -2,6 +2,7 @@
 
 import {
   buildHintTooltip,
+  enrichHint,
   type AnalyticsDataMeta,
   type AnalyticsHintContext,
 } from "@/lib/analytics/hint";
@@ -57,7 +58,11 @@ export function useAnalyticsHintContext(): AnalyticsHintContext {
 }
 
 function resolveMeta(meta: AnalyticsDataMeta | string): AnalyticsDataMeta {
-  return typeof meta === "string" ? analyticsHint(meta) : meta;
+  if (typeof meta === "string") return analyticsHint(meta);
+  if (meta.hintSeries) {
+    return enrichHint(meta, meta.hintSeries);
+  }
+  return meta;
 }
 
 export function AnalyticsHintIcon({

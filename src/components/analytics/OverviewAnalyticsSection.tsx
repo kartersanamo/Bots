@@ -1,7 +1,7 @@
 "use client";
 
 import { AnalyticsChartCard } from "@/components/analytics/AnalyticsChartCard";
-import { kpi } from "@/components/analytics/bind-metric-hints";
+import { chartHint, kpi } from "@/components/analytics/bind-metric-hints";
 import { AnalyticsKpiGrid } from "@/components/analytics/AnalyticsKpiGrid";
 import { AnalyticsUserCountTable } from "@/components/analytics/AnalyticsUserCountTable";
 import { DailyLineChart, DualDailyLineChart, NamedBarChart } from "@/components/analytics/charts";
@@ -32,8 +32,12 @@ export function OverviewAnalyticsSection({
         className="xl:grid-cols-6"
         items={[
           kpi("Open tickets", summary.tickets.openCount, "overview.openTickets"),
-          kpi("Opened (range)", summary.tickets.openedInRange, "overview.openedRange"),
-          kpi("Closed (range)", summary.tickets.closedInRange, "overview.closedRange"),
+          kpi("Opened (range)", summary.tickets.openedInRange, "overview.openedRange", {
+            hintSeries: metrics?.openedPerDay,
+          }),
+          kpi("Closed (range)", summary.tickets.closedInRange, "overview.closedRange", {
+            hintSeries: metrics?.closedPerDay,
+          }),
           kpi(
             "Close rate",
             summary.tickets.closeRatePercent != null
@@ -42,8 +46,12 @@ export function OverviewAnalyticsSection({
             "overview.closeRate"
           ),
           kpi("Leveling users", summary.games.activePlayers, "overview.levelingUsers"),
-          kpi("XP in range", formatNumber(summary.games.xpInRange), "overview.xpInRange"),
-          kpi("XP events", summary.games.xpEventsInRange, "overview.xpEvents"),
+          kpi("XP in range", formatNumber(summary.games.xpInRange), "overview.xpInRange", {
+            hintSeries: games?.xpPerDay,
+          }),
+          kpi("XP events", summary.games.xpEventsInRange, "overview.xpEvents", {
+            hintSeries: games?.xpPerDay,
+          }),
           kpi("Active bans", summary.moderation.activeBans, "overview.activeBans"),
           kpi("Ticket blacklists", summary.moderation.blacklists, "overview.blacklists"),
           kpi(
@@ -55,7 +63,8 @@ export function OverviewAnalyticsSection({
           kpi(
             "Dashboard actions",
             summary.audit.actionsInRange,
-            "overview.auditActions"
+            "overview.auditActions",
+            { hintSeries: audit?.actionsPerDay }
           ),
         ]}
       />
@@ -64,7 +73,10 @@ export function OverviewAnalyticsSection({
         {metrics && (
           <AnalyticsChartCard
             title="Ticket flow"
-            dataHint="overview.chart.ticketFlow"
+            dataHint={chartHint("overview.chart.ticketFlow", [
+              metrics.openedPerDay,
+              metrics.closedPerDay,
+            ])}
             exportHeaders={["date", "opened", "closed"]}
             exportFilename={`overview-tickets-${range}.csv`}
             exportRows={metrics.openedPerDay.map((r) => {
@@ -91,7 +103,7 @@ export function OverviewAnalyticsSection({
         {games && (
           <AnalyticsChartCard
             title={chartTitleWithPeriod("XP awarded", groupBy)}
-            dataHint="overview.chart.xp"
+            dataHint={chartHint("overview.chart.xp", games.xpPerDay)}
             exportHeaders={["date", "xp"]}
             exportFilename={`overview-xp-${range}.csv`}
             exportRows={games.xpPerDay.map((r) => ({ date: r.date, xp: r.count }))}
@@ -111,7 +123,7 @@ export function OverviewAnalyticsSection({
         {audit && (
           <AnalyticsChartCard
             title="Dashboard activity"
-            dataHint="overview.chart.audit"
+            dataHint={chartHint("overview.chart.audit", audit.actionsPerDay)}
             exportHeaders={["date", "actions"]}
             exportFilename={`overview-audit-${range}.csv`}
             exportRows={audit.actionsPerDay.map((r) => ({
@@ -136,7 +148,10 @@ export function OverviewAnalyticsSection({
         {metrics && metrics.byType.length > 0 && (
           <AnalyticsChartCard
             title="Tickets by type"
-            dataHint="overview.chart.ticketTypes"
+            dataHint={chartHint(
+              "overview.chart.ticketTypes",
+              metrics.openedPerDay
+            )}
             exportHeaders={["type", "count"]}
             exportFilename={`overview-ticket-types-${range}.csv`}
             exportRows={metrics.byType.map((r) => ({
@@ -151,7 +166,7 @@ export function OverviewAnalyticsSection({
         {games && games.topXpSources.length > 0 && (
           <AnalyticsChartCard
             title="Top XP sources"
-            dataHint="overview.chart.xpSources"
+            dataHint={chartHint("overview.chart.xpSources", games.xpPerDay)}
             exportHeaders={["source", "events"]}
             exportFilename={`overview-xp-sources-${range}.csv`}
             exportRows={games.topXpSources.map((r) => ({
@@ -168,7 +183,10 @@ export function OverviewAnalyticsSection({
         {metrics && (
           <AnalyticsUserCountTable
             title="Top ticket closers (range)"
-            dataHint="overview.table.topClosers"
+            dataHint={chartHint(
+              "overview.table.topClosers",
+              metrics.closedPerDay
+            )}
             rows={metrics.topClosersInRange}
             exportFilename={`overview-closers-${range}.csv`}
             countLabel="Closed"
@@ -177,7 +195,7 @@ export function OverviewAnalyticsSection({
         {games && (
           <AnalyticsUserCountTable
             title="Top XP earners (range)"
-            dataHint="overview.table.topXp"
+            dataHint={chartHint("overview.table.topXp", games.xpPerDay)}
             rows={games.topXpEarners.map((r) => ({
               userId: r.userId,
               count: r.value,
@@ -190,7 +208,10 @@ export function OverviewAnalyticsSection({
         {staffTotal && (
           <AnalyticsUserCountTable
             title="Staff — tickets closed (all time)"
-            dataHint="overview.table.staffTickets"
+            dataHint={chartHint(
+              "overview.table.staffTickets",
+              metrics?.closedPerDay
+            )}
             rows={staffTotal.leaderboard.map((r) => ({
               userId: r.userId,
               count: r.ticketsClosed,

@@ -36,7 +36,7 @@ export function StaffRecentAnalyticsSection({
         <p className="mt-2 text-sm leading-relaxed text-amber-100/90">
           These numbers come from the current{" "}
           <code className="rounded bg-black/20 px-1 text-xs">statistics</code>{" "}
-          period. A manager runs <strong>/wipe</strong> on MinecadiaStaff about
+          period. A manager runs <strong>/wipe</strong>  on MinecadiaStaff about
           every two weeks, which clears everyone&apos;s period counters to zero.
           Do not use this tab for long-term or historical reporting — use{" "}
           <strong>Staff (Total)</strong> instead.

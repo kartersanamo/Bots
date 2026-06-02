@@ -2,7 +2,7 @@
 
 import { AnalyticsChartCard } from "@/components/analytics/AnalyticsChartCard";
 import { GamesLeaderboardsPanel } from "@/components/analytics/GamesLeaderboardsPanel";
-import { kpi } from "@/components/analytics/bind-metric-hints";
+import { chartHint, kpi } from "@/components/analytics/bind-metric-hints";
 import {
   AnalyticsDataTable,
   AnalyticsTable,
@@ -54,9 +54,12 @@ export function GamesAnalyticsSection({
           kpi(
             "XP awarded (range)",
             formatNumber(kpis.totalXpInRange),
-            "games.xpRange"
+            "games.xpRange",
+            { hintSeries: data.xpPerDay }
           ),
-          kpi("XP log events (range)", kpis.xpLogEventsInRange, "games.xpEvents"),
+          kpi("XP log events (range)", kpis.xpLogEventsInRange, "games.xpEvents", {
+            hintSeries: data.xpPerDay,
+          }),
           kpi("Avg XP per event", formatNumber(kpis.avgXpPerEvent), "games.avgXp"),
           kpi(
             "Achievements (all time)",
@@ -66,7 +69,8 @@ export function GamesAnalyticsSection({
           kpi(
             "Achievements (range)",
             kpis.achievementsInRange,
-            "games.achievementsRange"
+            "games.achievementsRange",
+            { hintSeries: data.achievementsPerDay }
           ),
           kpi("Daily claim users", kpis.dailyClaimUsers, "games.dailyClaimUsers", {
             subtitle: "All-time players with a /daily record",
@@ -76,6 +80,7 @@ export function GamesAnalyticsSection({
             formatNumber(kpis.claimsInRange),
             "games.claimsRange",
             {
+              hintSeries: data.dailyClaimsPerDay,
               subtitle:
                 kpis.dailyClaimUsersInRange > 0
                   ? `${formatNumber(kpis.dailyClaimUsersInRange)} players · ${(
@@ -110,7 +115,7 @@ export function GamesAnalyticsSection({
       <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsChartCard
           title={chartTitleWithPeriod("XP awarded", groupBy)}
-          dataHint="games.chart.xp"
+          dataHint={chartHint("games.chart.xp", data.xpPerDay)}
           exportHeaders={["date", "xp"]}
           exportFilename={`games-xp-${range}.csv`}
           exportRows={data.xpPerDay.map((r) => ({ date: r.date, xp: r.count }))}
@@ -120,7 +125,7 @@ export function GamesAnalyticsSection({
 
         <AnalyticsChartCard
           title={chartTitleWithPeriod("Game sessions", groupBy)}
-          dataHint="games.chart.sessions"
+          dataHint={chartHint("games.chart.sessions", data.sessionsPerDay)}
           exportHeaders={["date", "sessions"]}
           exportFilename={`games-sessions-${range}.csv`}
           exportRows={data.sessionsPerDay.map((r) => ({
@@ -135,7 +140,7 @@ export function GamesAnalyticsSection({
       <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsChartCard
           title={chartTitleWithPeriod("Daily reward claims", groupBy)}
-          dataHint="games.chart.dailyClaims"
+          dataHint={chartHint("games.chart.dailyClaims", data.dailyClaimsPerDay)}
           exportHeaders={["date", "claims"]}
           exportFilename={`games-daily-claims-${range}.csv`}
           exportRows={data.dailyClaimsPerDay.map((r) => ({
@@ -148,7 +153,7 @@ export function GamesAnalyticsSection({
 
         <AnalyticsChartCard
           title={chartTitleWithPeriod("Achievements earned", groupBy)}
-          dataHint="games.chart.achievements"
+          dataHint={chartHint("games.chart.achievements", data.achievementsPerDay)}
           exportHeaders={["date", "achievements"]}
           exportFilename={`games-achievements-${range}.csv`}
           exportRows={data.achievementsPerDay.map((r) => ({
@@ -163,7 +168,7 @@ export function GamesAnalyticsSection({
       <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsChartCard
           title="Top XP sources (events)"
-          dataHint="games.chart.xpSourcesEvents"
+          dataHint={chartHint("games.chart.xpSourcesEvents", data.xpPerDay)}
           exportHeaders={["source", "events"]}
           exportFilename={`games-xp-sources-events-${range}.csv`}
           exportRows={data.topXpSources.map((r) => ({
@@ -176,7 +181,7 @@ export function GamesAnalyticsSection({
 
         <AnalyticsChartCard
           title="Top XP sources (xp)"
-          dataHint="games.chart.xpSourcesXp"
+          dataHint={chartHint("games.chart.xpSourcesXp", data.xpPerDay)}
           exportHeaders={["source", "xp"]}
           exportFilename={`games-xp-sources-xp-${range}.csv`}
           exportRows={data.topXpSourcesByXp.map((r) => ({
@@ -189,7 +194,7 @@ export function GamesAnalyticsSection({
 
         <AnalyticsChartCard
           title="Sessions by game"
-          dataHint="games.chart.sessionsByGame"
+          dataHint={chartHint("games.chart.sessionsByGame", data.sessionsPerDay)}
           exportHeaders={["game", "sessions"]}
           exportFilename={`games-by-name-${range}.csv`}
           exportRows={data.sessionsByGame.map((r) => ({
@@ -204,7 +209,7 @@ export function GamesAnalyticsSection({
       <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsChartCard
           title="Player level distribution"
-          dataHint="games.chart.levelDist"
+          dataHint={chartHint("games.chart.levelDist", data.xpPerDay)}
           exportHeaders={["bracket", "players"]}
           exportFilename="games-level-distribution.csv"
           exportRows={data.levelDistribution.map((r) => ({
@@ -217,7 +222,7 @@ export function GamesAnalyticsSection({
 
         <AnalyticsChartCard
           title="DM vs channel sessions"
-          dataHint="games.chart.sessionMode"
+          dataHint={chartHint("games.chart.sessionMode", data.sessionsPerDay)}
           exportHeaders={["mode", "sessions"]}
           exportFilename={`games-session-mode-${range}.csv`}
           exportRows={data.sessionModeSplit.map((r) => ({
@@ -231,7 +236,7 @@ export function GamesAnalyticsSection({
 
       <AnalyticsChartCard
         title={`${chartTitleWithPeriod("New players", groupBy)} (first XP)`}
-        dataHint="games.chart.newPlayers"
+        dataHint={chartHint("games.chart.newPlayers", data.newPlayersPerDay)}
         exportHeaders={["date", "players"]}
         exportFilename={`games-new-players-${range}.csv`}
         exportRows={data.newPlayersPerDay.map((r) => ({
@@ -244,7 +249,7 @@ export function GamesAnalyticsSection({
 
       <AnalyticsUserCountTable
         title="Top XP earners (range)"
-        dataHint="games.table.topXp"
+        dataHint={chartHint("games.table.topXp", data.xpPerDay)}
         rows={data.topXpEarners.map((r) => ({
           userId: r.userId,
           count: r.value,
@@ -257,7 +262,7 @@ export function GamesAnalyticsSection({
       {data.topCounters.length > 0 && (
         <AnalyticsDataTable
           title="Top counters"
-          dataHint="games.table.topCounters"
+          dataHint={chartHint("games.table.topCounters", data.xpPerDay)}
           headers={["userId", "totalCounts", "highestCount", "mistakes"]}
           exportFilename="games-top-counters.csv"
           exportRows={data.topCounters.map((r) => ({
@@ -300,7 +305,7 @@ export function GamesAnalyticsSection({
       {data.topStreaks.length > 0 && (
         <AnalyticsDataTable
           title="Longest daily reward streaks"
-          dataHint="games.table.streaks"
+          dataHint={chartHint("games.table.streaks", data.dailyClaimsPerDay)}
           headers={["userId", "streak"]}
           exportFilename="games-top-streaks.csv"
           exportRows={data.topStreaks.map((r) => ({

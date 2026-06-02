@@ -1,9 +1,12 @@
 "use client";
 
+import { chartHint } from "@/components/analytics/bind-metric-hints";
 import {
   AnalyticsDataTable,
   AnalyticsTable,
 } from "@/components/analytics/AnalyticsDataTable";
+import type { AnalyticsDataMeta } from "@/lib/analytics/hint";
+import type { DailyCount } from "@/lib/analytics/types";
 import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { useAnalyticsTableRowLimit } from "@/components/analytics/table-row-limit";
 import type { StaffLeaderboardRow } from "@/lib/analytics/types";
@@ -27,7 +30,7 @@ function StaffTable({
     StaffLeaderboardRow,
     "ticketsClosed" | "messages" | "warnings" | "screenshares"
   >;
-  dataHint: string;
+  dataHint: AnalyticsDataMeta | string;
 }) {
   const labels = {
     ticketsClosed: "Tickets closed",
@@ -87,7 +90,7 @@ export function StaffOverviewTable({
   description: string;
   rows: StaffLeaderboardRow[];
   exportFilename: string;
-  dataHint: string;
+  dataHint: AnalyticsDataMeta | string;
 }) {
   const overviewLimit = useAnalyticsTableRowLimit(12);
   const overviewRows = [...rows]
@@ -159,6 +162,7 @@ export function StaffLeaderboardPanels({
   data,
   filePrefix,
   hintScope,
+  hintSeries,
 }: {
   data: {
     leaderboard: StaffLeaderboardRow[];
@@ -168,6 +172,7 @@ export function StaffLeaderboardPanels({
   };
   filePrefix: string;
   hintScope: "staffRecent" | "staffTotal";
+  hintSeries?: DailyCount[];
 }) {
   const leaderboardHints = {
     ticketsClosed: `${hintScope}.leaderboard.tickets`,
@@ -176,6 +181,9 @@ export function StaffLeaderboardPanels({
     screenshares: `${hintScope}.leaderboard.screenshares`,
   } as const;
 
+  const hint = (key: keyof typeof leaderboardHints) =>
+    hintSeries ? chartHint(leaderboardHints[key], hintSeries) : leaderboardHints[key];
+
   return (
     <>
       <StaffTable
@@ -183,7 +191,7 @@ export function StaffLeaderboardPanels({
         rows={data.leaderboard}
         filename={`${filePrefix}-leaderboard-tickets.csv`}
         highlight="ticketsClosed"
-        dataHint={leaderboardHints.ticketsClosed}
+        dataHint={hint("ticketsClosed")}
       />
       <div className="grid gap-4 lg:grid-cols-2">
         <StaffTable
@@ -191,14 +199,14 @@ export function StaffLeaderboardPanels({
           rows={data.topByMessages}
           filename={`${filePrefix}-leaderboard-messages.csv`}
           highlight="messages"
-          dataHint={leaderboardHints.messages}
+          dataHint={hint("messages")}
         />
         <StaffTable
           title="Leaderboard — warnings issued"
           rows={data.topByWarnings}
           filename={`${filePrefix}-leaderboard-warnings.csv`}
           highlight="warnings"
-          dataHint={leaderboardHints.warnings}
+          dataHint={hint("warnings")}
         />
       </div>
       <StaffTable
@@ -206,7 +214,7 @@ export function StaffLeaderboardPanels({
         rows={data.topByScreenshares}
         filename={`${filePrefix}-leaderboard-screenshares.csv`}
         highlight="screenshares"
-        dataHint={leaderboardHints.screenshares}
+        dataHint={hint("screenshares")}
       />
     </>
   );

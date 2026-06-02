@@ -1,7 +1,7 @@
 "use client";
 
 import { AnalyticsChartCard } from "@/components/analytics/AnalyticsChartCard";
-import { kpi } from "@/components/analytics/bind-metric-hints";
+import { chartHint, kpi } from "@/components/analytics/bind-metric-hints";
 import { AnalyticsKpiGrid } from "@/components/analytics/AnalyticsKpiGrid";
 import { AnalyticsUserCountTable } from "@/components/analytics/AnalyticsUserCountTable";
 import { DailyLineChart, NamedBarChart } from "@/components/analytics/charts";
@@ -27,7 +27,8 @@ export function ModerationAnalyticsSection({
           kpi(
             "Blacklists with expiry",
             kpis.blacklistsWithExpiry,
-            "moderation.blacklistsExpiry"
+            "moderation.blacklistsExpiry",
+            { hintSeries: data.blacklistsPerDay }
           ),
           kpi("Media entries", kpis.mediaEntries, "moderation.media"),
         ]}
@@ -36,7 +37,7 @@ export function ModerationAnalyticsSection({
       <div className="grid gap-4">
         <AnalyticsChartCard
           title="Blacklist expirations by date"
-          dataHint="moderation.chart.expiry"
+          dataHint={chartHint("moderation.chart.expiry", data.blacklistsPerDay)}
           exportHeaders={["date", "count"]}
           exportFilename={`blacklists-expiry-${range}.csv`}
           exportRows={data.blacklistsPerDay.map((r) => ({
@@ -56,14 +57,14 @@ export function ModerationAnalyticsSection({
         <>
           <AnalyticsUserCountTable
             title="Blacklists by staff member"
-            dataHint="moderation.table.byStaff"
+            dataHint={chartHint("moderation.table.byStaff", data.blacklistsPerDay)}
             rows={data.blacklistsByStaff}
             exportFilename="blacklists-by-staff.csv"
             countLabel="Entries"
           />
           <AnalyticsChartCard
             title="Blacklists issued by staff"
-            dataHint="moderation.chart.byStaff"
+            dataHint={chartHint("moderation.chart.byStaff", data.blacklistsPerDay)}
             exportHeaders={["staffId", "count"]}
             exportFilename="blacklists-by-staff-chart.csv"
             exportRows={data.blacklistsByStaff.map((r) => ({
