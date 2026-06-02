@@ -91,7 +91,7 @@ export async function listTickets(
   if (!isDbConfigured()) return null;
 
   const page = Math.max(1, params.page ?? 1);
-  const limit = Math.min(100, Math.max(1, params.limit ?? 25));
+  const limit = Math.min(500, Math.max(1, params.limit ?? 25));
   const offset = (page - 1) * limit;
   const sort = params.sort ?? "opened_at";
   const order = params.order === "asc" ? "ASC" : "DESC";

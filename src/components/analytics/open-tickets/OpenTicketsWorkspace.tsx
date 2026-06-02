@@ -16,8 +16,6 @@ import {
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
-  ArrowUpCircle,
-  ArrowDownCircle,
   RefreshCw,
   Search,
 } from "lucide-react";
@@ -191,32 +189,48 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
     return () => clearInterval(t);
   }, [autoRefresh, discordPreviews, refresh, refreshEnrich]);
 
+  /** All open tickets from API (search/type filters only — not View preset). */
+  const queueTickets = tickets;
+
   const visibleTickets = useMemo(
     () =>
       tickets.filter((t) => matchesView(viewMode, t, enrichments[t.channelID])),
     [tickets, viewMode, enrichments]
   );
 
+  /** Full queue for list + prev/next while in ticket detail view. */
+  const listTickets = showTicketView ? queueTickets : visibleTickets;
+
   useEffect(() => {
     if (!openChannelId || autoOpenConsumedRef.current) return;
-    const exists = visibleTickets.find((t) => t.channelID === openChannelId);
+    const exists = queueTickets.find((t) => t.channelID === openChannelId);
     if (!exists) return;
     autoOpenConsumedRef.current = true;
     setSelectedId(openChannelId);
     setShowTicketView(true);
-  }, [openChannelId, visibleTickets]);
+  }, [openChannelId, queueTickets]);
 
   useEffect(() => {
-    if (visibleTickets.length && !selectedId) {
-      setSelectedId(visibleTickets[0].channelID);
+    if (queueTickets.length && !selectedId) {
+      setSelectedId(queueTickets[0].channelID);
     }
-    if (selectedId && !visibleTickets.find((t) => t.channelID === selectedId)) {
-      setSelectedId(visibleTickets[0]?.channelID ?? null);
+    if (selectedId && !queueTickets.find((t) => t.channelID === selectedId)) {
+      setSelectedId(queueTickets[0]?.channelID ?? null);
     }
-    if (!visibleTickets.length) {
+    if (!queueTickets.length) {
       setShowTicketView(false);
     }
-  }, [visibleTickets, selectedId]);
+  }, [queueTickets, selectedId]);
+
+  const selectedIndex = useMemo(
+    () => listTickets.findIndex((t) => t.channelID === selectedId),
+    [listTickets, selectedId]
+  );
+  const prevTicket = selectedIndex > 0 ? listTickets[selectedIndex - 1] : null;
+  const nextTicket =
+    selectedIndex >= 0 && selectedIndex < listTickets.length - 1
+      ? listTickets[selectedIndex + 1]
+      : null;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -231,18 +245,30 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
         e.preventDefault();
         searchRef.current?.focus();
       }
-      if (!["ArrowDown", "ArrowUp"].includes(e.key)) return;
-      if (!visibleTickets.length) return;
-      const idx = visibleTickets.findIndex((t) => t.channelID === selectedId);
-      const next =
-        e.key === "ArrowDown"
-          ? Math.min(visibleTickets.length - 1, idx + 1)
-          : Math.max(0, idx - 1);
-      setSelectedId(visibleTickets[next].channelID);
+      if (isTypingField) return;
+      if (!showTicketView || !listTickets.length) {
+        if (!["ArrowDown", "ArrowUp"].includes(e.key)) return;
+        if (!visibleTickets.length) return;
+        const idx = visibleTickets.findIndex((t) => t.channelID === selectedId);
+        const next =
+          e.key === "ArrowDown"
+            ? Math.min(visibleTickets.length - 1, idx + 1)
+            : Math.max(0, idx - 1);
+        setSelectedId(visibleTickets[next].channelID);
+        return;
+      }
+      if (e.key === "ArrowLeft" && prevTicket) {
+        e.preventDefault();
+        setSelectedId(prevTicket.channelID);
+      }
+      if (e.key === "ArrowRight" && nextTicket) {
+        e.preventDefault();
+        setSelectedId(nextTicket.channelID);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [visibleTickets, selectedId]);
+  }, [showTicketView, listTickets, visibleTickets, selectedId, prevTicket, nextTicket]);
 
   const oldestHours = useMemo(() => {
     if (!visibleTickets.length) return null;
@@ -252,28 +278,25 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
   const grouped = useMemo(() => {
     if (!groupByType) return null;
     const map = new Map<string, TicketRow[]>();
-    for (const t of visibleTickets) {
+    for (const t of listTickets) {
       const list = map.get(t.type) ?? [];
       list.push(t);
       map.set(t.type, list);
     }
     return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  }, [visibleTickets, groupByType]);
+  }, [listTickets, groupByType]);
 
   const selectTicket = (t: TicketRow) => {
     setSelectedId(t.channelID);
     setShowTicketView(true);
   };
 
-  const selectedIndex = useMemo(
-    () => visibleTickets.findIndex((t) => t.channelID === selectedId),
-    [visibleTickets, selectedId]
-  );
-  const prevTicket = selectedIndex > 0 ? visibleTickets[selectedIndex - 1] : null;
-  const nextTicket =
-    selectedIndex >= 0 && selectedIndex < visibleTickets.length - 1
-      ? visibleTickets[selectedIndex + 1]
-      : null;
+  const queueEmptyMessage =
+    tickets.length === 0
+      ? "No open tickets in queue."
+      : showTicketView
+        ? "No open tickets match your filters."
+        : "No tickets match this View preset.";
 
   const queue = (
     <div className="space-y-3">
@@ -285,13 +308,9 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
           />
         ))}
 
-      {!loading && !visibleTickets.length && (
+      {!loading && !listTickets.length && (
         <div className="rounded-xl border border-dashed border-border py-16 text-center">
-          <p className="text-muted">
-            {tickets.length === 0
-              ? "No open tickets in queue."
-              : "No tickets match this View preset."}
-          </p>
+          <p className="text-muted">{queueEmptyMessage}</p>
           <Button className="mt-4" variant="secondary" onClick={refresh}>
             Refresh
           </Button>
@@ -301,7 +320,7 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
       {!loading &&
         !groupByType &&
         layout === "cards" &&
-        visibleTickets.map((t) => (
+        listTickets.map((t) => (
           <OpenTicketCard
             key={t.channelID}
             ticket={t}
@@ -315,7 +334,7 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
       {!loading &&
         !groupByType &&
         layout === "list" &&
-        visibleTickets.map((t) => (
+        listTickets.map((t) => (
           <button
             key={t.channelID}
             type="button"
@@ -335,7 +354,7 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
       {!loading &&
         !groupByType &&
         layout === "detailed" &&
-        visibleTickets.map((t) => {
+        listTickets.map((t) => {
           const hours = ticketAgeHours(t.opened_at);
           const enrichment = enrichments[t.channelID];
           return (
@@ -607,77 +626,95 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
 
       {showTicketView && selectedId && (
         <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-stretch gap-2">
             <Button
-              size="sm"
+              type="button"
               variant="secondary"
-              onClick={() => setShowTicketView(false)}
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to queue
-            </Button>
-            <Button
               size="sm"
-              variant="secondary"
+              className="shrink-0 self-center px-2"
               disabled={!prevTicket}
               onClick={() => prevTicket && selectTicket(prevTicket)}
+              aria-label="Previous ticket"
             >
-              <ArrowUpCircle className="h-4 w-4" />
-              Previous
+              <ChevronLeft className="h-6 w-6" />
             </Button>
+            <div className="min-h-[calc(100vh-250px)] min-w-0 flex-1">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="text-xs text-muted">
+                  Ticket {selectedIndex + 1} of {listTickets.length}
+                  {listTickets.length < total && total > listTickets.length
+                    ? ` (${total} open total)`
+                    : ""}
+                </p>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-muted"
+                  onClick={() => setShowTicketView(false)}
+                >
+                  <ArrowLeft className="mr-1 h-4 w-4" />
+                  Close
+                </Button>
+              </div>
+              <TicketDetailDrawer
+                embedded
+                channelId={selectedId}
+                onClose={() => setShowTicketView(false)}
+                userTier={userTier}
+                onClosed={() => {
+                  refresh();
+                  setShowTicketView(false);
+                  setSelectedId(null);
+                }}
+              />
+            </div>
             <Button
-              size="sm"
+              type="button"
               variant="secondary"
+              size="sm"
+              className="shrink-0 self-center px-2"
               disabled={!nextTicket}
               onClick={() => nextTicket && selectTicket(nextTicket)}
+              aria-label="Next ticket"
             >
-              <ArrowDownCircle className="h-4 w-4" />
-              Next
+              <ChevronRight className="h-6 w-6" />
             </Button>
-          </div>
-          <div className="min-h-[calc(100vh-250px)]">
-            <TicketDetailDrawer
-              embedded
-              channelId={selectedId}
-              onClose={() => setShowTicketView(false)}
-              userTier={userTier}
-              onClosed={() => {
-                refresh();
-                setShowTicketView(false);
-                setSelectedId(null);
-              }}
-            />
           </div>
         </div>
       )}
 
-      <div className="max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
-        {queue}
-        {pageCount > 1 && (
-          <div className="mt-4 flex items-center justify-between">
-            <p className="text-xs text-muted">
-              Page {state.page} / {pageCount}
-            </p>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={state.page <= 1}
-                onClick={() => setParams({ page: state.page - 1 })}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={state.page >= pageCount}
-                onClick={() => setParams({ page: state.page + 1 })}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+      <div>
+        {showTicketView && listTickets.length > 0 && (
+          <p className="mb-2 text-sm font-medium text-white">Open tickets</p>
         )}
+        <div className="max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
+          {queue}
+          {pageCount > 1 && (
+            <div className="mt-4 flex items-center justify-between">
+              <p className="text-xs text-muted">
+                Page {state.page} / {pageCount}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={state.page <= 1}
+                  onClick={() => setParams({ page: state.page - 1 })}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={state.page >= pageCount}
+                  onClick={() => setParams({ page: state.page + 1 })}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

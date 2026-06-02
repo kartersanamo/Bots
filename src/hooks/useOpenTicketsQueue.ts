@@ -90,7 +90,7 @@ export function useOpenTicketsQueue() {
       try {
         const params = new URLSearchParams({
           page: String(state.page),
-          limit: "100",
+          limit: "500",
           sort: state.sort,
           order: state.order,
           status: "open",
