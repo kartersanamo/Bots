@@ -92,17 +92,32 @@ export function NamedBarChart({
     return <p className="py-8 text-center text-sm text-muted">No data in range</p>;
   }
 
+  const longestLabel = data.reduce((max, row) => {
+    const len = String(row.name ?? "").length;
+    return len > max ? len : max;
+  }, 0);
+  const needsLongLabelLayout = !compactLabels && longestLabel > 16;
+  const labelAngle = compactLabels ? 0 : needsLongLabelLayout ? -35 : -25;
+  const labelHeight = compactLabels ? 28 : needsLongLabelLayout ? 84 : 56;
+  const labelSize = compactLabels ? 9 : needsLongLabelLayout ? 9 : 10;
+  const tickFormatter = (v: string | number) => {
+    const raw = String(v);
+    if (compactLabels || !needsLongLabelLayout) return raw;
+    return raw.length > 22 ? `${raw.slice(0, 21)}…` : raw;
+  };
+
   return (
     <ResponsiveContainer width="100%" height={220}>
       <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
         <XAxis
           dataKey="name"
-          tick={{ fill: "#94a3b8", fontSize: compactLabels ? 9 : 10 }}
+          tick={{ fill: "#94a3b8", fontSize: labelSize }}
           interval={0}
-          angle={compactLabels ? 0 : -25}
+          angle={labelAngle}
           textAnchor={compactLabels ? "middle" : "end"}
-          height={compactLabels ? 28 : 50}
+          height={labelHeight}
+          tickFormatter={tickFormatter}
         />
         <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} width={40} />
         <Tooltip
