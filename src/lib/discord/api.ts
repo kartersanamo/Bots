@@ -21,6 +21,8 @@ export interface GuildRole {
   name: string;
   color: number;
   position: number;
+  icon?: string | null;
+  unicode_emoji?: string | null;
   members?: number;
 }
 

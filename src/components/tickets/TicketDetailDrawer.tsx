@@ -16,7 +16,7 @@ import {
   Send,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { can } from "@/lib/permissions";
 import type { PermissionTier } from "@/lib/permissions";
 
@@ -71,6 +71,23 @@ interface DiscordEmbed {
   timestamp?: string;
 }
 
+interface GuildRoleLite {
+  id: string;
+  name: string;
+  color: number;
+  position: number;
+  icon?: string | null;
+  unicode_emoji?: string | null;
+}
+
+interface DiscordResolvedMember {
+  id: string;
+  displayName: string;
+  username: string;
+  avatar: string | null;
+  roles: string[];
+}
+
 function openedAtDate(openedAt: string): Date {
   const n = Number(openedAt);
   if (!Number.isNaN(n) && n > 0) return new Date(n * 1000);
@@ -80,6 +97,28 @@ function openedAtDate(openedAt: string): Date {
 function embedBorderColor(color?: number): string {
   if (!color || color <= 0) return "#5865F2";
   return `#${color.toString(16).padStart(6, "0")}`;
+}
+
+function roleColorHex(color?: number): string | undefined {
+  if (!color || color <= 0) return undefined;
+  return `#${color.toString(16).padStart(6, "0")}`;
+}
+
+function roleIconUrl(role: GuildRoleLite): string | null {
+  if (!role.icon) return null;
+  return `https://cdn.discordapp.com/role-icons/${role.id}/${role.icon}.png?size=64`;
+}
+
+function topRoleForMember(
+  roleIds: string[] | undefined,
+  roleById: Map<string, GuildRoleLite>
+): GuildRoleLite | null {
+  if (!roleIds?.length) return null;
+  const resolved = roleIds
+    .map((id) => roleById.get(id))
+    .filter((r): r is GuildRoleLite => Boolean(r))
+    .sort((a, b) => b.position - a.position);
+  return resolved[0] ?? null;
 }
 
 function DiscordEmbedCard({ embed }: { embed: DiscordEmbed }) {
@@ -163,6 +202,15 @@ export function TicketDetailDrawer({
   const [sendError, setSendError] = useState<string | null>(null);
   const [sendNotice, setSendNotice] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [guildRoles, setGuildRoles] = useState<GuildRoleLite[]>([]);
+  const [memberProfiles, setMemberProfiles] = useState<
+    Record<string, DiscordResolvedMember>
+  >({});
+
+  const roleById = useMemo(
+    () => new Map(guildRoles.map((r) => [r.id, r])),
+    [guildRoles]
+  );
 
   useEffect(() => {
     if (!channelId) {
@@ -196,11 +244,46 @@ export function TicketDetailDrawer({
         );
         return;
       }
-      setMessages(Array.isArray(payload.messages) ? payload.messages : []);
+      const nextMessages = Array.isArray(payload.messages) ? payload.messages : [];
+      setMessages(nextMessages);
+      const authorIds = Array.from(
+        new Set(nextMessages.map((m) => String(m.author?.id || "")).filter(Boolean))
+      );
+      if (authorIds.length) {
+        void loadAuthorProfiles(authorIds);
+      }
       setSendError(null);
     } finally {
       setMessagesLoading(false);
     }
+  }
+
+  async function loadGuildRoles() {
+    const res = await fetch("/api/server/info?roles=all");
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok || !Array.isArray(payload.roles)) return;
+    setGuildRoles(
+      payload.roles.map((r: GuildRoleLite) => ({
+        id: String(r.id),
+        name: String(r.name),
+        color: Number(r.color ?? 0),
+        position: Number(r.position ?? 0),
+        icon: r.icon ?? null,
+        unicode_emoji: r.unicode_emoji ?? null,
+      }))
+    );
+  }
+
+  async function loadAuthorProfiles(userIds: string[]) {
+    const ids = userIds.filter((id) => !memberProfiles[id]);
+    if (!ids.length) return;
+    const res = await fetch(
+      `/api/discord/users?ids=${encodeURIComponent(ids.join(","))}`
+    );
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok || !payload.users || typeof payload.users !== "object") return;
+    const mapped = payload.users as Record<string, DiscordResolvedMember>;
+    setMemberProfiles((prev) => ({ ...prev, ...mapped }));
   }
 
   useEffect(() => {
@@ -213,6 +296,12 @@ export function TicketDetailDrawer({
     void loadMessages();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelId]);
+
+  useEffect(() => {
+    void loadGuildRoles();
+    // one-time role catalog for role color/icon rendering
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function copyText(text: string) {
     await navigator.clipboard.writeText(text);
@@ -411,9 +500,33 @@ export function TicketDetailDrawer({
                         alt={data.owner.username}
                       />
                       <div>
-                        <p className="font-medium text-white">
-                          {data.owner.global_name || data.owner.username}
-                        </p>
+                        {(() => {
+                          const ownerProfile = memberProfiles[data.owner.id];
+                          const ownerTopRole = topRoleForMember(
+                            ownerProfile?.roles,
+                            roleById
+                          );
+                          const ownerColor = roleColorHex(ownerTopRole?.color);
+                          const ownerIcon = ownerTopRole ? roleIconUrl(ownerTopRole) : null;
+                          return (
+                            <p
+                              className="flex items-center gap-1 font-medium"
+                              style={{ color: ownerColor ?? "#ffffff" }}
+                            >
+                              {ownerTopRole?.unicode_emoji && (
+                                <span>{ownerTopRole.unicode_emoji}</span>
+                              )}
+                              {ownerIcon && (
+                                <img
+                                  src={ownerIcon}
+                                  alt="Role icon"
+                                  className="h-4 w-4 rounded"
+                                />
+                              )}
+                              {data.owner.global_name || data.owner.username}
+                            </p>
+                          );
+                        })()}
                         <p className="text-xs text-muted">@{data.owner.username}</p>
                       </div>
                     </div>
@@ -457,6 +570,10 @@ export function TicketDetailDrawer({
                             {messages.map((m) => {
                               const displayName =
                                 m.author.global_name || m.author.username || m.author.id;
+                              const authorProfile = memberProfiles[m.author.id];
+                              const topRole = topRoleForMember(authorProfile?.roles, roleById);
+                              const nameColor = roleColorHex(topRole?.color);
+                              const iconUrl = topRole ? roleIconUrl(topRole) : null;
                               const body = m.content?.trim() || "";
                               return (
                                 <div key={m.id} className="flex gap-3">
@@ -467,7 +584,20 @@ export function TicketDetailDrawer({
                                   />
                                   <div className="min-w-0 flex-1">
                                     <div className="flex items-center gap-2">
-                                      <p className="text-sm font-medium text-white">
+                                      <p
+                                        className="flex items-center gap-1 text-sm font-medium"
+                                        style={{ color: nameColor ?? "#ffffff" }}
+                                      >
+                                        {topRole?.unicode_emoji && (
+                                          <span>{topRole.unicode_emoji}</span>
+                                        )}
+                                        {iconUrl && (
+                                          <img
+                                            src={iconUrl}
+                                            alt="Role icon"
+                                            className="h-4 w-4 rounded"
+                                          />
+                                        )}
                                         {displayName}
                                       </p>
                                       {m.author.bot && (
