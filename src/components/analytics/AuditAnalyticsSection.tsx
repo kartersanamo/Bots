@@ -7,6 +7,7 @@ import {
 } from "@/components/analytics/AnalyticsDataTable";
 import { AnalyticsKpiGrid } from "@/components/analytics/AnalyticsKpiGrid";
 import { DailyLineChart, NamedBarChart } from "@/components/analytics/charts";
+import { useAnalyticsTableRowLimit } from "@/components/analytics/table-row-limit";
 import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { chartTitleWithPeriod } from "@/lib/analytics/chart-period";
 import type { AnalyticsGroupBy } from "@/lib/analytics/group-by";
@@ -24,6 +25,8 @@ export function AuditAnalyticsSection({
   range,
   groupBy,
 }: AuditAnalyticsSectionProps) {
+  const topActorsLimit = useAnalyticsTableRowLimit(8);
+
   return (
     <div className="space-y-6">
       <AnalyticsKpiGrid
@@ -85,6 +88,7 @@ export function AuditAnalyticsSection({
             actorId: r.actorId,
             count: r.count,
           }))}
+          tableRowLimit={topActorsLimit.tableRowLimit}
         >
           <AnalyticsTable>
             <thead>
@@ -95,7 +99,7 @@ export function AuditAnalyticsSection({
               </tr>
             </thead>
             <tbody>
-              {data.topActors.map((r, i) => (
+              {topActorsLimit.slice(data.topActors).map((r, i) => (
                 <tr key={r.actorId} className="border-b border-border/50">
                   <td className="px-4 py-2 text-muted">{i + 1}</td>
                   <td className="px-4 py-2">

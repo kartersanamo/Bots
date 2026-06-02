@@ -12,6 +12,7 @@ import {
   DualDailyLineChart,
   NamedBarChart,
 } from "@/components/analytics/charts";
+import { useAnalyticsTableRowLimit } from "@/components/analytics/table-row-limit";
 import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { chartTitleWithPeriod } from "@/lib/analytics/chart-period";
 import { formatDurationSeconds } from "@/lib/analytics/format";
@@ -32,6 +33,9 @@ export function TicketsAnalytics({
   groupBy,
 }: TicketsAnalyticsProps) {
   const { kpis } = data;
+  const closeTimeByTypeLimit = useAnalyticsTableRowLimit(8);
+  const mostTicketsOneDayLimit = useAnalyticsTableRowLimit(8);
+  const longestOpenLimit = useAnalyticsTableRowLimit(8);
 
   return (
     <div className="space-y-6">
@@ -290,6 +294,7 @@ export function TicketsAnalytics({
             medianSeconds: r.medianSeconds,
             count: r.count,
           }))}
+          tableRowLimit={closeTimeByTypeLimit.tableRowLimit}
         >
           <AnalyticsTable>
             <thead>
@@ -300,7 +305,7 @@ export function TicketsAnalytics({
               </tr>
             </thead>
             <tbody>
-              {data.closeTimeByType.map((r) => (
+              {closeTimeByTypeLimit.slice(data.closeTimeByType).map((r) => (
                 <tr key={r.type} className="border-b border-border/50">
                   <td className="px-4 py-2 text-white">{r.type}</td>
                   <td className="px-4 py-2 text-white">
@@ -323,6 +328,7 @@ export function TicketsAnalytics({
           date: r.date,
           count: r.count,
         }))}
+        tableRowLimit={mostTicketsOneDayLimit.tableRowLimit}
       >
         <AnalyticsTable>
           <thead>
@@ -334,7 +340,7 @@ export function TicketsAnalytics({
             </tr>
           </thead>
           <tbody>
-            {data.mostTicketsInOneDay.map((r, i) => (
+            {mostTicketsOneDayLimit.slice(data.mostTicketsInOneDay).map((r, i) => (
               <tr key={`${r.ownerId}-${r.date}`} className="border-b border-border/50">
                 <td className="px-4 py-2 text-muted">{i + 1}</td>
                 <td className="px-4 py-2">
@@ -367,6 +373,7 @@ export function TicketsAnalytics({
           number: r.number,
           durationSeconds: r.durationSeconds,
         }))}
+        tableRowLimit={longestOpenLimit.tableRowLimit}
       >
         <AnalyticsTable>
           <thead>
@@ -379,7 +386,7 @@ export function TicketsAnalytics({
             </tr>
           </thead>
           <tbody>
-            {data.longestOpenTickets.map((r, i) => (
+            {longestOpenLimit.slice(data.longestOpenTickets).map((r, i) => (
               <tr key={r.channelId} className="border-b border-border/50">
                 <td className="px-4 py-2 text-muted">{i + 1}</td>
                 <td className="px-4 py-2">
@@ -434,6 +441,9 @@ function OpenerTable({
   rows: { ownerId: string; count: number }[];
   filename: string;
 }) {
+  const { slice, tableRowLimit } = useAnalyticsTableRowLimit(8);
+  const visibleRows = slice(rows);
+
   return (
     <AnalyticsDataTable
       title={title}
@@ -444,6 +454,7 @@ function OpenerTable({
         ownerId: r.ownerId,
         tickets: r.count,
       }))}
+      tableRowLimit={tableRowLimit}
     >
       <AnalyticsTable>
         <thead>
@@ -454,7 +465,7 @@ function OpenerTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((r, i) => (
+          {visibleRows.map((r, i) => (
             <tr key={r.ownerId} className="border-b border-border/50">
               <td className="px-4 py-2 text-muted">{i + 1}</td>
               <td className="px-4 py-2">

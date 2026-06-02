@@ -4,6 +4,7 @@ import {
   AnalyticsDataTable,
   AnalyticsTable,
 } from "@/components/analytics/AnalyticsDataTable";
+import { useAnalyticsTableRowLimit } from "@/components/analytics/table-row-limit";
 import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { formatNumber } from "@/lib/utils";
 
@@ -14,6 +15,7 @@ interface AnalyticsUserCountTableProps {
   countLabel?: string;
   valueKey?: string;
   formatValue?: (n: number) => string;
+  defaultRowLimit?: number;
 }
 
 export function AnalyticsUserCountTable({
@@ -23,7 +25,11 @@ export function AnalyticsUserCountTable({
   countLabel = "Count",
   valueKey = "count",
   formatValue = formatNumber,
+  defaultRowLimit = 8,
 }: AnalyticsUserCountTableProps) {
+  const { slice, tableRowLimit } = useAnalyticsTableRowLimit(defaultRowLimit);
+  const visibleRows = slice(rows);
+
   if (!rows.length) return null;
 
   return (
@@ -36,6 +42,7 @@ export function AnalyticsUserCountTable({
         userId: r.userId,
         [valueKey]: r.count,
       }))}
+      tableRowLimit={tableRowLimit}
     >
       <AnalyticsTable>
         <thead>
@@ -46,7 +53,7 @@ export function AnalyticsUserCountTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((r, i) => (
+          {visibleRows.map((r, i) => (
             <tr key={r.userId} className="border-b border-border/50">
               <td className="px-4 py-2 text-muted">{i + 1}</td>
               <td className="px-4 py-2">

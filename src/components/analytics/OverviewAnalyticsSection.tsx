@@ -157,7 +157,7 @@ export function OverviewAnalyticsSection({
         {metrics && (
           <AnalyticsUserCountTable
             title="Top ticket closers (range)"
-            rows={metrics.topClosersInRange.slice(0, 8)}
+            rows={metrics.topClosersInRange}
             exportFilename={`overview-closers-${range}.csv`}
             countLabel="Closed"
           />
@@ -165,7 +165,7 @@ export function OverviewAnalyticsSection({
         {games && (
           <AnalyticsUserCountTable
             title="Top XP earners (range)"
-            rows={games.topXpEarners.slice(0, 8).map((r) => ({
+            rows={games.topXpEarners.map((r) => ({
               userId: r.userId,
               count: r.value,
             }))}
@@ -177,7 +177,7 @@ export function OverviewAnalyticsSection({
         {staff && (
           <AnalyticsUserCountTable
             title="Staff — tickets closed"
-            rows={staff.leaderboard.slice(0, 8).map((r) => ({
+            rows={staff.leaderboard.map((r) => ({
               userId: r.userId,
               count: r.ticketsClosed,
             }))}

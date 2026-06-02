@@ -8,6 +8,7 @@ import { AnalyticsChartCard } from "@/components/analytics/AnalyticsChartCard";
 import { AnalyticsKpiGrid } from "@/components/analytics/AnalyticsKpiGrid";
 import { NamedBarChart } from "@/components/analytics/charts";
 import { DiscordUserChip } from "@/components/games/DiscordUserChip";
+import { useAnalyticsTableRowLimit } from "@/components/analytics/table-row-limit";
 import type { StaffAnalytics, StaffLeaderboardRow } from "@/lib/analytics/types";
 import { formatNumber } from "@/lib/utils";
 
@@ -35,6 +36,8 @@ function StaffTable({
     warnings: "Warnings",
     screenshares: "Screenshares",
   };
+  const { slice, tableRowLimit } = useAnalyticsTableRowLimit(8);
+  const visibleRows = slice(rows);
 
   return (
     <AnalyticsDataTable
@@ -45,6 +48,7 @@ function StaffTable({
         userId: r.userId,
         [highlight]: r[highlight],
       }))}
+      tableRowLimit={tableRowLimit}
     >
       <AnalyticsTable>
         <thead>
@@ -55,7 +59,7 @@ function StaffTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((r, i) => (
+          {visibleRows.map((r, i) => (
             <tr key={r.userId} className="border-b border-border/50">
               <td className="px-4 py-2 text-muted">{i + 1}</td>
               <td className="px-4 py-2">
@@ -74,6 +78,8 @@ function StaffTable({
 
 export function StaffAnalyticsSection({ data }: StaffAnalyticsSectionProps) {
   const { totals } = data;
+  const duplicatesLimit = useAnalyticsTableRowLimit(8);
+  const visibleDuplicates = duplicatesLimit.slice(data.duplicateStatisticsUsers);
   const activityBars = data.leaderboard.slice(0, 12).map((r) => ({
     name: r.userId.slice(-6),
     count: r.ticketsClosed + r.messages + r.warnings + r.screenshares,
@@ -170,6 +176,7 @@ export function StaffAnalyticsSection({ data }: StaffAnalyticsSectionProps) {
             userId: r.userId,
             count: r.count,
           }))}
+          tableRowLimit={duplicatesLimit.tableRowLimit}
         >
           <AnalyticsTable>
             <thead>
@@ -179,7 +186,7 @@ export function StaffAnalyticsSection({ data }: StaffAnalyticsSectionProps) {
               </tr>
             </thead>
             <tbody>
-              {data.duplicateStatisticsUsers.map((r) => (
+              {visibleDuplicates.map((r) => (
                 <tr key={r.userId} className="border-b border-border/50">
                   <td className="px-4 py-2">
                     <DiscordUserChip userId={r.userId} />

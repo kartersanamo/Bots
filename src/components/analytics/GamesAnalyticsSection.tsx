@@ -8,6 +8,7 @@ import {
 import { AnalyticsKpiGrid } from "@/components/analytics/AnalyticsKpiGrid";
 import { AnalyticsUserCountTable } from "@/components/analytics/AnalyticsUserCountTable";
 import { DailyLineChart, NamedBarChart } from "@/components/analytics/charts";
+import { useAnalyticsTableRowLimit } from "@/components/analytics/table-row-limit";
 import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { chartTitleWithPeriod } from "@/lib/analytics/chart-period";
 import type { AnalyticsGroupBy } from "@/lib/analytics/group-by";
@@ -25,6 +26,8 @@ export function GamesAnalyticsSection({
   range,
   groupBy,
 }: GamesAnalyticsSectionProps) {
+  const topStreaksLimit = useAnalyticsTableRowLimit(8);
+
   const { kpis } = data;
   const retentionPct =
     kpis.everPlayed > 0
@@ -200,6 +203,7 @@ export function GamesAnalyticsSection({
             userId: r.userId,
             streak: r.streak,
           }))}
+          tableRowLimit={topStreaksLimit.tableRowLimit}
         >
           <AnalyticsTable>
             <thead>
@@ -210,7 +214,7 @@ export function GamesAnalyticsSection({
               </tr>
             </thead>
             <tbody>
-              {data.topStreaks.map((r, i) => (
+              {topStreaksLimit.slice(data.topStreaks).map((r, i) => (
                 <tr key={r.userId} className="border-b border-border/50">
                   <td className="px-4 py-2 text-muted">{i + 1}</td>
                   <td className="px-4 py-2">
