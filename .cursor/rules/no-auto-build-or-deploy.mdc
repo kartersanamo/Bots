@@ -1,0 +1,10 @@
+---
+description: Do not auto run build/deploy commands
+alwaysApply: true
+---
+
+# Build and Deploy Execution
+
+- Do not run `npm run build`, `next build`, deploy scripts, or service restarts after each code change.
+- Only run build/deploy/restart commands when the user explicitly requests them.
+- After making code edits, leave deployment to the user unless asked otherwise.

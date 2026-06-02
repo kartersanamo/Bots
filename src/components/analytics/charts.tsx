@@ -121,9 +121,13 @@ export function NamedBarChart({
 export function DualDailyLineChart({
   opened,
   closed,
+  openedLabel = "Opened",
+  closedLabel = "Closed",
 }: {
   opened: DailyCount[];
   closed: DailyCount[];
+  openedLabel?: string;
+  closedLabel?: string;
 }) {
   const map = new Map<string, { date: string; opened: number; closed: number }>();
   for (const r of opened) {
@@ -166,7 +170,7 @@ export function DualDailyLineChart({
         <Line
           type="monotone"
           dataKey="opened"
-          name="Opened"
+          name={openedLabel}
           stroke={CHART_COLORS.primary}
           strokeWidth={2}
           dot={false}
@@ -175,7 +179,7 @@ export function DualDailyLineChart({
         <Line
           type="monotone"
           dataKey="closed"
-          name="Closed"
+          name={closedLabel}
           stroke={CHART_COLORS.secondary}
           strokeWidth={2}
           dot={false}

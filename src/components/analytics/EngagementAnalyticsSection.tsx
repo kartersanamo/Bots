@@ -103,6 +103,8 @@ export function EngagementAnalyticsSection({
           <DualDailyLineChart
             opened={data.ticketStaffMessagesPerDay}
             closed={data.ticketOwnerMessagesPerDay}
+            openedLabel="Staff"
+            closedLabel="Owner"
           />
         </AnalyticsChartCard>
       </div>
@@ -128,6 +130,8 @@ export function EngagementAnalyticsSection({
           <DualDailyLineChart
             opened={data.memberJoinsPerDay}
             closed={data.memberLeavesPerDay}
+            openedLabel="Joins"
+            closedLabel="Leaves"
           />
         </AnalyticsChartCard>
 
