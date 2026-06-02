@@ -66,6 +66,13 @@ export async function closeTicketViaBot(params: {
   }
 
   if (!res.ok) {
+    if (res.status === 404) {
+      throw new TicketsBotApiError(
+        "MinecadiaTickets bot command endpoint is unavailable (404). Restart the tickets bot to load /ticket-command.",
+        503,
+        data
+      );
+    }
     const detail =
       typeof data === "object" && data && "error" in data
         ? String((data as { error: unknown }).error)
