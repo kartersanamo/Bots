@@ -201,6 +201,11 @@ export interface ModerationAnalytics {
   };
   blacklistsPerDay: DailyCount[];
   blacklistsByStaff: UserCountRow[];
+  /** Dashboard-recorded mod actions in range (when analytics_mod_actions exists). */
+  modActionsPerDay: DailyCount[];
+  modActionsByType: NamedCount[];
+  modActionsInRange: number;
+  trackingModActions: boolean;
 }
 
 export interface AuditAnalytics {

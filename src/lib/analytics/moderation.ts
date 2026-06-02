@@ -5,7 +5,13 @@ import {
   buildTimeBucketSpec,
   normalizeTimeSeries,
 } from "@/lib/analytics/time-buckets";
-import type { AnalyticsRange, DailyCount, ModerationAnalytics } from "@/lib/analytics/types";
+import type {
+  AnalyticsRange,
+  DailyCount,
+  ModerationAnalytics,
+  NamedCount,
+} from "@/lib/analytics/types";
+import { getAnalyticsTrackingTableStatus } from "@/lib/analytics/table-check";
 import { fetchGuildBanCount } from "@/lib/discord/api";
 import { fetchGuildTimeoutCount } from "@/lib/discord/guild-timeouts";
 import { query, queryOne, isDbConfigured } from "@/lib/db/pool";
@@ -20,6 +26,10 @@ export async function getModerationAnalytics(
   const bucketSpec = buildTimeBucketSpec(range, groupBy);
   const blBucket = bucketKeySqlFromUnix("whenToUnbl", bucketSpec);
 
+  const tracking = await getAnalyticsTrackingTableStatus();
+  const hasModActions = tracking.moderation === true;
+  const modBucket = bucketKeySqlFromUnix("created_at", bucketSpec);
+
   try {
     const [
       kpis,
@@ -28,6 +38,9 @@ export async function getModerationAnalytics(
       blacklistsPerDay,
       blacklistsByStaff,
       mediaCount,
+      modActionsPerDay,
+      modActionsByType,
+      modActionsTotal,
     ] = await Promise.all([
         queryOne<{
           totalBlacklists: number;
@@ -56,6 +69,33 @@ export async function getModerationAnalytics(
         queryOne<{ total: number }>(`SELECT COUNT(*) AS total FROM media`).catch(
           () => ({ total: 0 })
         ),
+        hasModActions
+          ? query<{ date: string; count: number }>(
+              `SELECT ${modBucket} AS date, COUNT(*) AS count
+               FROM analytics_mod_actions
+               WHERE 1=1
+               ${since != null ? "AND created_at >= ?" : ""}
+               GROUP BY date ORDER BY date`,
+              since != null ? [since] : []
+            ).catch(() => [])
+          : Promise.resolve([]),
+        hasModActions
+          ? query<{ action_type: string; count: number }>(
+              `SELECT action_type, COUNT(*) AS count FROM analytics_mod_actions
+               WHERE 1=1
+               ${since != null ? "AND created_at >= ?" : ""}
+               GROUP BY action_type ORDER BY count DESC LIMIT 12`,
+              since != null ? [since] : []
+            ).catch(() => [])
+          : Promise.resolve([]),
+        hasModActions
+          ? queryOne<{ total: number }>(
+              `SELECT COUNT(*) AS total FROM analytics_mod_actions
+               WHERE 1=1
+               ${since != null ? "AND created_at >= ?" : ""}`,
+              since != null ? [since] : []
+            ).catch(() => ({ total: 0 }))
+          : Promise.resolve({ total: 0 }),
       ]);
 
     return {
@@ -77,6 +117,19 @@ export async function getModerationAnalytics(
         userId: String(r.staffID),
         count: Number(r.count),
       })),
+      modActionsPerDay: normalizeTimeSeries(
+        mapDaily(modActionsPerDay),
+        range,
+        groupBy
+      ),
+      modActionsByType: modActionsByType.map(
+        (r): NamedCount => ({
+          name: String(r.action_type),
+          count: Number(r.count),
+        })
+      ),
+      modActionsInRange: Number(modActionsTotal?.total ?? 0),
+      trackingModActions: hasModActions,
     };
   } catch (err) {
     console.error("[analytics] getModerationAnalytics failed:", err);

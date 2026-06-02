@@ -46,7 +46,14 @@ function formatTimeRemaining(untilMs: number): string {
   return `${days}d ${hours % 24}h`;
 }
 
-export function ActiveGuildTimeoutsTable() {
+interface ActiveGuildTimeoutsTableProps {
+  variant?: "analytics" | "manage";
+}
+
+export function ActiveGuildTimeoutsTable({
+  variant = "manage",
+}: ActiveGuildTimeoutsTableProps) {
+  const readOnly = variant === "analytics";
   const [data, setData] = useState<TimeoutsApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [revokeTarget, setRevokeTarget] = useState<GuildTimeoutRow | null>(null);
@@ -169,11 +176,27 @@ export function ActiveGuildTimeoutsTable() {
         tableRowLimit={tableRowLimit}
       >
         <p className="px-4 pt-3 text-xs text-muted">
-          Members currently timed out in the guild (from member list + audit log
-          reasons).{" "}
-          {data.canRevoke
-            ? "Remove timeout uses the dashboard bot on your behalf; your account is recorded in the audit log."
-            : "You can view timeouts; removing them requires Admin or higher."}
+          {readOnly ? (
+            <>
+              Members currently timed out (member list + audit log reasons).
+              Remove timeouts on{" "}
+              <a
+                href="/dashboard/moderation"
+                className="text-accent-light underline hover:text-white"
+              >
+                Dashboard → Moderation
+              </a>
+              .
+            </>
+          ) : (
+            <>
+              Members currently timed out in the guild (from member list + audit
+              log reasons).{" "}
+              {data.canRevoke
+                ? "Remove timeout uses the dashboard bot on your behalf; your account is recorded in the audit log."
+                : "You can view timeouts; removing them requires Admin or higher."}
+            </>
+          )}
           {data.error ? (
             <span className="mt-1 block text-amber-300">{data.error}</span>
           ) : null}
@@ -191,7 +214,7 @@ export function ActiveGuildTimeoutsTable() {
                   <th className="px-4 py-2">Remaining</th>
                   <th className="px-4 py-2">Reason</th>
                   <th className="px-4 py-2">Moderator</th>
-                  {data.canRevoke && (
+                  {data.canRevoke && !readOnly && (
                     <th className="px-4 py-2 text-right">Actions</th>
                   )}
                 </tr>
@@ -227,7 +250,7 @@ export function ActiveGuildTimeoutsTable() {
                         <span className="text-muted">—</span>
                       )}
                     </td>
-                    {data.canRevoke && (
+                    {data.canRevoke && !readOnly && (
                       <td className="px-4 py-2 text-right">
                         <Button
                           type="button"
@@ -252,7 +275,7 @@ export function ActiveGuildTimeoutsTable() {
         )}
       </AnalyticsDataTable>
 
-      {revokeTarget && data.canRevoke && (
+      {!readOnly && revokeTarget && data.canRevoke && (
         <div
           className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4"
           role="dialog"

@@ -476,12 +476,6 @@ const H: Record<string, AnalyticsDataMeta> = {
     description: "Staff ranked by punishment requests this period (statistics).",
     rangeApplies: false,
   },
-  "moderation.table.timeouts": {
-    description:
-      "Members currently timed out, with end time and reason from audit log when available. Remove timeout runs through the bot with your dashboard account in the audit log.",
-    rangeLabel: "Live Discord member timeouts.",
-    rangeApplies: false,
-  },
 
   // —— Staff total ——
   "staffTotal.activeStaff": {
@@ -636,9 +630,31 @@ const H: Record<string, AnalyticsDataMeta> = {
   },
   "moderation.table.bans": {
     description:
-      "All members on the guild ban list from Discord, with ban reasons. Revoke (unban) runs through the bot with your dashboard account recorded in audit logs.",
+      "All members on the guild ban list from Discord, with ban reasons (read-only snapshot). Manage bans on Dashboard → Moderation.",
     rangeLabel: "Live Discord guild bans.",
     rangeApplies: false,
+  },
+  "moderation.table.timeouts": {
+    description:
+      "Members currently timed out, with end time and reason when available (read-only). Remove timeouts on Dashboard → Moderation.",
+    rangeLabel: "Live Discord member timeouts.",
+    rangeApplies: false,
+  },
+  "moderation.chart.snapshot": {
+    description:
+      "Current counts: guild bans, active timeouts, ticket blacklists, and media queue rows.",
+    rangeLabel: "Live / all-time snapshot (not range-filtered).",
+    rangeApplies: false,
+  },
+  "moderation.modActionsInRange": {
+    description:
+      "Moderation actions performed through this dashboard in the selected range (ban, timeout, kick, etc.).",
+  },
+  "moderation.chart.modActions": {
+    description: "Dashboard-recorded moderation actions per time bucket.",
+  },
+  "moderation.chart.modActionsByType": {
+    description: "Breakdown of dashboard moderation actions by action type in range.",
   },
   "moderation.blacklists": {
     description: "Total blacklist rows in the database.",
