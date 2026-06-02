@@ -2,8 +2,8 @@ import {
   DASHBOARD_FETCH_HEADER,
   DASHBOARD_FETCH_VALUE,
 } from "@/lib/api/dashboard-fetch";
+import { getSessionCookieName } from "@/lib/auth/session-cookie";
 import { decodeSignedSession } from "@/lib/auth/session-signing";
-import { getSessionCookieName } from "@/lib/auth/session";
 import { NextResponse, type NextRequest } from "next/server";
 
 const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -15,17 +15,16 @@ const PUBLIC_API_PREFIXES = [
 ];
 
 function isPublicApi(pathname: string): boolean {
-  return PUBLIC_API_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-}
-
-function isBotWebhook(pathname: string, method: string): boolean {
-  return (
-    method === "POST" &&
-    pathname === "/api/tickets/live-events"
+  return PUBLIC_API_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`)
   );
 }
 
-export function middleware(request: NextRequest) {
+function isBotWebhook(pathname: string, method: string): boolean {
+  return method === "POST" && pathname === "/api/tickets/live-events";
+}
+
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith("/api")) {

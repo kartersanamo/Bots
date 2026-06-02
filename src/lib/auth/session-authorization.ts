@@ -1,7 +1,9 @@
+import "server-only";
+
 import { hasDashboardGuildAccess } from "@/lib/auth/dashboard-access";
 import { fetchGuildRoles } from "@/lib/discord/api";
 import { PERMISSION_ONLY_ROLE_NAME } from "@/lib/discord/guild-roles";
-import { fetchMemberRoleIds } from "@/lib/discord/member-roles.server";
+import { fetchMemberRoleIds } from "@/lib/discord/users.server";
 import { envInt } from "@/lib/env";
 import type { PermissionTier } from "@/lib/permissions";
 import { resolvePermissionTier } from "@/lib/permissions";

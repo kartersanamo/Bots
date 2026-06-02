@@ -1,3 +1,5 @@
+import "server-only";
+
 import { env } from "@/lib/env";
 import type { ResolvedDiscordUser } from "@/lib/discord/users.types";
 import { cached, invalidateCache } from "@/lib/server-cache";
@@ -113,6 +115,14 @@ async function fetchDiscordUserRaw(
     roles: [],
     joinedAt: null,
   };
+}
+
+/** Guild member role IDs via bot token (session authorization). */
+export async function fetchMemberRoleIds(userId: string): Promise<string[]> {
+  const member = await fetchGuildMemberRaw(userId);
+  return Array.isArray(member?.roles)
+    ? member.roles.map((r) => String(r))
+    : [];
 }
 
 async function fetchGuildMemberRaw(userId: string) {

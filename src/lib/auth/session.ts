@@ -1,4 +1,11 @@
-import { cookies } from "next/headers";
+import "server-only";
+
+import {
+  SESSION_COOKIE,
+  getSessionMaxAge,
+  getSessionCookieName,
+  getSessionCookieOptions,
+} from "@/lib/auth/session-cookie";
 import {
   resolveSessionAuthorization,
 } from "@/lib/auth/session-authorization";
@@ -8,8 +15,14 @@ import {
   sessionVersion,
   type SessionCookiePayload,
 } from "@/lib/auth/session-signing";
-import { envInt } from "@/lib/env";
+import { cookies } from "next/headers";
 import type { PermissionTier } from "@/lib/permissions";
+
+export {
+  getSessionCookieName,
+  getSessionMaxAge,
+  getSessionCookieOptions,
+} from "@/lib/auth/session-cookie";
 
 export interface SessionUser {
   id: string;
@@ -19,33 +32,6 @@ export interface SessionUser {
   tier: PermissionTier;
   roleIds: string[];
   dashboardAccess: boolean;
-}
-
-const SESSION_COOKIE = "bots_session";
-const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
-
-export function getSessionMaxAge(): number {
-  return envInt("SESSION_MAX_AGE_SEC", SESSION_MAX_AGE);
-}
-
-export function getSessionCookieName(): string {
-  return SESSION_COOKIE;
-}
-
-export function getSessionCookieOptions(): {
-  httpOnly: boolean;
-  secure: boolean;
-  sameSite: "lax";
-  maxAge: number;
-  path: string;
-} {
-  return {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: getSessionMaxAge(),
-    path: "/",
-  };
 }
 
 export interface SessionIdentity {
