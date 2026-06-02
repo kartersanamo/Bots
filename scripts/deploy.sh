@@ -10,8 +10,30 @@ fi
 
 node -e "const v=process.versions.node.split('.').map(Number); if(v[0]<20||(v[0]===20&&v[1]<9)) { console.error('Node >= 20.9 required'); process.exit(1); }"
 
-echo "Building…"
-npm run build
+if [[ "${DEPLOY_SKIP_BUILD:-}" == "1" ]]; then
+  if [[ ! -d .next ]]; then
+    echo "DEPLOY_SKIP_BUILD=1 but .next/ is missing — cannot deploy."
+    exit 1
+  fi
+  echo "Skipping build (DEPLOY_SKIP_BUILD=1)…"
+else
+  echo "Stopping dashboard before build (frees RAM)…"
+  pkill -f "next-server" 2>/dev/null || true
+  sleep 2
+
+  avail_kb="$(awk '/MemAvailable:/ {print $2}' /proc/meminfo)"
+  swap_free_kb="$(awk '/SwapFree:/ {print $2}' /proc/meminfo)"
+  if [[ "${avail_kb:-0}" -lt 800000 ]] || [[ "${swap_free_kb:-0}" -lt 100000 ]]; then
+    echo "Warning: low memory (available ~$((avail_kb / 1024))MiB, swap free ~$((swap_free_kb / 1024))MiB)."
+    echo "  Build may be slow or fail with 'Killed'. Consider adding swap or building elsewhere."
+  fi
+
+  export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=1536}"
+  export NEXT_TELEMETRY_DISABLED=1
+
+  echo "Building (low CPU/IO priority so bots stay responsive)…"
+  nice -n 19 ionice -c 3 npm run build
+fi
 
 echo "Restarting next…"
 pkill -f "next-server" 2>/dev/null || true

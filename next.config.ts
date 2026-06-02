@@ -2,11 +2,20 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  productionBrowserSourceMaps: false,
   experimental: {
     optimizePackageImports: ["lucide-react", "recharts", "framer-motion"],
+    /** Lower peak RAM during `next build` on small VPS hosts. */
+    webpackMemoryOptimizations: true,
+    /** Custom webpack normally disables the worker; keep it for lower main-process RAM. */
+    webpackBuildWorker: true,
   },
   /** Fewer parallel chunk requests → fewer HTTP/2 failures behind Cloudflare. */
   webpack: (config, { dev, isServer }) => {
+    if (!dev) {
+      config.parallelism = 1;
+      config.cache = false;
+    }
     if (!dev && !isServer && config.optimization) {
       config.optimization.splitChunks = {
         chunks: "all",
