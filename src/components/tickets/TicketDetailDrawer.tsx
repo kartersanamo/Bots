@@ -630,7 +630,7 @@ export function TicketDetailDrawer({
                         {canWrite && (
                           <div className="mt-3 space-y-2">
                             <p className="text-xs text-muted">
-                              Messages sent here are posted by the configured bot account.
+                              Messages sent here use ticket webhooks to mimic your staff name/avatar when possible.
                             </p>
                             <p className="text-xs text-muted">
                               Commands: <code>/close [reason]</code>,{" "}

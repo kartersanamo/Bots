@@ -66,6 +66,19 @@ export const POST = handleApiRoute(async (request, { params }) => {
     return Response.json({ error: "Ticket not found" }, { status: 404 });
   }
 
-  const message = await sendTicketChannelMessage(channelId, content);
-  return Response.json({ ok: true, message, via: "bot" });
+  const message = await sendTicketChannelMessage(channelId, content, {
+    displayName: session.globalName || session.username,
+    avatarUrl: discordAvatarUrl(session.id, session.avatar),
+  });
+  return Response.json({
+    ok: true,
+    message,
+    via: message.webhook_id ? "webhook" : "bot",
+  });
 });
+
+function discordAvatarUrl(userId: string, avatarHash: string | null): string | null {
+  if (!avatarHash) return null;
+  const format = avatarHash.startsWith("a_") ? "gif" : "png";
+  return `https://cdn.discordapp.com/avatars/${userId}/${avatarHash}.${format}?size=128`;
+}

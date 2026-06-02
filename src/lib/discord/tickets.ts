@@ -6,8 +6,13 @@ const enrichCache = new Map<
   string,
   { data: TicketEnrichment; expires: number }
 >();
+const ticketWebhookCache = new Map<
+  string,
+  { id: string; token: string; expires: number }
+>();
 const CACHE_TTL_MS = 300_000;
 const DISCORD_FETCH_MS = 4000;
+const WEBHOOK_CACHE_TTL_MS = 1000 * 60 * 30;
 
 export interface IntakeField {
   label: string;
@@ -40,6 +45,7 @@ export interface DiscordMessage {
   id: string;
   content: string;
   timestamp: string;
+  webhook_id?: string;
   author: {
     id: string;
     username?: string;
@@ -101,11 +107,39 @@ export async function getTicketChannelMessages(
 
 export async function sendTicketChannelMessage(
   channelId: string,
-  content: string
+  content: string,
+  options?: {
+    displayName?: string | null;
+    avatarUrl?: string | null;
+  }
 ): Promise<DiscordMessage> {
   const token = env("BOT_TICKETS_TOKEN") || env("DISCORD_BOT_TOKEN");
   if (!token) throw new Error("Discord bot token is not configured");
 
+  const safeName = options?.displayName?.trim();
+  const safeAvatar = options?.avatarUrl?.trim();
+  if (safeName) {
+    try {
+      return await sendTicketMessageViaWebhook(channelId, content, {
+        username: safeName.slice(0, 80),
+        avatarUrl: safeAvatar || undefined,
+      });
+    } catch (err) {
+      console.warn(
+        `[tickets] webhook send failed for channel ${channelId}, falling back to bot send:`,
+        err
+      );
+    }
+  }
+
+  return sendTicketMessageViaBot(token, channelId, content);
+}
+
+async function sendTicketMessageViaBot(
+  token: string,
+  channelId: string,
+  content: string
+): Promise<DiscordMessage> {
   const res = await fetch(`${DISCORD_API}/channels/${channelId}/messages`, {
     method: "POST",
     headers: {
@@ -120,6 +154,109 @@ export async function sendTicketChannelMessage(
     throw new Error(text || `Discord send failed (${res.status})`);
   }
   return res.json();
+}
+
+async function sendTicketMessageViaWebhook(
+  channelId: string,
+  content: string,
+  options: { username: string; avatarUrl?: string }
+): Promise<DiscordMessage> {
+  const webhook = await getOrCreateTicketWebhook(channelId);
+  const res = await fetch(
+    `${DISCORD_API}/webhooks/${webhook.id}/${webhook.token}?wait=true`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        content: content.slice(0, 2000),
+        username: options.username,
+        avatar_url: options.avatarUrl,
+        allowed_mentions: { parse: [] },
+      }),
+      cache: "no-store",
+    }
+  );
+
+  if (!res.ok) {
+    if (res.status === 404 || res.status === 401) {
+      ticketWebhookCache.delete(channelId);
+    }
+    const text = await res.text();
+    throw new Error(text || `Discord webhook send failed (${res.status})`);
+  }
+  return res.json();
+}
+
+async function getOrCreateTicketWebhook(
+  channelId: string
+): Promise<{ id: string; token: string }> {
+  const cached = ticketWebhookCache.get(channelId);
+  if (cached && cached.expires > Date.now()) {
+    return { id: cached.id, token: cached.token };
+  }
+
+  const existing = await findReusableChannelWebhook(channelId);
+  if (existing) {
+    ticketWebhookCache.set(channelId, {
+      ...existing,
+      expires: Date.now() + WEBHOOK_CACHE_TTL_MS,
+    });
+    return existing;
+  }
+
+  const created = await createChannelWebhook(channelId);
+  ticketWebhookCache.set(channelId, {
+    ...created,
+    expires: Date.now() + WEBHOOK_CACHE_TTL_MS,
+  });
+  return created;
+}
+
+async function findReusableChannelWebhook(
+  channelId: string
+): Promise<{ id: string; token: string } | null> {
+  const res = await discordFetch(`${DISCORD_API}/channels/${channelId}/webhooks`);
+  if (!res.ok) return null;
+
+  const hooks = (await res.json().catch(() => [])) as Array<{
+    id?: string;
+    token?: string | null;
+    name?: string | null;
+  }>;
+  const target = hooks.find(
+    (h) =>
+      typeof h.id === "string" &&
+      typeof h.token === "string" &&
+      h.token.length > 0 &&
+      (h.name === "Minecadia Ticket Staff" || h.name === "Minecadia Ticket Relay")
+  );
+  if (!target?.id || !target.token) return null;
+  return { id: target.id, token: target.token };
+}
+
+async function createChannelWebhook(
+  channelId: string
+): Promise<{ id: string; token: string }> {
+  const res = await discordFetch(`${DISCORD_API}/channels/${channelId}/webhooks`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: "Minecadia Ticket Staff",
+    }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Discord webhook create failed (${res.status})`);
+  }
+
+  const created = (await res.json().catch(() => null)) as {
+    id?: string;
+    token?: string | null;
+  } | null;
+  if (!created?.id || !created.token) {
+    throw new Error("Discord webhook create returned no token");
+  }
+  return { id: created.id, token: created.token };
 }
 
 export function parseEmbedDescription(description: string): ParsedIntake {
