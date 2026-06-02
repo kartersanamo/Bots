@@ -118,6 +118,21 @@ function extractMentionUserIds(content: string): string[] {
   return Array.from(content.matchAll(USER_MENTION_RE), (m) => m[1]);
 }
 
+function extractMentionUserIdsFromEmbeds(embeds: DiscordEmbed[] | undefined): string[] {
+  if (!embeds?.length) return [];
+  const out: string[] = [];
+  for (const embed of embeds) {
+    if (embed.title) out.push(...extractMentionUserIds(embed.title));
+    if (embed.description) out.push(...extractMentionUserIds(embed.description));
+    if (embed.footer?.text) out.push(...extractMentionUserIds(embed.footer.text));
+    for (const field of embed.fields ?? []) {
+      if (field.name) out.push(...extractMentionUserIds(field.name));
+      if (field.value) out.push(...extractMentionUserIds(field.value));
+    }
+  }
+  return out;
+}
+
 function escapeHtml(input: string): string {
   return input
     .replaceAll("&", "&amp;")
@@ -233,7 +248,16 @@ function topRoleForMember(
   return resolved[0] ?? null;
 }
 
-function DiscordEmbedCard({ embed }: { embed: DiscordEmbed }) {
+function DiscordEmbedCard({
+  embed,
+  memberProfiles,
+}: {
+  embed: DiscordEmbed;
+  memberProfiles: Record<string, DiscordResolvedMember>;
+}) {
+  const descriptionHtml = embed.description
+    ? renderDiscordMarkdown(embed.description, memberProfiles)
+    : "";
   return (
     <div
       className="mt-2 max-w-[520px] rounded-md border border-border/60 bg-surface/70 p-3"
@@ -254,17 +278,30 @@ function DiscordEmbedCard({ embed }: { embed: DiscordEmbed }) {
         </p>
       )}
       {embed.description && (
-        <p className="mt-1 whitespace-pre-wrap text-sm text-white/90">
-          {embed.description}
-        </p>
+        <div
+          className="mt-1 break-words text-sm text-white/90"
+          dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+        />
       )}
       {embed.fields && embed.fields.length > 0 && (
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
           {embed.fields.map((f, i) => (
             <div key={`${f.name ?? "field"}-${i}`} className={f.inline ? "" : "sm:col-span-2"}>
-              {f.name && <p className="text-xs font-medium text-accent-light">{f.name}</p>}
+              {f.name && (
+                <div
+                  className="text-xs font-medium text-accent-light"
+                  dangerouslySetInnerHTML={{
+                    __html: renderDiscordMarkdown(f.name, memberProfiles),
+                  }}
+                />
+              )}
               {f.value && (
-                <p className="whitespace-pre-wrap text-xs text-white/85">{f.value}</p>
+                <div
+                  className="break-words text-xs text-white/85"
+                  dangerouslySetInnerHTML={{
+                    __html: renderDiscordMarkdown(f.value, memberProfiles),
+                  }}
+                />
               )}
             </div>
           ))}
@@ -369,6 +406,7 @@ export function TicketDetailDrawer({
             .flatMap((m) => [
               String(m.author?.id || ""),
               ...extractMentionUserIds(m.content || ""),
+              ...extractMentionUserIdsFromEmbeds(m.embeds),
             ])
             .filter(Boolean)
         )
@@ -746,7 +784,11 @@ export function TicketDetailDrawer({
                                       </p>
                                     )}
                                     {m.embeds?.map((embed, i) => (
-                                      <DiscordEmbedCard key={`${m.id}-embed-${i}`} embed={embed} />
+                                      <DiscordEmbedCard
+                                        key={`${m.id}-embed-${i}`}
+                                        embed={embed}
+                                        memberProfiles={memberProfiles}
+                                      />
                                     ))}
                                   </div>
                                 </div>
