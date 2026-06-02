@@ -122,6 +122,7 @@ export interface GamesAnalytics {
   xpPerDay: DailyCount[];
   sessionsPerDay: DailyCount[];
   topXpSources: NamedCount[];
+  topXpSourcesByXp: NamedCount[];
   newPlayersPerDay: DailyCount[];
   topXpEarners: GamesLeaderboardRow[];
   levelDistribution: NamedCount[];

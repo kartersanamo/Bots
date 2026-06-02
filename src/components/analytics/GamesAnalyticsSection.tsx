@@ -122,14 +122,26 @@ export function GamesAnalyticsSection({
       <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsChartCard
           title="Top XP sources (events)"
-          exportHeaders={["source", "count"]}
-          exportFilename={`games-xp-sources-${range}.csv`}
+          exportHeaders={["source", "events"]}
+          exportFilename={`games-xp-sources-events-${range}.csv`}
           exportRows={data.topXpSources.map((r) => ({
             source: r.name,
-            count: r.count,
+            events: r.count,
           }))}
         >
           <NamedBarChart data={data.topXpSources} color="#a855f7" />
+        </AnalyticsChartCard>
+
+        <AnalyticsChartCard
+          title="Top XP sources (xp)"
+          exportHeaders={["source", "xp"]}
+          exportFilename={`games-xp-sources-xp-${range}.csv`}
+          exportRows={data.topXpSourcesByXp.map((r) => ({
+            source: r.name,
+            xp: r.count,
+          }))}
+        >
+          <NamedBarChart data={data.topXpSourcesByXp} color="#c084fc" />
         </AnalyticsChartCard>
 
         <AnalyticsChartCard

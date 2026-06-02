@@ -54,6 +54,7 @@ export async function getGamesAnalytics(
       xpPerDay,
       sessionsPerDay,
       topSources,
+      topSourcesByXp,
       newPlayers,
       topEarners,
       levelDist,
@@ -86,6 +87,13 @@ export async function getGamesAnalytics(
       ),
       query<{ name: string; count: number }>(
         `SELECT COALESCE(NULLIF(TRIM(source), ''), 'unknown') AS name, COUNT(*) AS count
+         FROM xp_logs WHERE CAST(timestamp AS UNSIGNED) > 0${tsClause}
+         GROUP BY name ORDER BY count DESC LIMIT 12`,
+        tsParams
+      ),
+      query<{ name: string; count: number }>(
+        `SELECT COALESCE(NULLIF(TRIM(source), ''), 'unknown') AS name,
+                COALESCE(SUM(xp), 0) AS count
          FROM xp_logs WHERE CAST(timestamp AS UNSIGNED) > 0${tsClause}
          GROUP BY name ORDER BY count DESC LIMIT 12`,
         tsParams
@@ -208,6 +216,10 @@ export async function getGamesAnalytics(
         groupBy
       ),
       topXpSources: topSources.map((r) => ({
+        name: r.name,
+        count: Number(r.count),
+      })),
+      topXpSourcesByXp: topSourcesByXp.map((r) => ({
         name: r.name,
         count: Number(r.count),
       })),
