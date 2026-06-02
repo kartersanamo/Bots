@@ -21,6 +21,7 @@ import { useEffect, useMemo, useState } from "react";
 import { can } from "@/lib/permissions";
 import type { PermissionTier } from "@/lib/permissions";
 import { TICKET_BOT_COMMANDS } from "@/lib/tickets/commands";
+import { topRoleForMember } from "@/lib/discord/guild-roles";
 
 interface TicketDetailDrawerProps {
   channelId: string | null;
@@ -332,18 +333,6 @@ function DiscordMessageContent({
       }}
     />
   );
-}
-
-function topRoleForMember(
-  roleIds: string[] | undefined,
-  roleById: Map<string, GuildRoleLite>
-): GuildRoleLite | null {
-  if (!roleIds?.length) return null;
-  const resolved = roleIds
-    .map((id) => roleById.get(id))
-    .filter((r): r is GuildRoleLite => Boolean(r))
-    .sort((a, b) => b.position - a.position);
-  return resolved[0] ?? null;
 }
 
 function DiscordEmbedCard({
