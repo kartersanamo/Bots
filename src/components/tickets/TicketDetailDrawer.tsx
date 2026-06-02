@@ -400,6 +400,11 @@ export function TicketDetailDrawer({
         ? (payload.messages as TicketMessage[])
         : [];
       setMessages(nextMessages);
+      if (payload.channelUnavailable === true) {
+        setSendError(
+          "This Discord ticket channel is unavailable (deleted or no longer accessible by the bot)."
+        );
+      }
       const authorIds = Array.from(
         new Set(
           nextMessages
@@ -414,7 +419,9 @@ export function TicketDetailDrawer({
       if (authorIds.length) {
         void loadAuthorProfiles(authorIds);
       }
-      setSendError(null);
+      if (payload.channelUnavailable !== true) {
+        setSendError(null);
+      }
     } finally {
       setMessagesLoading(false);
     }

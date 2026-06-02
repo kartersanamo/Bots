@@ -30,7 +30,24 @@ export const GET = handleApiRoute(async (request, { params }) => {
     return Response.json({ error: "Ticket not found" }, { status: 404 });
   }
 
-  const messages = await getTicketChannelMessages(channelId, limit);
+  let messages = [] as Awaited<ReturnType<typeof getTicketChannelMessages>>;
+  let channelUnavailable = false;
+  try {
+    messages = await getTicketChannelMessages(channelId, limit);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    // Discord code 10003 = Unknown Channel (deleted/archived/not accessible).
+    if (
+      msg.includes('"code": 10003') ||
+      msg.includes('"code":10003') ||
+      msg.includes("Unknown Channel")
+    ) {
+      channelUnavailable = true;
+      messages = [];
+    } else {
+      throw err;
+    }
+  }
   return Response.json({
     ticket: {
       channelID: ticket.channelID,
@@ -39,6 +56,7 @@ export const GET = handleApiRoute(async (request, { params }) => {
       type: ticket.type,
     },
     messages: [...messages].reverse(),
+    channelUnavailable,
   });
 });
 
