@@ -102,15 +102,12 @@ export function GamesLeaderboardsPanel({
                 type="button"
                 onClick={() => setActiveId(def.id)}
                 className={cn(
-                  "flex w-full gap-3 border-b border-border/50 px-4 py-3 text-left transition-colors last:border-b-0",
+                  "flex w-full border-b border-border/50 px-4 py-3 text-left transition-colors last:border-b-0",
                   selected
                     ? "bg-accent/10"
                     : "hover:bg-surface-hover"
                 )}
               >
-                <span className="text-xl leading-none" aria-hidden>
-                  {def.emoji}
-                </span>
                 <span className="min-w-0 flex-1">
                   <span
                     className={cn(
@@ -138,7 +135,7 @@ export function GamesLeaderboardsPanel({
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div>
               <p className="text-sm font-medium text-white">
-                {activeDef.emoji} {activeDef.label}
+                {activeDef.label}
               </p>
               <p className="text-xs text-muted">{periodNote}</p>
             </div>
