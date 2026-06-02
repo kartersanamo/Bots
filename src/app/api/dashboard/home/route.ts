@@ -26,6 +26,7 @@ const EMPTY_STATS = {
   openTickets: 0,
   closedTickets: 0,
   totalLevelingUsers: 0,
+  activeLevelingUsers: 0,
   totalBlacklists: 0,
   ticketsToday: 0,
 };

@@ -20,6 +20,7 @@ interface OverviewStats {
   openTickets: number;
   closedTickets: number;
   totalLevelingUsers: number;
+  activeLevelingUsers: number;
   totalBlacklists: number;
   ticketsToday: number;
 }
@@ -113,6 +114,11 @@ export function DashboardOverview() {
           value={stats?.totalLevelingUsers ?? "—"}
           icon={MessageSquare}
           loading={loading}
+          trend={
+            stats != null
+              ? `Active: ${stats.activeLevelingUsers.toLocaleString()}`
+              : undefined
+          }
         />
       </div>
 

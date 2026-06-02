@@ -26,13 +26,6 @@ export function OverviewAnalyticsSection({
 
   return (
     <div className="space-y-8">
-      <div className="rounded-xl border border-accent/20 bg-gradient-to-br from-accent/10 via-transparent to-cyan-500/5 p-5">
-        <h2 className="text-lg font-semibold text-white">Command center</h2>
-        <p className="mt-1 text-sm text-muted">
-          Cross-system snapshot for the selected period. Drill into each tab for
-          full detail, tables, and CSV exports.
-        </p>
-      </div>
 
       <AnalyticsKpiGrid
         className="xl:grid-cols-6"

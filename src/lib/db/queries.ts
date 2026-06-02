@@ -3,6 +3,7 @@ export interface OverviewStats {
   openTickets: number;
   closedTickets: number;
   totalLevelingUsers: number;
+  activeLevelingUsers: number;
   totalBlacklists: number;
   ticketsToday: number;
 }
@@ -39,8 +40,11 @@ export async function getOverviewStats(): Promise<OverviewStats | null> {
           ) AS ticketsToday
          FROM tickets`
       ),
-      queryOne<{ totalLevelingUsers: number }>(
-        `SELECT COUNT(*) AS totalLevelingUsers FROM leveling`
+      queryOne<{ totalLevelingUsers: number; activeLevelingUsers: number }>(
+        `SELECT
+          COUNT(*) AS totalLevelingUsers,
+          SUM(active = '1' OR active = 1) AS activeLevelingUsers
+         FROM leveling`
       ),
       queryOne<{ totalBlacklists: number }>(
         `SELECT COUNT(*) AS totalBlacklists FROM blacklists`
@@ -55,6 +59,7 @@ export async function getOverviewStats(): Promise<OverviewStats | null> {
       closedTickets: Number(ticketStats.closedTickets ?? 0),
       ticketsToday: Number(ticketStats.ticketsToday ?? 0),
       totalLevelingUsers: Number(levelingRow?.totalLevelingUsers ?? 0),
+      activeLevelingUsers: Number(levelingRow?.activeLevelingUsers ?? 0),
       totalBlacklists: Number(blacklistRow?.totalBlacklists ?? 0),
     };
   } catch (err) {
