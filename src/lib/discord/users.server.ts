@@ -180,6 +180,15 @@ export async function resolveDiscordUser(
     () => resolveDiscordUserUncached(id),
     { cacheNull: false }
   );
+  // Backfill legacy cache entries that were stored before roles/joinedAt were added.
+  if (
+    result &&
+    (!Array.isArray((result as Partial<ResolvedDiscordUser>).roles) ||
+      !("joinedAt" in (result as object)))
+  ) {
+    const fresh = await resolveDiscordUserUncached(id);
+    return fresh ?? null;
+  }
   return result ?? null;
 }
 

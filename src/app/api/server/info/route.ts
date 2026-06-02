@@ -10,9 +10,11 @@ import { NextResponse } from "next/server";
 
 const SERVER_INFO_CACHE_MS = 120_000;
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await requireSession();
+    const url = new URL(request.url);
+    const includeAllRoles = url.searchParams.get("roles") === "all";
 
     if (!isDiscordConfigured()) {
       return NextResponse.json({
@@ -37,7 +39,7 @@ export async function GET() {
     return NextResponse.json({
       configured: true,
       guild,
-      roles: roles.slice(0, 50),
+      roles: includeAllRoles ? roles : roles.slice(0, 50),
       channels: channels.slice(0, 100),
     });
   } catch (err) {

@@ -48,7 +48,7 @@ export function DiscordUserProfileCard({
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/server/info")
+    fetch("/api/server/info?roles=all")
       .then((r) => r.json())
       .then((data) => {
         if (cancelled) return;
