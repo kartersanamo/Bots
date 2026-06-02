@@ -133,6 +133,59 @@ export function NamedBarChart({
   );
 }
 
+/** Daily percentage series (e.g. close rate); values may exceed 100 when clearing backlog. */
+export function DailyPercentChart({
+  data,
+  color = "#a78bfa",
+  valueLabel = "Rate",
+}: {
+  data: DailyCount[];
+  color?: string;
+  valueLabel?: string;
+}) {
+  if (!data.length) {
+    return <p className="py-8 text-center text-sm text-muted">No data in range</p>;
+  }
+
+  const tickInterval = xTickInterval(data.length);
+
+  return (
+    <ResponsiveContainer width="100%" height={220}>
+      <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+        <XAxis
+          dataKey="date"
+          tick={{ fill: "#94a3b8", fontSize: 11 }}
+          interval={tickInterval}
+          tickFormatter={(v) => String(v).slice(5)}
+        />
+        <YAxis
+          tick={{ fill: "#94a3b8", fontSize: 11 }}
+          width={44}
+          tickFormatter={(v) => `${v}%`}
+        />
+        <Tooltip
+          contentStyle={{
+            background: "#1e293b",
+            border: "1px solid #334155",
+            borderRadius: 8,
+          }}
+          labelStyle={{ color: "#e2e8f0" }}
+          formatter={(value: number) => [`${value}%`, valueLabel]}
+        />
+        <Line
+          type="monotone"
+          dataKey="count"
+          stroke={color}
+          strokeWidth={2}
+          dot={false}
+          isAnimationActive={false}
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}
+
 export function DualDailyLineChart({
   opened,
   closed,

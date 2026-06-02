@@ -9,9 +9,12 @@ import { AnalyticsKpiGrid } from "@/components/analytics/AnalyticsKpiGrid";
 import { AnalyticsUserCountTable } from "@/components/analytics/AnalyticsUserCountTable";
 import {
   DailyLineChart,
+  DailyPercentChart,
   DualDailyLineChart,
   NamedBarChart,
 } from "@/components/analytics/charts";
+import type { DailyCount } from "@/lib/analytics/types";
+import { useMemo } from "react";
 import { useAnalyticsTableRowLimit } from "@/components/analytics/table-row-limit";
 import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { chartTitleWithPeriod } from "@/lib/analytics/chart-period";
@@ -33,6 +36,10 @@ export function TicketsAnalytics({
   groupBy,
 }: TicketsAnalyticsProps) {
   const { kpis } = data;
+  const closeRatePerDay = useMemo(
+    () => computeCloseRatePerDay(data.openedPerDay, data.closedPerDay),
+    [data.openedPerDay, data.closedPerDay]
+  );
   const closeTimeByTypeLimit = useAnalyticsTableRowLimit(8);
   const mostTicketsOneDayLimit = useAnalyticsTableRowLimit(8);
   const longestOpenLimit = useAnalyticsTableRowLimit(8);
@@ -148,6 +155,34 @@ export function TicketsAnalytics({
             Positive bars = more opened than closed in that period.
           </p>
           <DailyLineChart data={data.netQueuePerDay} color="#eab308" />
+        </AnalyticsChartCard>
+
+        <AnalyticsChartCard
+          title={chartTitleWithPeriod("Close rate", groupBy)}
+          exportHeaders={["date", "opened", "closed", "closeRatePercent"]}
+          exportFilename={`tickets-close-rate-${range}.csv`}
+          exportRows={closeRatePerDay.map((r) => {
+            const opened =
+              data.openedPerDay.find((o) => o.date === r.date)?.count ?? 0;
+            const closed =
+              data.closedPerDay.find((c) => c.date === r.date)?.count ?? 0;
+            return {
+              date: r.date,
+              opened,
+              closed,
+              closeRatePercent: r.count,
+            };
+          })}
+        >
+          <p className="mb-2 text-xs text-muted">
+            Closed ÷ opened in the same period. Above 100% means the team closed
+            more than arrived (working down backlog).
+          </p>
+          <DailyPercentChart
+            data={closeRatePerDay}
+            color="#a78bfa"
+            valueLabel="Close rate"
+          />
         </AnalyticsChartCard>
       </div>
 
@@ -480,6 +515,32 @@ function OpenerTable({
       </AnalyticsTable>
     </AnalyticsDataTable>
   );
+}
+
+function computeCloseRatePerDay(
+  opened: DailyCount[],
+  closed: DailyCount[]
+): DailyCount[] {
+  const map = new Map<string, { opened: number; closed: number }>();
+  for (const r of opened) {
+    map.set(r.date, { opened: r.count, closed: 0 });
+  }
+  for (const r of closed) {
+    const cur = map.get(r.date) ?? { opened: 0, closed: 0 };
+    cur.closed = r.count;
+    map.set(r.date, cur);
+  }
+  return [...map.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, { opened: o, closed: c }]) => ({
+      date,
+      count:
+        o > 0
+          ? Math.round((c / o) * 1000) / 10
+          : c > 0
+            ? 100
+            : 0,
+    }));
 }
 
 function mergeDailyExport(
