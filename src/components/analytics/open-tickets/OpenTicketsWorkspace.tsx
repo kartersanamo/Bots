@@ -6,6 +6,7 @@ import { TicketDetailDrawer } from "@/components/tickets/TicketDetailDrawer";
 import { Button } from "@/components/ui/Button";
 import { useOpenTicketsQueue } from "@/hooks/useOpenTicketsQueue";
 import { useTicketEnrichment } from "@/hooks/useTicketEnrichment";
+import type { TicketEnrichment } from "@/lib/discord/tickets";
 import type { TicketRow } from "@/lib/tickets/types";
 import { can, type PermissionTier } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,99 @@ interface OpenTicketsWorkspaceProps {
   userTier: PermissionTier;
 }
 
+type TicketViewMode =
+  | "all"
+  | "newUnder1h"
+  | "aging12h"
+  | "urgent24h"
+  | "stale72h"
+  | "awaitingUser"
+  | "ownerResponded"
+  | "hasOwnerPreview"
+  | "missingPreview"
+  | "publicOnly"
+  | "privateOnly"
+  | "appeals"
+  | "factions"
+  | "storePayments"
+  | "applications";
+
+const VIEW_OPTIONS: { value: TicketViewMode; label: string }[] = [
+  { value: "all", label: "All open tickets" },
+  { value: "newUnder1h", label: "New (< 1 hour)" },
+  { value: "aging12h", label: "Aging (12+ hours)" },
+  { value: "urgent24h", label: "Urgent (24+ hours)" },
+  { value: "stale72h", label: "Stale (72+ hours)" },
+  { value: "awaitingUser", label: "Awaiting user reply" },
+  { value: "ownerResponded", label: "Owner responded recently" },
+  { value: "hasOwnerPreview", label: "Has owner message preview" },
+  { value: "missingPreview", label: "Missing live preview/enrichment" },
+  { value: "publicOnly", label: "Public only" },
+  { value: "privateOnly", label: "Private only" },
+  { value: "appeals", label: "Appeals / punishment" },
+  { value: "factions", label: "Factions / Kitmap / SMP" },
+  { value: "storePayments", label: "Store / payments / purchases" },
+  { value: "applications", label: "Applications / reports" },
+];
+
+function isPrivateTicket(privated: string): boolean {
+  const v = String(privated ?? "").trim().toLowerCase();
+  return v === "true" || v === "1" || v === "yes" || v === "admin" || v === "management";
+}
+
+function includesAny(haystack: string, needles: string[]): boolean {
+  return needles.some((n) => haystack.includes(n));
+}
+
+function matchesView(
+  viewMode: TicketViewMode,
+  ticket: TicketRow,
+  enrichment?: TicketEnrichment
+): boolean {
+  const hours = ticketAgeHours(ticket.opened_at);
+  const lowerType = String(ticket.type ?? "").toLowerCase();
+  const isPrivate = isPrivateTicket(ticket.privated);
+
+  switch (viewMode) {
+    case "all":
+      return true;
+    case "newUnder1h":
+      return hours < 1;
+    case "aging12h":
+      return hours >= 12;
+    case "urgent24h":
+      return hours >= 24;
+    case "stale72h":
+      return hours >= 72;
+    case "awaitingUser":
+      return enrichment?.awaitingUser === true;
+    case "ownerResponded":
+      return enrichment?.awaitingUser === false;
+    case "hasOwnerPreview":
+      return Boolean(enrichment?.lastOwnerMessage?.content?.trim());
+    case "missingPreview":
+      return !enrichment || Boolean(enrichment.enrichmentError);
+    case "publicOnly":
+      return !isPrivate;
+    case "privateOnly":
+      return isPrivate;
+    case "appeals":
+      return includesAny(lowerType, [
+        "appeal",
+        "punish",
+        "ban",
+        "mute",
+        "blacklist",
+      ]);
+    case "factions":
+      return includesAny(lowerType, ["faction", "kitmap", "smp"]);
+    case "storePayments":
+      return includesAny(lowerType, ["store", "payment", "purchase", "buy", "billing"]);
+    case "applications":
+      return includesAny(lowerType, ["application", "apply", "report"]);
+  }
+}
+
 export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
   const {
     state,
@@ -40,6 +134,7 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
 
   const [view, setView] = useState<"grid" | "list">("grid");
   const [groupByType, setGroupByType] = useState(false);
+  const [viewMode, setViewMode] = useState<TicketViewMode>("all");
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [discordPreviews, setDiscordPreviews] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -59,14 +154,20 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
     return () => clearInterval(t);
   }, [autoRefresh, discordPreviews, refresh, refreshEnrich]);
 
+  const visibleTickets = useMemo(
+    () =>
+      tickets.filter((t) => matchesView(viewMode, t, enrichments[t.channelID])),
+    [tickets, viewMode, enrichments]
+  );
+
   useEffect(() => {
-    if (tickets.length && !selectedId) {
-      setSelectedId(tickets[0].channelID);
+    if (visibleTickets.length && !selectedId) {
+      setSelectedId(visibleTickets[0].channelID);
     }
-    if (selectedId && !tickets.find((t) => t.channelID === selectedId)) {
-      setSelectedId(tickets[0]?.channelID ?? null);
+    if (selectedId && !visibleTickets.find((t) => t.channelID === selectedId)) {
+      setSelectedId(visibleTickets[0]?.channelID ?? null);
     }
-  }, [tickets, selectedId]);
+  }, [visibleTickets, selectedId]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -75,33 +176,33 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
         searchRef.current?.focus();
       }
       if (!["ArrowDown", "ArrowUp"].includes(e.key)) return;
-      if (!tickets.length) return;
-      const idx = tickets.findIndex((t) => t.channelID === selectedId);
+      if (!visibleTickets.length) return;
+      const idx = visibleTickets.findIndex((t) => t.channelID === selectedId);
       const next =
         e.key === "ArrowDown"
-          ? Math.min(tickets.length - 1, idx + 1)
+          ? Math.min(visibleTickets.length - 1, idx + 1)
           : Math.max(0, idx - 1);
-      setSelectedId(tickets[next].channelID);
+      setSelectedId(visibleTickets[next].channelID);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [tickets, selectedId]);
+  }, [visibleTickets, selectedId]);
 
   const oldestHours = useMemo(() => {
-    if (!tickets.length) return null;
-    return Math.max(...tickets.map((t) => ticketAgeHours(t.opened_at)));
-  }, [tickets]);
+    if (!visibleTickets.length) return null;
+    return Math.max(...visibleTickets.map((t) => ticketAgeHours(t.opened_at)));
+  }, [visibleTickets]);
 
   const grouped = useMemo(() => {
     if (!groupByType) return null;
     const map = new Map<string, TicketRow[]>();
-    for (const t of tickets) {
+    for (const t of visibleTickets) {
       const list = map.get(t.type) ?? [];
       list.push(t);
       map.set(t.type, list);
     }
     return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  }, [tickets, groupByType]);
+  }, [visibleTickets, groupByType]);
 
   const selectTicket = (t: TicketRow) => {
     setSelectedId(t.channelID);
@@ -118,9 +219,13 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
           />
         ))}
 
-      {!loading && !tickets.length && (
+      {!loading && !visibleTickets.length && (
         <div className="rounded-xl border border-dashed border-border py-16 text-center">
-          <p className="text-muted">No open tickets in queue.</p>
+          <p className="text-muted">
+            {tickets.length === 0
+              ? "No open tickets in queue."
+              : "No tickets match this View preset."}
+          </p>
           <Button className="mt-4" variant="secondary" onClick={refresh}>
             Refresh
           </Button>
@@ -130,7 +235,7 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
       {!loading &&
         !groupByType &&
         view === "grid" &&
-        tickets.map((t) => (
+        visibleTickets.map((t) => (
           <OpenTicketCard
             key={t.channelID}
             ticket={t}
@@ -143,7 +248,7 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
       {!loading &&
         !groupByType &&
         view === "list" &&
-        tickets.map((t) => (
+        visibleTickets.map((t) => (
           <button
             key={t.channelID}
             type="button"
@@ -194,7 +299,8 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
           <h2 className="text-lg font-semibold text-white">Open ticket queue</h2>
           {oldestHours != null && (
             <span className="text-xs text-muted">
-              Oldest in view: {Math.round(oldestHours)}h · {total} total open
+              Oldest in view: {Math.round(oldestHours)}h · {visibleTickets.length} in
+              view · {total} total open
             </span>
           )}
         </div>
@@ -240,6 +346,17 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
         </div>
 
         <div className="flex flex-wrap gap-2">
+          <select
+            value={viewMode}
+            onChange={(e) => setViewMode(e.target.value as TicketViewMode)}
+            className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-white"
+          >
+            {VIEW_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                View: {opt.label}
+              </option>
+            ))}
+          </select>
           <select
             value={state.type}
             onChange={(e) => setParams({ type: e.target.value, page: 1 })}
