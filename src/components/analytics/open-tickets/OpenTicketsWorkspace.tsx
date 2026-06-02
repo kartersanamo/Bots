@@ -10,7 +10,7 @@ import type { TicketEnrichment } from "@/lib/discord/tickets";
 import type { TicketRow } from "@/lib/tickets/types";
 import { can, type PermissionTier } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
-import { ticketAgeHours } from "@/lib/tickets/age";
+import { formatAgeLabel, ticketAgeHours } from "@/lib/tickets/age";
 import {
   ArrowLeft,
   ChevronLeft,
