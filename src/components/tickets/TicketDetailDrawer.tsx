@@ -236,7 +236,7 @@ function topRoleForMember(
 function DiscordEmbedCard({ embed }: { embed: DiscordEmbed }) {
   return (
     <div
-      className="mt-2 rounded-md border border-border/60 bg-surface/70 p-3"
+      className="mt-2 max-w-[520px] rounded-md border border-border/60 bg-surface/70 p-3"
       style={{ borderLeftWidth: 4, borderLeftColor: embedBorderColor(embed.color) }}
     >
       {embed.author?.name && (
