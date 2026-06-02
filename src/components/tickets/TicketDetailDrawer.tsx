@@ -52,13 +52,96 @@ interface TicketMessage {
     avatar?: string | null;
     bot?: boolean;
   };
-  embeds?: { description?: string; title?: string }[];
+  embeds?: DiscordEmbed[];
+}
+
+interface DiscordEmbed {
+  title?: string;
+  description?: string;
+  url?: string;
+  color?: number;
+  author?: {
+    name?: string;
+    icon_url?: string;
+  };
+  fields?: { name?: string; value?: string; inline?: boolean }[];
+  thumbnail?: { url?: string };
+  image?: { url?: string };
+  footer?: { text?: string; icon_url?: string };
+  timestamp?: string;
 }
 
 function openedAtDate(openedAt: string): Date {
   const n = Number(openedAt);
   if (!Number.isNaN(n) && n > 0) return new Date(n * 1000);
   return new Date(openedAt);
+}
+
+function embedBorderColor(color?: number): string {
+  if (!color || color <= 0) return "#5865F2";
+  return `#${color.toString(16).padStart(6, "0")}`;
+}
+
+function DiscordEmbedCard({ embed }: { embed: DiscordEmbed }) {
+  return (
+    <div
+      className="mt-2 rounded-md border border-border/60 bg-surface/70 p-3"
+      style={{ borderLeftWidth: 4, borderLeftColor: embedBorderColor(embed.color) }}
+    >
+      {embed.author?.name && (
+        <p className="text-xs font-medium text-muted">{embed.author.name}</p>
+      )}
+      {embed.title && (
+        <p className="mt-1 text-sm font-semibold text-white">
+          {embed.url ? (
+            <a href={embed.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+              {embed.title}
+            </a>
+          ) : (
+            embed.title
+          )}
+        </p>
+      )}
+      {embed.description && (
+        <p className="mt-1 whitespace-pre-wrap text-sm text-white/90">
+          {embed.description}
+        </p>
+      )}
+      {embed.fields && embed.fields.length > 0 && (
+        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          {embed.fields.map((f, i) => (
+            <div key={`${f.name ?? "field"}-${i}`} className={f.inline ? "" : "sm:col-span-2"}>
+              {f.name && <p className="text-xs font-medium text-accent-light">{f.name}</p>}
+              {f.value && (
+                <p className="whitespace-pre-wrap text-xs text-white/85">{f.value}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      {embed.thumbnail?.url && (
+        <img
+          src={embed.thumbnail.url}
+          alt="Embed thumbnail"
+          className="mt-2 h-16 w-16 rounded object-cover"
+        />
+      )}
+      {embed.image?.url && (
+        <img
+          src={embed.image.url}
+          alt="Embed image"
+          className="mt-2 max-h-80 w-full rounded object-contain"
+        />
+      )}
+      {(embed.footer?.text || embed.timestamp) && (
+        <p className="mt-2 text-[11px] text-muted">
+          {[embed.footer?.text, embed.timestamp ? formatRelativeTime(new Date(embed.timestamp)) : null]
+            .filter(Boolean)
+            .join(" • ")}
+        </p>
+      )}
+    </div>
+  );
 }
 
 export function TicketDetailDrawer({
@@ -374,18 +457,7 @@ export function TicketDetailDrawer({
                             {messages.map((m) => {
                               const displayName =
                                 m.author.global_name || m.author.username || m.author.id;
-                              const body =
-                                m.content?.trim() ||
-                                m.embeds
-                                  ?.map((e) =>
-                                    [e.title, e.description]
-                                      .filter(Boolean)
-                                      .join(" — ")
-                                      .trim()
-                                  )
-                                  .filter(Boolean)
-                                  .join("\n") ||
-                                "(embed/attachment)";
+                              const body = m.content?.trim() || "";
                               return (
                                 <div key={m.id} className="flex gap-3">
                                   <Avatar
@@ -408,8 +480,11 @@ export function TicketDetailDrawer({
                                       </span>
                                     </div>
                                     <p className="mt-1 whitespace-pre-wrap break-words text-sm text-white/90">
-                                      {body}
+                                      {body || (m.embeds?.length ? null : "(attachment/system)")}
                                     </p>
+                                    {m.embeds?.map((embed, i) => (
+                                      <DiscordEmbedCard key={`${m.id}-embed-${i}`} embed={embed} />
+                                    ))}
                                   </div>
                                 </div>
                               );
