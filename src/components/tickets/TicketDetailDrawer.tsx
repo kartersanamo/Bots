@@ -12,7 +12,6 @@ import {
   Copy,
   MessageSquare,
   FileText,
-  ClipboardList,
   RefreshCw,
   Send,
 } from "lucide-react";
@@ -329,42 +328,6 @@ export function TicketDetailDrawer({
 
                   {ticketOpen && (
                     <section>
-                      <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-accent-light">
-                        <ClipboardList className="h-4 w-4" />
-                        Intake information
-                      </h3>
-                      {data.enrichment?.enrichmentError ? (
-                        <p className="text-sm text-red-400">
-                          {data.enrichment.enrichmentError}
-                        </p>
-                      ) : data.enrichment?.intake ? (
-                        <div className="space-y-3 rounded-xl bg-surface-hover/50 p-4">
-                          {data.enrichment.intake.intro && (
-                            <p className="text-sm text-muted whitespace-pre-wrap">
-                              {data.enrichment.intake.intro}
-                            </p>
-                          )}
-                          {data.enrichment.intake.fields.map((f) => (
-                            <div key={f.label}>
-                              <p className="text-xs font-medium text-accent-light">
-                                {f.label}
-                              </p>
-                              <p className="mt-1 text-sm text-white whitespace-pre-wrap">
-                                {f.value}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted">
-                          No intake embed found (user may not have submitted the form yet).
-                        </p>
-                      )}
-                    </section>
-                  )}
-
-                  {ticketOpen && (
-                    <section>
                       <div className="mb-3 flex items-center justify-between gap-2">
                         <h3 className="flex items-center gap-2 text-sm font-semibold text-accent-light">
                           <MessageSquare className="h-4 w-4" />
@@ -477,31 +440,6 @@ export function TicketDetailDrawer({
                           </p>
                         )}
                       </div>
-                    </section>
-                  )}
-
-                  {ticketOpen && (
-                    <section>
-                      <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-accent-light">
-                        <MessageSquare className="h-4 w-4" />
-                        Last owner message
-                      </h3>
-                      {data.enrichment?.lastOwnerMessage ? (
-                        <div className="rounded-xl bg-surface-hover/50 p-4">
-                          <p className="text-sm text-white whitespace-pre-wrap">
-                            {data.enrichment.lastOwnerMessage.content}
-                          </p>
-                          <p className="mt-2 text-xs text-muted">
-                            {formatRelativeTime(
-                              data.enrichment.lastOwnerMessage.timestamp
-                            )}
-                          </p>
-                        </div>
-                      ) : (
-                        <p className="text-sm text-amber-400">
-                          No messages from the ticket owner yet.
-                        </p>
-                      )}
                     </section>
                   )}
 
