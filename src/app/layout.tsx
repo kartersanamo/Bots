@@ -1,3 +1,4 @@
+import { AuthRejectedNotifications } from "@/components/auth/AuthRejectedNotifications";
 import { ChunkLoadRecovery } from "@/components/ChunkLoadRecovery";
 import { TicketLiveNotifications } from "@/components/tickets/TicketLiveNotifications";
 import { env } from "@/lib/env";
@@ -32,6 +33,7 @@ export default function RootLayout({
       <body className={`${inter.variable} font-sans`}>
         {children}
         <TicketLiveNotifications />
+        <AuthRejectedNotifications />
         <ChunkLoadRecovery />
       </body>
     </html>

@@ -12,7 +12,9 @@ export default function UnauthorizedPage() {
 
         <h1 className="text-xl font-semibold text-white">No access</h1>
         <p className="mt-2 text-sm text-muted">
-          Your account does not have a staff role for this dashboard.
+          You need the <span className="text-white">Staff Team</span> role or the{" "}
+          <span className="font-mono text-white">*</span> permission role on the
+          Minecadia Discord server to use this dashboard.
         </p>
 
         <div className="mt-6 flex flex-col gap-2">

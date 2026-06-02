@@ -4,6 +4,8 @@ import {
   fetchDiscordUser,
   getDiscordAuthUrl,
 } from "@/lib/auth/discord";
+import { publishAuthRejectedEvent } from "@/lib/auth/live-events";
+import { getClientIp, logAudit } from "@/lib/audit";
 import { env } from "@/lib/env";
 import {
   encodeSession,
@@ -14,6 +16,28 @@ import { NextRequest, NextResponse } from "next/server";
 
 function getRedirectBaseUrl(request: NextRequest): string {
   return env("NEXT_PUBLIC_APP_URL") || request.url;
+}
+
+async function logOAuthAudit(
+  request: NextRequest,
+  params: {
+    actorId: string;
+    actorUsername: string;
+    action: string;
+    success: boolean;
+    error?: string;
+  }
+) {
+  await logAudit({
+    actorId: params.actorId,
+    actorUsername: params.actorUsername,
+    tier: "none",
+    action: params.action,
+    target: params.actorId,
+    ip: getClientIp(request),
+    success: params.success,
+    error: params.error,
+  });
 }
 
 export async function GET(
@@ -46,11 +70,41 @@ export async function GET(
         discordUser
       );
 
-      const redirectTo =
-        sessionUser.tier === "none" ? "/unauthorized" : "/dashboard";
+      await logOAuthAudit(request, {
+        actorId: sessionUser.id,
+        actorUsername: sessionUser.username,
+        action: "auth.login_attempt",
+        success: true,
+      });
+
+      if (!sessionUser.dashboardAccess) {
+        await logOAuthAudit(request, {
+          actorId: sessionUser.id,
+          actorUsername: sessionUser.username,
+          action: "auth.login_denied",
+          success: false,
+          error: "Missing Staff Team or * role",
+        });
+        publishAuthRejectedEvent({
+          userId: sessionUser.id,
+          username: sessionUser.username,
+          globalName: sessionUser.globalName,
+        });
+
+        return NextResponse.redirect(
+          new URL("/unauthorized", getRedirectBaseUrl(request))
+        );
+      }
+
+      await logOAuthAudit(request, {
+        actorId: sessionUser.id,
+        actorUsername: sessionUser.username,
+        action: "auth.login_success",
+        success: true,
+      });
 
       const response = NextResponse.redirect(
-        new URL(redirectTo, getRedirectBaseUrl(request))
+        new URL("/dashboard", getRedirectBaseUrl(request))
       );
       response.cookies.set(getSessionCookieName(), encodeSession(sessionUser), {
         httpOnly: true,

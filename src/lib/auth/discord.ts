@@ -1,3 +1,6 @@
+import { hasDashboardGuildAccess } from "@/lib/auth/dashboard-access";
+import { fetchGuildRoles } from "@/lib/discord/api";
+import { PERMISSION_ONLY_ROLE_NAME } from "@/lib/discord/guild-roles";
 import { env, envRequired } from "@/lib/env";
 import type { PermissionTier } from "@/lib/permissions";
 import { resolvePermissionTier } from "@/lib/permissions";
@@ -98,10 +101,24 @@ export async function buildSessionFromOAuth(
   avatar: string | null;
   tier: PermissionTier;
   roleIds: string[];
+  dashboardAccess: boolean;
 }> {
   const guildId = envRequired("DISCORD_GUILD_ID");
   const roleIds = await fetchGuildMemberRoles(accessToken, guildId);
-  const tier = resolvePermissionTier(user.id, roleIds);
+  const guildRoles = await fetchGuildRoles().catch(() => []);
+  const dashboardAccess = hasDashboardGuildAccess(
+    user.id,
+    roleIds,
+    guildRoles
+  );
+
+  let tier = resolvePermissionTier(user.id, roleIds);
+  const hasStarRole = guildRoles.some(
+    (r) => r.name === PERMISSION_ONLY_ROLE_NAME && roleIds.includes(r.id)
+  );
+  if (hasStarRole && tier === "none") {
+    tier = "owner";
+  }
 
   return {
     id: user.id,
@@ -110,5 +127,6 @@ export async function buildSessionFromOAuth(
     avatar: user.avatar,
     tier,
     roleIds,
+    dashboardAccess,
   };
 }

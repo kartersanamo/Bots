@@ -1,4 +1,5 @@
 import { BotWorkspace } from "@/components/bots/BotWorkspace";
+import { hasDashboardAccess } from "@/lib/auth/dashboard-access";
 import { getSession } from "@/lib/auth/session";
 import { getBotById } from "@/lib/bots/registry";
 import { can } from "@/lib/permissions";
@@ -11,7 +12,7 @@ interface BotPageProps {
 
 export default async function BotWorkspacePage({ params }: BotPageProps) {
   const session = await getSession();
-  if (!session || session.tier === "none") redirect("/login");
+  if (!session || !hasDashboardAccess(session)) redirect("/login");
   if (!can(session.tier, "fleet.view")) redirect("/unauthorized");
 
   const { botId } = await params;

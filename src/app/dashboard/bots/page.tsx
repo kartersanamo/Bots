@@ -1,12 +1,13 @@
 import { BotsHub } from "@/components/bots/BotsHub";
 import { Header } from "@/components/layout/Header";
+import { hasDashboardAccess } from "@/lib/auth/dashboard-access";
 import { getSession } from "@/lib/auth/session";
 import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 
 export default async function BotsPage() {
   const session = await getSession();
-  if (!session || session.tier === "none") redirect("/login");
+  if (!session || !hasDashboardAccess(session)) redirect("/login");
 
   return (
     <>

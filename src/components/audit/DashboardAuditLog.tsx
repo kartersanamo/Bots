@@ -20,7 +20,8 @@ export function DashboardAuditLog() {
   return (
     <Card>
       <p className="mb-4 text-sm text-muted">
-        Actions taken in this dashboard (config edits, moderation, bot controls).
+        Dashboard actions including Discord sign-in attempts, config edits,
+        moderation, and bot controls.
       </p>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">

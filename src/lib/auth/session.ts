@@ -8,6 +8,8 @@ export interface SessionUser {
   avatar: string | null;
   tier: PermissionTier;
   roleIds: string[];
+  /** Staff Team, * role, or owner — required for dashboard routes */
+  dashboardAccess?: boolean;
 }
 
 const SESSION_COOKIE = "bots_session";
@@ -53,7 +55,8 @@ export async function requireSession(): Promise<SessionUser> {
   if (!session) {
     throw new Error("Unauthorized");
   }
-  if (session.tier === "none") {
+  const { hasDashboardAccess } = await import("@/lib/auth/dashboard-access");
+  if (!hasDashboardAccess(session)) {
     throw new Error("Forbidden");
   }
   return session;

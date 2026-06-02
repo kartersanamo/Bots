@@ -1,5 +1,6 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { hasDashboardAccess } from "@/lib/auth/dashboard-access";
 import { decodeSession, getSessionCookieName } from "@/lib/auth/session";
+import { NextResponse, type NextRequest } from "next/server";
 
 export function proxy(request: NextRequest) {
   const url = new URL(request.url);
@@ -23,7 +24,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (session.tier === "none") {
+  if (!hasDashboardAccess(session)) {
     return NextResponse.redirect(new URL("/unauthorized", request.url));
   }
 
