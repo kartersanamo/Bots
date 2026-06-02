@@ -172,8 +172,10 @@ const H: Record<string, AnalyticsDataMeta> = {
     description: "Session count in range grouped by game name.",
   },
   "games.chart.levelDist": {
-    description: "Player count per level bracket (current levels).",
-    rangeLabel: "Current level distribution; not range-filtered.",
+    description:
+      "Player count per level bracket from leveling, including only players active this month (active = 1).",
+    rangeLabel:
+      "Current monthly leveling roster; not filtered by dashboard range.",
   },
   "games.chart.sessionMode": {
     description: "Sessions in range split by DM vs channel mode.",

@@ -137,6 +137,7 @@ export async function getGamesAnalytics(
           END AS name,
           COUNT(*) AS count
          FROM leveling
+         WHERE active = '1' OR active = 1
          GROUP BY name ORDER BY count DESC`
       ),
       query<{ date: string; count: number }>(
