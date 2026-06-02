@@ -129,7 +129,7 @@ export function TicketLiveNotifications() {
     >
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-white">New ticket created</p>
+          <p className="text-sm font-semibold text-white">New ticket — info submitted</p>
           <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-zinc-300">
             <span className="truncate">{title}</span>
             <span className="shrink-0">•</span>
