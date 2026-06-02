@@ -134,7 +134,7 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
   } = useOpenTicketsQueue();
 
   const [layout, setLayout] = useState<TicketLayout>("cards");
-  const [groupByType, setGroupByType] = useState(false);
+  const [groupByType, setGroupByType] = useState(true);
   const [viewMode, setViewMode] = useState<TicketViewMode>("all");
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [discordPreviews, setDiscordPreviews] = useState(true);

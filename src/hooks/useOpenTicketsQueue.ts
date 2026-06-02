@@ -18,7 +18,7 @@ export interface OpenTicketsQueueState {
 function readState(searchParams: URLSearchParams): OpenTicketsQueueState {
   return {
     sort: searchParams.get("sort") || "opened_at",
-    order: searchParams.get("order") || "asc",
+    order: searchParams.get("order") || "desc",
     page: Number(searchParams.get("page") || 1),
     type: searchParams.get("type") || "",
     ownerId: searchParams.get("ownerId") || "",
@@ -60,7 +60,7 @@ export function useOpenTicketsQueue() {
       const params = new URLSearchParams();
       if (next.sort !== "opened_at") params.set("sort", next.sort);
       else params.delete("sort");
-      if (next.order !== "asc") params.set("order", next.order);
+      if (next.order !== "desc") params.set("order", next.order);
       else params.delete("order");
       if (next.page > 1) params.set("page", String(next.page));
       else params.delete("page");
