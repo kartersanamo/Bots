@@ -78,6 +78,7 @@ export function TicketDetailDrawer({
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [composer, setComposer] = useState("");
   const [sendError, setSendError] = useState<string | null>(null);
+  const [sendNotice, setSendNotice] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
@@ -172,20 +173,29 @@ export function TicketDetailDrawer({
     if (!content) return;
     setSending(true);
     setSendError(null);
+    setSendNotice(null);
     try {
-      const res = await fetch(`/api/tickets/${channelId}/messages`, {
+      const isCommand = content.startsWith("/");
+      const url = isCommand
+        ? `/api/tickets/${channelId}/commands`
+        : `/api/tickets/${channelId}/messages`;
+      const payload = isCommand ? { command: content } : { content };
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify(payload),
       });
-      const payload = await res.json().catch(() => ({}));
+      const out = await res.json().catch(() => ({}));
       if (!res.ok) {
         setSendError(
-          typeof payload.error === "string" ? payload.error : "Failed to send message"
+          typeof out.error === "string" ? out.error : "Failed to send message"
         );
         return;
       }
       setComposer("");
+      if (isCommand && typeof out.detail === "string") {
+        setSendNotice(out.detail);
+      }
       await loadMessages();
     } finally {
       setSending(false);
@@ -409,16 +419,24 @@ export function TicketDetailDrawer({
                         {sendError && (
                           <p className="mt-3 text-sm text-red-400">{sendError}</p>
                         )}
+                        {sendNotice && (
+                          <p className="mt-3 text-sm text-emerald-300">{sendNotice}</p>
+                        )}
                         {canWrite && (
                           <div className="mt-3 space-y-2">
                             <p className="text-xs text-muted">
                               Messages sent here are posted by the configured bot account.
                             </p>
+                            <p className="text-xs text-muted">
+                              Commands: <code>/close [reason]</code>,{" "}
+                              <code>/rename name</code>, <code>/slowmode seconds</code>,{" "}
+                              <code>/topic text</code>
+                            </p>
                             <div className="flex gap-2">
                               <textarea
                                 value={composer}
                                 onChange={(e) => setComposer(e.target.value)}
-                                placeholder="Reply to this ticket…"
+                                placeholder="Reply or run command (e.g. /close resolved)…"
                                 rows={2}
                                 maxLength={2000}
                                 className="flex-1 resize-none rounded-lg border border-border bg-surface px-3 py-2 text-sm text-white"
