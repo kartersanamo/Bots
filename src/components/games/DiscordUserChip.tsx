@@ -53,7 +53,8 @@ export function DiscordUserChip({
     <>
       <button
         type="button"
-        onClick={() => {
+        onClick={(e) => {
+          e.stopPropagation();
           onClick?.();
           setOpenProfile(true);
         }}
