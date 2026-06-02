@@ -5,6 +5,7 @@ import { chartHint, kpi } from "@/components/analytics/bind-metric-hints";
 import { AnalyticsKpiGrid } from "@/components/analytics/AnalyticsKpiGrid";
 import { AnalyticsUserCountTable } from "@/components/analytics/AnalyticsUserCountTable";
 import { DailyLineChart, NamedBarChart } from "@/components/analytics/charts";
+import { ActiveGuildBansTable } from "@/components/analytics/ActiveGuildBansTable";
 import type { AnalyticsRange, ModerationAnalytics } from "@/lib/analytics/types";
 
 interface ModerationAnalyticsSectionProps {
@@ -32,6 +33,8 @@ export function ModerationAnalyticsSection({
           )
         ]}
       />
+
+      <ActiveGuildBansTable />
 
       <div className="grid gap-4">
         <AnalyticsChartCard

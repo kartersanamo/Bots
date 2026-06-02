@@ -534,6 +534,12 @@ const H: Record<string, AnalyticsDataMeta> = {
     description: "Current Discord guild ban count (API).",
     rangeLabel: "Live API snapshot.",
   },
+  "moderation.table.bans": {
+    description:
+      "All members on the guild ban list from Discord, with ban reasons. Revoke (unban) runs through the bot with your dashboard account recorded in audit logs.",
+    rangeLabel: "Live Discord guild bans.",
+    rangeApplies: false,
+  },
   "moderation.blacklists": {
     description: "Total blacklist rows in the database.",
     rangeLabel: `All blacklists. ${ALL_TIME_DATA_CAVEAT}`,

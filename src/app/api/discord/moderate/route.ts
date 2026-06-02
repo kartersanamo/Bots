@@ -3,6 +3,8 @@ import {
   handleApiRoute,
   withAudit,
 } from "@/lib/api/helpers";
+import { requireSession } from "@/lib/auth/session";
+import { can } from "@/lib/permissions";
 import {
   timeoutMember,
   removeTimeout,
@@ -14,7 +16,6 @@ import {
 import { recordModAction } from "@/lib/db/analytics-tracking";
 
 export const POST = handleApiRoute(async (request) => {
-  const session = await requireAction("discord.moderate");
   const body = await request.json();
   const { action, userId, reason, durationSeconds, deleteMessageDays } = body;
   const gid = guildId();
@@ -22,6 +23,15 @@ export const POST = handleApiRoute(async (request) => {
   if (!userId || !action) {
     return Response.json({ error: "action and userId required" }, { status: 400 });
   }
+
+  const session =
+    action === "unban"
+      ? await (async () => {
+          const s = await requireSession();
+          if (!can(s.tier, "bans.write")) throw new Error("Forbidden");
+          return s;
+        })()
+      : await requireAction("discord.moderate");
 
   const modActionMap: Record<string, string> = {
     timeout: "timeout",
@@ -47,14 +57,22 @@ export const POST = handleApiRoute(async (request) => {
         case "ban":
           await banMember(gid, userId, deleteMessageDays ?? 0, reason);
           return { banned: true };
-        case "unban":
-          await unbanMember(gid, userId, reason);
-          return { unbanned: true };
+        case "unban": {
+          const auditReason =
+            typeof reason === "string" && reason.trim()
+              ? `${reason.trim()} (authorized by ${session.globalName || session.username} / ${session.id})`
+              : `Revoked via dashboard by ${session.globalName || session.username} (${session.id})`;
+          await unbanMember(gid, userId, auditReason);
+          return { unbanned: true, performedByBot: true, authorizedBy: session.id };
+        }
         default:
           throw new Error("Unknown action");
       }
     },
-    { before: { action, userId } }
+    {
+      before: { action, userId, reason },
+      getAfter: (result) => result,
+    }
   );
 
   const modType = modActionMap[action];
