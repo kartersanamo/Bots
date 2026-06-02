@@ -624,21 +624,21 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
         </div>
       </div>
 
-      {showTicketView && selectedId && (
-        <div className="space-y-3">
-          <div className="flex items-stretch gap-2">
+      {showTicketView && selectedId ? (
+        <div className="space-y-4">
+          <div className="flex items-start gap-2">
             <Button
               type="button"
               variant="secondary"
               size="sm"
-              className="shrink-0 self-center px-2"
+              className="mt-8 shrink-0 px-2"
               disabled={!prevTicket}
               onClick={() => prevTicket && selectTicket(prevTicket)}
               aria-label="Previous ticket"
             >
               <ChevronLeft className="h-6 w-6" />
             </Button>
-            <div className="min-h-[calc(100vh-250px)] min-w-0 flex-1">
+            <div className="min-w-0 flex-1">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <p className="text-xs text-muted">
                   Ticket {selectedIndex + 1} of {listTickets.length}
@@ -656,23 +656,25 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
                   Close
                 </Button>
               </div>
-              <TicketDetailDrawer
-                embedded
-                channelId={selectedId}
-                onClose={() => setShowTicketView(false)}
-                userTier={userTier}
-                onClosed={() => {
-                  refresh();
-                  setShowTicketView(false);
-                  setSelectedId(null);
-                }}
-              />
+              <div className="h-[min(720px,65vh)] overflow-hidden">
+                <TicketDetailDrawer
+                  embedded
+                  channelId={selectedId}
+                  onClose={() => setShowTicketView(false)}
+                  userTier={userTier}
+                  onClosed={() => {
+                    refresh();
+                    setShowTicketView(false);
+                    setSelectedId(null);
+                  }}
+                />
+              </div>
             </div>
             <Button
               type="button"
               variant="secondary"
               size="sm"
-              className="shrink-0 self-center px-2"
+              className="mt-8 shrink-0 px-2"
               disabled={!nextTicket}
               onClick={() => nextTicket && selectTicket(nextTicket)}
               aria-label="Next ticket"
@@ -680,13 +682,50 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
               <ChevronRight className="h-6 w-6" />
             </Button>
           </div>
-        </div>
-      )}
 
-      <div>
-        {showTicketView && listTickets.length > 0 && (
-          <p className="mb-2 text-sm font-medium text-white">Open tickets</p>
-        )}
+          {listTickets.length > 0 && (
+            <section className="border-t border-border pt-4">
+              <div className="flex gap-2">
+                <div className="w-10 shrink-0" aria-hidden />
+                <div className="min-w-0 flex-1">
+                  <h3 className="mb-3 text-sm font-medium text-white">
+                    Open tickets
+                  </h3>
+                  <div className="max-h-[min(420px,40vh)] overflow-y-auto pr-1">
+                    {queue}
+                    {pageCount > 1 && (
+                      <div className="mt-4 flex items-center justify-between">
+                        <p className="text-xs text-muted">
+                          Page {state.page} / {pageCount}
+                        </p>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            disabled={state.page <= 1}
+                            onClick={() => setParams({ page: state.page - 1 })}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            disabled={state.page >= pageCount}
+                            onClick={() => setParams({ page: state.page + 1 })}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="w-10 shrink-0" aria-hidden />
+              </div>
+            </section>
+          )}
+        </div>
+      ) : (
         <div className="max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
           {queue}
           {pageCount > 1 && (
@@ -715,7 +754,7 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
             </div>
           )}
         </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -1140,7 +1140,7 @@ export function TicketDetailDrawer({
 
   if (embedded) {
     return (
-      <div className="flex h-full min-h-[480px] flex-col overflow-hidden rounded-lg border border-border bg-surface">
+      <div className="flex h-full max-h-full min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-surface">
         {!channelId ? (
           <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-muted">
             Select a ticket from the queue to view details and resolve it.
