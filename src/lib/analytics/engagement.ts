@@ -3,6 +3,7 @@ import { rangeSinceUnix } from "@/lib/analytics/range";
 import { getAnalyticsTrackingTableStatus } from "@/lib/analytics/table-check";
 import {
   bucketKeySqlFromDate,
+  bucketKeySqlFromUnix,
   buildTimeBucketSpec,
   normalizeTimeSeries,
 } from "@/lib/analytics/time-buckets";
@@ -51,14 +52,12 @@ export async function getEngagementAnalytics(
   const dayBucket = bucketKeySqlFromDate("m.day", bucketSpec);
   const ticketDayBucket = bucketKeySqlFromDate("day", bucketSpec);
   const voiceDayBucket = bucketKeySqlFromDate("day", bucketSpec);
-  const gamesDayBucket = bucketKeySqlFromDate("refreshed_at", bucketSpec);
+  const gamesDayBucket = bucketKeySqlFromUnix("refreshed_at", bucketSpec);
   const dayClause = since != null ? " AND m.day >= DATE(FROM_UNIXTIME(?))" : "";
   const ticketDayClause =
     since != null ? " AND day >= DATE(FROM_UNIXTIME(?))" : "";
   const gamesClause =
-    since != null
-      ? " AND CAST(UNIX_TIMESTAMP(refreshed_at) AS UNSIGNED) >= ?"
-      : "";
+    since != null ? " AND CAST(refreshed_at AS UNSIGNED) >= ?" : "";
   const memberEventsClause = since != null ? " AND created_at >= ?" : "";
   const dayParams = since != null ? [since] : [];
   const gamesParams = since != null ? [since] : [];

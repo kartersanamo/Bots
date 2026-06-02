@@ -29,15 +29,13 @@ export async function getGamesAnalytics(
   const tsParams = since != null ? [since] : [];
   const bucketSpec = buildTimeBucketSpec(range, groupBy);
   const xpBucket = bucketKeySqlFromUnix("timestamp", bucketSpec);
-  const sessionBucket = bucketKeySqlFromDate("refreshed_at", bucketSpec);
+  const sessionBucket = bucketKeySqlFromUnix("refreshed_at", bucketSpec);
   const dailyClaimBucket = bucketKeySqlFromUnix("timestamp", bucketSpec);
   const earnedBucket = bucketKeySqlFromUnix("earned_at", bucketSpec);
   const skipNewPlayers = range === "all" || range === "365d";
 
   const sessionClause =
-    since != null
-      ? " AND CAST(UNIX_TIMESTAMP(refreshed_at) AS UNSIGNED) >= ?"
-      : "";
+    since != null ? " AND CAST(refreshed_at AS UNSIGNED) >= ?" : "";
   const sessionParams = since != null ? [since] : [];
 
   const achievementClause =
