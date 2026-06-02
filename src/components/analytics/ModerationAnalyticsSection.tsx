@@ -7,7 +7,6 @@ import { AnalyticsUserCountTable } from "@/components/analytics/AnalyticsUserCou
 import { DailyLineChart, NamedBarChart } from "@/components/analytics/charts";
 import { ActiveGuildBansTable } from "@/components/analytics/ActiveGuildBansTable";
 import { ActiveGuildTimeoutsTable } from "@/components/analytics/ActiveGuildTimeoutsTable";
-import { GamesDiscordUsersProvider } from "@/components/games/GamesDiscordUsersProvider";
 import type { AnalyticsRange, ModerationAnalytics } from "@/lib/analytics/types";
 
 interface ModerationAnalyticsSectionProps {
@@ -29,7 +28,6 @@ export function ModerationAnalyticsSection({
   ].filter((r) => r.count > 0 || r.name === "Active bans");
 
   return (
-    <GamesDiscordUsersProvider>
       <div className="space-y-6">
         <AnalyticsKpiGrid
           items={[
@@ -171,6 +169,5 @@ export function ModerationAnalyticsSection({
           />
         )}
       </div>
-    </GamesDiscordUsersProvider>
   );
 }

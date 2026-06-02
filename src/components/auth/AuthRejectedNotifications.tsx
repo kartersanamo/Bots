@@ -13,7 +13,8 @@ interface AuthRejectedLiveEvent {
   globalName: string | null;
 }
 
-const POLL_MS = 5000;
+const POLL_VISIBLE_MS = 5000;
+const POLL_HIDDEN_MS = 30000;
 const DISMISS_STORAGE_KEY = "bots_auth_rejected_dismissed";
 
 function playAlarm() {
@@ -120,12 +121,25 @@ export function AuthRejectedNotifications() {
     const immediate = window.setTimeout(() => {
       void poll();
     }, 250);
-    const interval = window.setInterval(() => {
+    let interval = window.setInterval(() => {
       void poll();
-    }, POLL_MS);
+    }, POLL_VISIBLE_MS);
+
+    const onVisibility = () => {
+      window.clearInterval(interval);
+      const ms =
+        document.visibilityState === "visible"
+          ? POLL_VISIBLE_MS
+          : POLL_HIDDEN_MS;
+      interval = window.setInterval(() => {
+        void poll();
+      }, ms);
+    };
+    document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
       stopped = true;
+      document.removeEventListener("visibilitychange", onVisibility);
       window.clearTimeout(immediate);
       window.clearInterval(interval);
     };

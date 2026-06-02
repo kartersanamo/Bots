@@ -2,14 +2,21 @@
 
 import { Header } from "@/components/layout/Header";
 import { BotGamesTab } from "@/components/games/BotGamesTab";
-import { GamesDiscordUsersProvider } from "@/components/games/GamesDiscordUsersProvider";
 import type { PermissionTier } from "@/lib/permissions";
+
+type GamesOverviewFull = Awaited<
+  ReturnType<typeof import("@/lib/data/games-overview").getGamesOverviewFullPayload>
+>;
 
 interface GamesPageClientProps {
   userTier: PermissionTier;
+  initialOverview?: GamesOverviewFull | null;
 }
 
-export function GamesPageClient({ userTier }: GamesPageClientProps) {
+export function GamesPageClient({
+  userTier,
+  initialOverview,
+}: GamesPageClientProps) {
   return (
     <>
       <Header
@@ -19,9 +26,7 @@ export function GamesPageClient({ userTier }: GamesPageClientProps) {
           { label: "Games" },
         ]}
       />
-      <GamesDiscordUsersProvider>
-        <BotGamesTab userTier={userTier} />
-      </GamesDiscordUsersProvider>
+      <BotGamesTab userTier={userTier} initialOverview={initialOverview} />
     </>
   );
 }

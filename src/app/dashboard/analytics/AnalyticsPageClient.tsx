@@ -3,7 +3,6 @@
 import { AnalyticsControls } from "@/components/analytics/AnalyticsControls";
 import { AnalyticsHintProvider } from "@/components/analytics/AnalyticsHint";
 import { AnalyticsTabPanels } from "@/components/analytics/AnalyticsTabPanels";
-import { GamesDiscordUsersProvider } from "@/components/games/GamesDiscordUsersProvider";
 import type { AnalyticsBundle } from "@/lib/analytics/bundle";
 import type { AnalyticsTab } from "@/lib/analytics/bundle";
 import {
@@ -53,9 +52,19 @@ function tabUsesRangeControls(uiTab: TabId): boolean {
 
 interface AnalyticsPageClientProps {
   userTier: PermissionTier;
+  initialSummary?: AnalyticsSummary;
+  initialBundle?: Partial<AnalyticsBundle>;
+  initialRange?: AnalyticsRange;
+  initialGroupBy?: AnalyticsGroupBy;
 }
 
-export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
+export function AnalyticsPageClient({
+  userTier,
+  initialSummary,
+  initialBundle,
+  initialRange,
+  initialGroupBy,
+}: AnalyticsPageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const range = parseAnalyticsRange(searchParams.get("range"));
@@ -86,16 +95,34 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
       ? tabParam
       : "overview";
 
-  const [bundle, setBundle] = useState<AnalyticsBundle | null>(null);
-  const [summaryReady, setSummaryReady] = useState(false);
-  const [tabReady, setTabReady] = useState(false);
+  const serverPrefetched =
+    !!initialSummary &&
+    !!initialBundle &&
+    initialRange === range &&
+    initialGroupBy === groupBy &&
+    tab === "overview";
+
+  const [bundle, setBundle] = useState<AnalyticsBundle | null>(() =>
+    serverPrefetched
+      ? {
+          range,
+          groupBy,
+          summary: initialSummary!,
+          ...initialBundle,
+        }
+      : null
+  );
+  const [summaryReady, setSummaryReady] = useState(serverPrefetched);
+  const [tabReady, setTabReady] = useState(serverPrefetched);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [chunkLoadFailed, setChunkLoadFailed] = useState(false);
   const [dataFetchedAt, setDataFetchedAt] = useState(() => Date.now());
-  const summaryAbortRef = useRef<AbortController | null>(null);
-  const tabAbortRef = useRef<AbortController | null>(null);
-  const loadedTabsRef = useRef<string>("");
+  const fetchAbortRef = useRef<AbortController | null>(null);
+  const loadedTabsRef = useRef<string>(
+    serverPrefetched ? `${range}:${groupBy}:overview` : ""
+  );
+  const skippedInitialFetch = useRef(serverPrefetched);
 
   const summaryCacheKey = `summary:${range}`;
   const tabCacheKey =
@@ -179,106 +206,96 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
   }, []);
 
   useEffect(() => {
-    loadedTabsRef.current = "";
-    setBundle(null);
-    setChunkLoadFailed(false);
-    summaryAbortRef.current?.abort();
-    const ac = new AbortController();
-    summaryAbortRef.current = ac;
-
-    const cachedSummary = readAnalyticsCache<AnalyticsSummary>(summaryCacheKey);
-    if (cachedSummary) {
-      mergeBundle({ range, groupBy, summary: cachedSummary });
-      setSummaryReady(true);
-      setRefreshing(true);
-    } else {
-      setSummaryReady(false);
-      setRefreshing(true);
-    }
-    setTabReady(false);
-    setError(null);
-
-    fetch(`/api/analytics/summary?range=${range}`, { signal: ac.signal })
-      .then(async (res) => {
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(
-            (body as { error?: string }).error ??
-              `Summary failed (${res.status})`
-          );
-        }
-        return res.json() as Promise<AnalyticsSummary & { configured?: boolean }>;
-      })
-      .then((data) => {
-        if (ac.signal.aborted) return;
-        const { configured, ...summary } = data;
-        void configured;
-        mergeBundle({ range, groupBy, summary });
-        writeAnalyticsCache(summaryCacheKey, summary);
-        setSummaryReady(true);
-      })
-      .catch((e) => {
-        if (ac.signal.aborted || (e as Error).name === "AbortError") return;
-        setError(e instanceof Error ? e.message : "Failed to load summary");
-      })
-      .finally(() => {
-        if (!ac.signal.aborted) setRefreshing(false);
-      });
-
-    return () => ac.abort();
-  }, [range, groupBy, summaryCacheKey, mergeBundle]);
-
-  useEffect(() => {
-    if (!summaryReady) return;
-
     const apiTabs = tabsForUiTab(tab);
     const loadKey =
       tab === "staff-recent" ? "staff-recent" : `${range}:${groupBy}:${tab}`;
-    if (loadedTabsRef.current === loadKey) {
-      setTabReady(true);
+
+    if (skippedInitialFetch.current && loadedTabsRef.current === loadKey) {
+      skippedInitialFetch.current = false;
       return;
     }
 
-    tabAbortRef.current?.abort();
-    const ac = new AbortController();
-    tabAbortRef.current = ac;
-
-    const cachedTab = readAnalyticsCache<Partial<AnalyticsBundle>>(tabCacheKey);
-    if (cachedTab) {
-      mergeBundle({ range, groupBy, ...cachedTab });
-      setTabReady(true);
-      setRefreshing(true);
-    } else {
-      setTabReady(false);
-      setRefreshing(true);
+    if (loadedTabsRef.current === loadKey && summaryReady && tabReady) {
+      return;
     }
 
+    setChunkLoadFailed(false);
+    fetchAbortRef.current?.abort();
+    const ac = new AbortController();
+    fetchAbortRef.current = ac;
+
+    const cachedSummary = readAnalyticsCache<AnalyticsSummary>(summaryCacheKey);
+    const cachedTab = readAnalyticsCache<Partial<AnalyticsBundle>>(tabCacheKey);
+    if (cachedSummary && cachedTab) {
+      mergeBundle({ range, groupBy, summary: cachedSummary, ...cachedTab });
+      setSummaryReady(true);
+      setTabReady(true);
+      loadedTabsRef.current = loadKey;
+      return;
+    }
+
+    if (!cachedSummary) {
+      setSummaryReady(false);
+      setBundle(null);
+    }
+    if (!cachedTab) setTabReady(false);
+    setRefreshing(true);
+    setError(null);
+
     const tabsParam = apiTabs.join(",");
-    fetch(
-      `/api/analytics/bundle?range=${range}&group=${groupBy}&tabs=${tabsParam}&summary=0`,
-      { signal: ac.signal }
-    )
-      .then(async (res) => {
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(
-            (body as { error?: string }).error ??
-              `Analytics failed (${res.status})`
-          );
-        }
-        return res.json() as Promise<AnalyticsBundle & { configured?: boolean }>;
-      })
-      .then((data) => {
+    const summaryPromise = cachedSummary
+      ? Promise.resolve(cachedSummary)
+      : fetch(`/api/analytics/summary?range=${range}`, { signal: ac.signal })
+          .then(async (res) => {
+            if (!res.ok) {
+              const body = await res.json().catch(() => ({}));
+              throw new Error(
+                (body as { error?: string }).error ??
+                  `Summary failed (${res.status})`
+              );
+            }
+            const data = (await res.json()) as AnalyticsSummary & {
+              configured?: boolean;
+            };
+            const { configured, ...summary } = data;
+            void configured;
+            writeAnalyticsCache(summaryCacheKey, summary);
+            return summary;
+          });
+
+    const bundlePromise = cachedTab
+      ? Promise.resolve(cachedTab)
+      : fetch(
+          `/api/analytics/bundle?range=${range}&group=${groupBy}&tabs=${tabsParam}&summary=0`,
+          { signal: ac.signal }
+        )
+          .then(async (res) => {
+            if (!res.ok) {
+              const body = await res.json().catch(() => ({}));
+              throw new Error(
+                (body as { error?: string }).error ??
+                  `Analytics failed (${res.status})`
+              );
+            }
+            const data = (await res.json()) as AnalyticsBundle & {
+              configured?: boolean;
+            };
+            const { configured, summary: _ignored, ...patch } = data;
+            void configured;
+            void _ignored;
+            const { range: _r, groupBy: _g, ...tabData } = patch;
+            void _r;
+            void _g;
+            writeAnalyticsCache(tabCacheKey, tabData);
+            return patch;
+          });
+
+    Promise.all([summaryPromise, bundlePromise])
+      .then(([summary, patch]) => {
         if (ac.signal.aborted) return;
-        const { configured, summary: _ignored, ...patch } = data;
-        void configured;
-        void _ignored;
-        mergeBundle(patch);
-        const { range: _r, groupBy: _g, ...tabData } = patch;
-        void _r;
-        void _g;
-        writeAnalyticsCache(tabCacheKey, tabData);
+        mergeBundle({ range, groupBy, summary, ...patch });
         loadedTabsRef.current = loadKey;
+        setSummaryReady(true);
         setTabReady(true);
         setDataFetchedAt(Date.now());
       })
@@ -291,7 +308,14 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
       });
 
     return () => ac.abort();
-  }, [range, groupBy, tab, summaryReady, tabCacheKey, mergeBundle]);
+  }, [
+    range,
+    groupBy,
+    tab,
+    summaryCacheKey,
+    tabCacheKey,
+    mergeBundle,
+  ]);
 
   useEffect(() => {
     if (summaryReady) setDataFetchedAt(Date.now());
@@ -300,7 +324,6 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
   const showTabSkeleton = summaryReady && !tabReady && refreshing;
 
   return (
-    <GamesDiscordUsersProvider>
       <AnalyticsHintProvider
         range={range}
         groupBy={groupBy}
@@ -387,7 +410,6 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
         )}
       </div>
       </AnalyticsHintProvider>
-    </GamesDiscordUsersProvider>
   );
 }
 

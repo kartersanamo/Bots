@@ -16,11 +16,13 @@ export type DiscordUserProfile = ResolvedDiscordUser;
 
 type UsersMap = Record<string, DiscordUserProfile>;
 
-const GamesDiscordUsersContext = createContext<{
-  users: UsersMap;
+type UsersActions = {
   resolve: (ids: string[] | string | number) => void;
   mergeUsers: (batch: Record<string, DiscordUserProfile>) => void;
-} | null>(null);
+};
+
+export const GamesDiscordUsersStateContext = createContext<UsersMap | null>(null);
+const GamesDiscordUsersActionsContext = createContext<UsersActions | null>(null);
 
 const BATCH_MS = 50;
 
@@ -102,26 +104,29 @@ export function GamesDiscordUsersProvider({
     };
   }, []);
 
-  const value = useMemo(
-    () => ({ users, resolve, mergeUsers }),
-    [users, resolve, mergeUsers]
+  const actions = useMemo(
+    () => ({ resolve, mergeUsers }),
+    [resolve, mergeUsers]
   );
 
   return (
-    <GamesDiscordUsersContext.Provider value={value}>
-      {children}
-    </GamesDiscordUsersContext.Provider>
+    <GamesDiscordUsersActionsContext.Provider value={actions}>
+      <GamesDiscordUsersStateContext.Provider value={users}>
+        {children}
+      </GamesDiscordUsersStateContext.Provider>
+    </GamesDiscordUsersActionsContext.Provider>
   );
 }
 
-export function useGamesDiscordUsers() {
-  const ctx = useContext(GamesDiscordUsersContext);
-  if (!ctx) {
+export function useGamesDiscordUsers(): { users: UsersMap } & UsersActions {
+  const users = useContext(GamesDiscordUsersStateContext);
+  const actions = useContext(GamesDiscordUsersActionsContext);
+  if (!users || !actions) {
     throw new Error(
       "useGamesDiscordUsers must be used within GamesDiscordUsersProvider"
     );
   }
-  return ctx;
+  return { users, resolve: actions.resolve, mergeUsers: actions.mergeUsers };
 }
 
 function normalizeUserIds(
@@ -136,7 +141,13 @@ function normalizeUserIds(
 export function useResolveDiscordUsers(
   ids: string[] | string | number | null | undefined
 ) {
-  const { resolve } = useGamesDiscordUsers();
+  const actions = useContext(GamesDiscordUsersActionsContext);
+  if (!actions) {
+    throw new Error(
+      "useResolveDiscordUsers must be used within GamesDiscordUsersProvider"
+    );
+  }
+  const { resolve } = actions;
   const key = normalizeUserIds(ids).sort().join(",");
   useEffect(() => {
     if (!key) return;
@@ -148,7 +159,9 @@ export function useResolveDiscordUsers(
 export function useMergeDiscordUsersFromApi(
   users: Record<string, DiscordUserProfile> | undefined
 ) {
-  const { mergeUsers } = useGamesDiscordUsers();
+  const actions = useContext(GamesDiscordUsersActionsContext);
+  if (!actions) return;
+  const { mergeUsers } = actions;
   const key = users ? Object.keys(users).sort().join(",") : "";
   useEffect(() => {
     if (!users || !key) return;

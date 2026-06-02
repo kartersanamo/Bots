@@ -5,7 +5,6 @@ import type { SessionUser } from "@/lib/auth/session";
 import { tierColor, tierLabel } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
-import { AnimatePresence, motion } from "framer-motion";
 import {
   Archive,
   BarChart3,
@@ -23,7 +22,7 @@ import {
 import { can } from "@/lib/permissions";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
@@ -64,6 +63,19 @@ interface SidebarProps {
 export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [mobileOpen]);
 
   const nav = (
     <nav className="flex flex-1 flex-col gap-0.5 p-2">
@@ -158,35 +170,25 @@ export function Sidebar({ user }: SidebarProps) {
         {sidebarContent}
       </aside>
 
-      <AnimatePresence>
-        {mobileOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 bg-black/60 lg:hidden"
+      {mobileOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/60 transition-opacity duration-200 lg:hidden"
+            onClick={() => setMobileOpen(false)}
+            aria-hidden
+          />
+          <aside className="fixed inset-y-0 left-0 z-50 flex w-56 flex-col border-r border-border bg-surface shadow-xl lg:hidden">
+            <button
               onClick={() => setMobileOpen(false)}
-            />
-            <motion.aside
-              initial={{ x: -280 }}
-              animate={{ x: 0 }}
-              exit={{ x: -280 }}
-              transition={{ type: "spring", damping: 28, stiffness: 320 }}
-              className="fixed inset-y-0 left-0 z-50 flex w-56 flex-col border-r border-border bg-surface lg:hidden"
+              className="absolute right-3 top-4 rounded-md p-1 text-muted hover:text-white"
+              aria-label="Close menu"
             >
-              <button
-                onClick={() => setMobileOpen(false)}
-                className="absolute right-3 top-4 rounded-md p-1 text-muted hover:text-white"
-                aria-label="Close menu"
-              >
-                <X className="h-5 w-5" />
-              </button>
-              {sidebarContent}
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
+              <X className="h-5 w-5" />
+            </button>
+            {sidebarContent}
+          </aside>
+        </>
+      )}
     </>
   );
 }

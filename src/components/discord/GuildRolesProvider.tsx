@@ -2,6 +2,7 @@
 
 import type { GuildRoleLite } from "@/lib/discord/guild-roles";
 import { topRoleForMember } from "@/lib/discord/guild-roles";
+import { fetchDedup } from "@/lib/api/fetch-dedup";
 import {
   createContext,
   useCallback,
@@ -19,26 +20,39 @@ interface GuildRolesContextValue {
 
 const GuildRolesContext = createContext<GuildRolesContextValue | null>(null);
 
-export function GuildRolesProvider({ children }: { children: React.ReactNode }) {
-  const [roles, setRoles] = useState<GuildRoleLite[]>([]);
-  const [loading, setLoading] = useState(true);
+function normalizeRoles(roles: GuildRoleLite[]): GuildRoleLite[] {
+  return roles.map((r) => ({
+    id: String(r.id),
+    name: String(r.name),
+    color: Number(r.color ?? 0),
+    position: Number(r.position ?? 0),
+    icon: r.icon ?? null,
+    unicode_emoji: r.unicode_emoji ?? null,
+  }));
+}
+
+export function GuildRolesProvider({
+  children,
+  initialRoles,
+}: {
+  children: React.ReactNode;
+  initialRoles?: GuildRoleLite[];
+}) {
+  const [roles, setRoles] = useState<GuildRoleLite[]>(
+    initialRoles?.length ? normalizeRoles(initialRoles) : []
+  );
+  const [loading, setLoading] = useState(!initialRoles?.length);
 
   useEffect(() => {
+    if (initialRoles?.length) {
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
-    fetch("/api/server/info?roles=all")
-      .then((r) => r.json())
+    fetchDedup<{ roles?: GuildRoleLite[] }>("/api/server/info?roles=all")
       .then((data) => {
         if (cancelled || !Array.isArray(data?.roles)) return;
-        setRoles(
-          data.roles.map((r: GuildRoleLite) => ({
-            id: String(r.id),
-            name: String(r.name),
-            color: Number(r.color ?? 0),
-            position: Number(r.position ?? 0),
-            icon: r.icon ?? null,
-            unicode_emoji: r.unicode_emoji ?? null,
-          }))
-        );
+        setRoles(normalizeRoles(data.roles));
       })
       .catch(() => {
         /* ignore */
@@ -49,7 +63,7 @@ export function GuildRolesProvider({ children }: { children: React.ReactNode }) 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initialRoles?.length]);
 
   const roleById = useMemo(
     () => new Map(roles.map((r) => [r.id, r])),

@@ -8,6 +8,7 @@ import {
   type ListXpLogsOptions,
 } from "@/lib/games/xp-logs-query";
 import { discordUsersForIds, snowflakeString } from "@/lib/games/discord-enrich";
+import { jsonCached } from "@/lib/http/json-cache";
 
 function parseListOpts(url: URL, forExport: boolean): ListXpLogsOptions {
   const minXp = url.searchParams.get("minXp");
@@ -45,7 +46,10 @@ export const GET = handleApiRoute(async (request) => {
 
   if (url.searchParams.get("meta") === "sources") {
     const sources = await listXpLogSources();
-    return Response.json({ sources, configured: true });
+    return jsonCached({ sources, configured: true }, 60, {
+      staleWhileRevalidate: 120,
+      private: true,
+    });
   }
 
   const forExport = url.searchParams.get("export") === "1";

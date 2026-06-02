@@ -1,13 +1,7 @@
 import { handleApiRoute } from "@/lib/api/helpers";
 import { requireAnalytics } from "@/lib/analytics/api";
-import {
-  getAnalyticsBundle,
-  type AnalyticsTab,
-} from "@/lib/analytics/bundle";
-import {
-  ANALYTICS_CACHE_MS,
-  cachedAnalytics,
-} from "@/lib/analytics/inflight-cache";
+import type { AnalyticsTab } from "@/lib/analytics/bundle";
+import { getAnalyticsBundleData } from "@/lib/data/analytics";
 import { jsonCached } from "@/lib/http/json-cache";
 
 const VALID_TABS = new Set<AnalyticsTab>([
@@ -35,9 +29,12 @@ export const GET = handleApiRoute(async (request) => {
     return Response.json({ error: "No valid tabs" }, { status: 400 });
   }
 
-  const cacheKey = `analytics:bundle:${range}:${groupBy}:${session.tier}:${includeSummary}:${tabs.sort().join(",")}`;
-  const bundle = await cachedAnalytics(cacheKey, ANALYTICS_CACHE_MS, () =>
-    getAnalyticsBundle(session.tier, range, groupBy, tabs, { includeSummary })
+  const bundle = await getAnalyticsBundleData(
+    session.tier,
+    range,
+    groupBy,
+    tabs,
+    { includeSummary }
   );
 
   return jsonCached({ configured: true, ...bundle }, 120, {

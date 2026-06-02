@@ -474,6 +474,8 @@ export function TicketDetailDrawer({
   const [renameError, setRenameError] = useState<string | null>(null);
   const [messages, setMessages] = useState<TicketMessage[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
+  const [messageLimit, setMessageLimit] = useState(30);
+  const [canLoadOlderMessages, setCanLoadOlderMessages] = useState(false);
   const [composer, setComposer] = useState("");
   const [sendError, setSendError] = useState<string | null>(null);
   const [sendNotice, setSendNotice] = useState<string | null>(null);
@@ -501,6 +503,8 @@ export function TicketDetailDrawer({
       setShowRenameForm(false);
       setRenameValue("");
       setRenameError(null);
+      setMessageLimit(30);
+      setCanLoadOlderMessages(false);
       return;
     }
     setLoading(true);
@@ -513,11 +517,14 @@ export function TicketDetailDrawer({
       .finally(() => setLoading(false));
   }, [channelId]);
 
-  async function loadMessages() {
+  async function loadMessages(limitOverride?: number) {
     if (!channelId) return;
+    const limit = limitOverride ?? messageLimit;
     setMessagesLoading(true);
     try {
-      const res = await dashboardFetch(`/api/tickets/${channelId}/messages?limit=80`);
+      const res = await dashboardFetch(
+        `/api/tickets/${channelId}/messages?limit=${limit}`
+      );
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
         setSendError(
@@ -531,6 +538,7 @@ export function TicketDetailDrawer({
         ? (payload.messages as TicketMessage[])
         : [];
       setMessages(nextMessages);
+      setCanLoadOlderMessages(nextMessages.length >= limit && limit < 100);
       if (payload.channelUnavailable === true) {
         setSendError(
           "This Discord ticket channel is unavailable (deleted or no longer accessible by the bot)."
@@ -984,6 +992,22 @@ export function TicketDetailDrawer({
                           </p>
                         ) : (
                           <div className="max-h-[calc(100vh-220px)] space-y-3 overflow-y-auto pr-1">
+                            {canLoadOlderMessages && (
+                              <div className="flex justify-center pb-2">
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  disabled={messagesLoading}
+                                  onClick={() => {
+                                    const next = Math.min(100, messageLimit + 30);
+                                    setMessageLimit(next);
+                                    void loadMessages(next);
+                                  }}
+                                >
+                                  Load older messages
+                                </Button>
+                              </div>
+                            )}
                             {messages.map((m) => {
                               const displayName =
                                 m.author.global_name || m.author.username || m.author.id;

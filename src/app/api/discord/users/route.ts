@@ -4,6 +4,7 @@ import {
   resolveDiscordUsers,
 } from "@/lib/discord/users.server";
 import { collectSnowflakeIds } from "@/lib/games/snowflake";
+import { jsonCached } from "@/lib/http/json-cache";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -22,9 +23,13 @@ export const GET = handleApiRoute(async (request) => {
   }
 
   const users = await resolveDiscordUsers(ids);
-  return Response.json({
-    users,
-    resolved: Object.keys(users).length,
-    requested: ids.length,
-  });
+  return jsonCached(
+    {
+      users,
+      resolved: Object.keys(users).length,
+      requested: ids.length,
+    },
+    300,
+    { staleWhileRevalidate: 600, private: true }
+  );
 });

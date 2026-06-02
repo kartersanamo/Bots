@@ -4,6 +4,7 @@ import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { StatCard } from "@/components/ui/StatCard";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
+import type { DashboardHomePayload } from "@/lib/dashboard-home-types";
 import { formatRelativeTime, isTicketOpen } from "@/lib/utils";
 import {
   Bot,
@@ -15,16 +16,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-
-interface OverviewStats {
-  totalTickets: number;
-  openTickets: number;
-  closedTickets: number;
-  totalLevelingUsers: number;
-  activeLevelingUsers: number;
-  totalBlacklists: number;
-  ticketsToday: number;
-}
 
 interface RecentTicket {
   channelID: string;
@@ -47,16 +38,29 @@ interface BotStatusRow {
   status: string;
 }
 
-export function DashboardOverview() {
-  const [stats, setStats] = useState<OverviewStats | null>(null);
-  const [tickets, setTickets] = useState<RecentTicket[]>([]);
-  const [guild, setGuild] = useState<GuildInfo | null>(null);
-  const [botRows, setBotRows] = useState<BotStatusRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [dbConfigured, setDbConfigured] = useState(true);
-  const [dbConnected, setDbConnected] = useState(true);
+export function DashboardOverview({
+  initialData,
+}: {
+  initialData?: DashboardHomePayload;
+}) {
+  const [stats, setStats] = useState(initialData?.stats ?? null);
+  const [tickets, setTickets] = useState<RecentTicket[]>(
+    (initialData?.tickets as RecentTicket[]) ?? []
+  );
+  const [guild, setGuild] = useState<GuildInfo | null>(
+    initialData?.guild as GuildInfo | null
+  );
+  const [botRows, setBotRows] = useState<BotStatusRow[]>(initialData?.bots ?? []);
+  const [loading, setLoading] = useState(!initialData);
+  const [dbConfigured, setDbConfigured] = useState(
+    initialData?.configured !== false
+  );
+  const [dbConnected, setDbConnected] = useState(
+    initialData?.connected !== false
+  );
 
   useEffect(() => {
+    if (initialData) return;
     let cancelled = false;
 
     async function load() {
@@ -79,7 +83,7 @@ export function DashboardOverview() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initialData]);
 
   const onlineCount = botRows.filter((b) => b.status === "online").length;
 

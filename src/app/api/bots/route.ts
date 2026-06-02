@@ -4,6 +4,7 @@ import {
   getAllBotStatus,
   isControlApiConfigured,
 } from "@/lib/control-api/client";
+import { jsonCached } from "@/lib/http/json-cache";
 import { cached } from "@/lib/server-cache";
 
 const BOTS_STATUS_CACHE_MS = 12_000;
@@ -26,7 +27,8 @@ export const GET = handleApiRoute(async () => {
 
   const statusById = Object.fromEntries(statusRows.map((s) => [s.botId, s]));
 
-  return Response.json({
+  return jsonCached(
+    {
     bots: bots.map((bot) => {
       const row = statusById[bot.id];
       return {
@@ -42,5 +44,8 @@ export const GET = handleApiRoute(async () => {
         uptimeSeconds: row?.uptimeSeconds ?? null,
       };
     }),
-  });
+    },
+    12,
+    { staleWhileRevalidate: 24, private: true }
+  );
 });

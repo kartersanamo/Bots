@@ -1,11 +1,10 @@
 "use client";
 
-import { toPng } from "html-to-image";
-
 export async function downloadPng(
   target: HTMLElement,
   filename: string
 ): Promise<void> {
+  const { toPng } = await import("html-to-image");
   const dataUrl = await toPng(target, {
     cacheBust: true,
     pixelRatio: 2,

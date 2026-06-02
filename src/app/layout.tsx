@@ -1,6 +1,4 @@
-import { AuthRejectedNotifications } from "@/components/auth/AuthRejectedNotifications";
 import { ChunkLoadRecovery } from "@/components/ChunkLoadRecovery";
-import { TicketLiveNotifications } from "@/components/tickets/TicketLiveNotifications";
 import { env } from "@/lib/env";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
@@ -32,8 +30,6 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className={`${inter.variable} font-sans`}>
         {children}
-        <TicketLiveNotifications />
-        <AuthRejectedNotifications />
         <ChunkLoadRecovery />
       </body>
     </html>

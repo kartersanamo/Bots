@@ -1,7 +1,10 @@
+import { AuthRejectedNotifications } from "@/components/auth/AuthRejectedNotifications";
 import { DashboardDiscordProviders } from "@/components/discord/DashboardDiscordProviders";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { TicketLiveNotifications } from "@/components/tickets/TicketLiveNotifications";
 import { hasDashboardAccess } from "@/lib/auth/dashboard-access";
 import { getSession } from "@/lib/auth/session";
+import { getGuildRolesAll } from "@/lib/data/guild-info";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -14,11 +17,14 @@ export default async function DashboardLayout({
   if (!session) redirect("/login");
   if (!hasDashboardAccess(session)) redirect("/unauthorized");
 
+  const initialRoles = await getGuildRolesAll().catch(() => []);
+
   return (
     <DashboardDiscordProviders
       viewerId={session.id}
       viewerRoleIds={session.roleIds}
       userTier={session.tier}
+      initialRoles={initialRoles}
     >
       <div className="flex min-h-screen bg-background">
         <Sidebar user={session} />
@@ -28,6 +34,8 @@ export default async function DashboardLayout({
           </div>
         </main>
       </div>
+      <TicketLiveNotifications />
+      <AuthRejectedNotifications />
     </DashboardDiscordProviders>
   );
 }

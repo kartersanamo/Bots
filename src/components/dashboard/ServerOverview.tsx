@@ -3,6 +3,8 @@
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { fetchDedup } from "@/lib/api/fetch-dedup";
+import type { GuildInfoPayload } from "@/lib/guild-info-types";
 import { CHANNEL_TYPE_LABELS } from "@/lib/discord/api";
 import { formatNumber } from "@/lib/utils";
 import { Hash, Server, Users, Volume2 } from "lucide-react";
@@ -31,24 +33,34 @@ interface GuildChannel {
   parentId: string | null;
 }
 
-export function ServerOverview() {
-  const [guild, setGuild] = useState<GuildInfo | null>(null);
-  const [roles, setRoles] = useState<GuildRole[]>([]);
-  const [channels, setChannels] = useState<GuildChannel[]>([]);
-  const [configured, setConfigured] = useState(true);
-  const [loading, setLoading] = useState(true);
+export function ServerOverview({
+  initialData,
+}: {
+  initialData?: GuildInfoPayload;
+}) {
+  const [guild, setGuild] = useState<GuildInfo | null>(
+    (initialData?.guild as GuildInfo | null) ?? null
+  );
+  const [roles, setRoles] = useState<GuildRole[]>(
+    (initialData?.roles as GuildRole[]) ?? []
+  );
+  const [channels, setChannels] = useState<GuildChannel[]>(
+    (initialData?.channels as GuildChannel[]) ?? []
+  );
+  const [configured, setConfigured] = useState(initialData?.configured !== false);
+  const [loading, setLoading] = useState(!initialData);
 
   useEffect(() => {
-    fetch("/api/server/info")
-      .then((r) => r.json())
+    if (initialData) return;
+    fetchDedup<GuildInfoPayload>("/api/server/info")
       .then((data) => {
-        setGuild(data.guild);
-        setRoles(data.roles ?? []);
-        setChannels(data.channels ?? []);
+        setGuild(data.guild as GuildInfo | null);
+        setRoles((data.roles as GuildRole[]) ?? []);
+        setChannels((data.channels as GuildChannel[]) ?? []);
         setConfigured(data.configured);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [initialData]);
 
   if (loading) {
     return (
@@ -60,97 +72,95 @@ export function ServerOverview() {
     );
   }
 
-  if (!configured || !guild) {
+  if (!configured) {
     return (
       <EmptyState
         icon={Server}
-        title="Discord API not configured"
-        description="Set DISCORD_BOT_TOKEN and DISCORD_GUILD_ID in .env."
+        title="Discord not configured"
+        description="Set DISCORD_BOT_TOKEN and GUILD_ID to load server info."
       />
     );
   }
 
-  const textChannels = channels.filter((c) => c.type === 0 || c.type === 5);
+  if (!guild) {
+    return (
+      <EmptyState
+        icon={Server}
+        title="Guild unavailable"
+        description="Could not fetch guild from Discord."
+      />
+    );
+  }
+
+  const textChannels = channels.filter((c) => c.type === 0);
   const voiceChannels = channels.filter((c) => c.type === 2);
-  const categories = channels.filter((c) => c.type === 4);
-  const staffRoles = roles.filter((r) => r.name !== "@everyone" && r.color !== 0).slice(0, 20);
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-3">
-        {[
-          { label: "Members", value: formatNumber(guild.memberCount), icon: Users },
-          {
-            label: "Online",
-            value: formatNumber(guild.approximatePresenceCount ?? 0),
-            icon: Users,
-          },
-          { label: "Boost Tier", value: `Tier ${guild.premiumTier}`, icon: Server },
-        ].map((stat) => (
-          <Card key={stat.label} className="flex items-center gap-3 p-4">
-            <stat.icon className="h-4 w-4 text-muted" />
-            <div>
-              <p className="text-xs text-muted">{stat.label}</p>
-              <p className="text-xl font-semibold text-white">{stat.value}</p>
+      <Card className="p-6">
+        <div className="flex items-start gap-4">
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-accent/20">
+            <Server className="h-7 w-7 text-accent" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-white">{guild.name}</h2>
+            <p className="mt-1 text-sm text-muted">ID {guild.id}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Badge variant="default">
+                <Users className="mr-1 h-3 w-3" />
+                {formatNumber(guild.memberCount)} members
+              </Badge>
+              {guild.approximatePresenceCount != null && (
+                <Badge variant="success">
+                  {formatNumber(guild.approximatePresenceCount)} online
+                </Badge>
+              )}
+              <Badge variant="default">Boost tier {guild.premiumTier}</Badge>
             </div>
-          </Card>
-        ))}
-      </div>
+          </div>
+        </div>
+      </Card>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <div className="mb-4 flex items-center gap-2">
-            <Hash className="h-4 w-4 text-accent-light" />
-            <h2 className="text-sm font-semibold text-white">
-              Channels ({textChannels.length + voiceChannels.length})
-            </h2>
-          </div>
-          <div className="mb-3 flex gap-2">
-            <Badge variant="info">{categories.length} categories</Badge>
-            <Badge variant="default">{textChannels.length} text</Badge>
-            <Badge variant="default">{voiceChannels.length} voice</Badge>
-          </div>
-          <div className="max-h-80 space-y-1 overflow-y-auto">
-            {channels.slice(0, 40).map((ch) => (
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="p-4">
+          <h3 className="mb-3 text-sm font-semibold text-white">
+            Roles ({roles.length})
+          </h3>
+          <div className="max-h-64 space-y-1 overflow-y-auto">
+            {roles.slice(0, 30).map((r) => (
               <div
-                key={ch.id}
-                className="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-surface-hover"
+                key={r.id}
+                className="flex items-center justify-between rounded px-2 py-1 text-sm hover:bg-surface-hover"
               >
-                {ch.type === 2 ? (
-                  <Volume2 className="h-3.5 w-3.5 text-muted" />
-                ) : (
-                  <Hash className="h-3.5 w-3.5 text-muted" />
-                )}
-                <span className="text-white">{ch.name}</span>
-                <span className="ml-auto text-xs text-muted">
-                  {CHANNEL_TYPE_LABELS[ch.type] ?? "Other"}
+                <span style={{ color: r.color ? `#${r.color.toString(16).padStart(6, "0")}` : undefined }}>
+                  {r.name}
                 </span>
+                <span className="text-xs text-muted">pos {r.position}</span>
               </div>
             ))}
           </div>
         </Card>
 
-        <Card>
-          <div className="mb-4 flex items-center gap-2">
-            <Users className="h-4 w-4 text-accent-light" />
-            <h2 className="text-sm font-semibold text-white">
-              Roles ({roles.length})
-            </h2>
-          </div>
-          <div className="max-h-80 space-y-1 overflow-y-auto">
-            {staffRoles.map((role) => (
+        <Card className="p-4">
+          <h3 className="mb-3 text-sm font-semibold text-white">Channels</h3>
+          <p className="mb-2 text-xs text-muted">
+            {textChannels.length} text · {voiceChannels.length} voice
+          </p>
+          <div className="max-h-64 space-y-1 overflow-y-auto">
+            {channels.slice(0, 40).map((c) => (
               <div
-                key={role.id}
-                className="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-surface-hover"
+                key={c.id}
+                className="flex items-center gap-2 rounded px-2 py-1 text-sm hover:bg-surface-hover"
               >
-                <span
-                  className="h-3 w-3 rounded-full"
-                  style={{
-                    backgroundColor:
-                      role.color ? `#${role.color.toString(16).padStart(6, "0")}` : "#99aab5",
-                  }}
-                />
-                <span className="text-white">{role.name}</span>
+                {c.type === 2 ? (
+                  <Volume2 className="h-3.5 w-3.5 text-muted" />
+                ) : (
+                  <Hash className="h-3.5 w-3.5 text-muted" />
+                )}
+                <span className="truncate text-white">{c.name}</span>
+                <span className="ml-auto text-xs text-muted">
+                  {CHANNEL_TYPE_LABELS[c.type] ?? c.type}
+                </span>
               </div>
             ))}
           </div>

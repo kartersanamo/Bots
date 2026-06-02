@@ -3,8 +3,17 @@
 import { OpenTicketCard } from "@/components/analytics/open-tickets/OpenTicketCard";
 import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { TicketStatsBar } from "@/components/tickets/TicketStatsBar";
-import { TicketDetailDrawer } from "@/components/tickets/TicketDetailDrawer";
+import { PanelFallback } from "@/components/ui/panel-fallback";
 import { Button } from "@/components/ui/Button";
+import dynamic from "next/dynamic";
+
+const TicketDetailDrawer = dynamic(
+  () =>
+    import("@/components/tickets/TicketDetailDrawer").then((m) => ({
+      default: m.TicketDetailDrawer,
+    })),
+  { loading: () => <PanelFallback /> }
+);
 import { useOpenTicketsQueue } from "@/hooks/useOpenTicketsQueue";
 import { useTicketEnrichment } from "@/hooks/useTicketEnrichment";
 import type { TicketEnrichment } from "@/lib/discord/tickets";
@@ -182,13 +191,13 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
   }, []);
 
   useEffect(() => {
-    if (!autoRefresh) return;
+    if (!autoRefresh || selectedId) return;
     const t = setInterval(() => {
       refresh();
       if (discordPreviews) refreshEnrich();
     }, 30_000);
     return () => clearInterval(t);
-  }, [autoRefresh, discordPreviews, refresh, refreshEnrich]);
+  }, [autoRefresh, discordPreviews, refresh, refreshEnrich, selectedId]);
 
   /** All open tickets from API (search/type filters only — not View preset). */
   const queueTickets = tickets;

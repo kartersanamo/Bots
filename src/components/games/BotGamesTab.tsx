@@ -1,20 +1,95 @@
 "use client";
 
-import { GamesAchievementsSection } from "@/components/games/sections/GamesAchievementsSection";
-import { GamesAllTimeSection } from "@/components/games/sections/GamesAllTimeSection";
-import { GamesConfigSection } from "@/components/games/sections/GamesConfigSection";
-import { GamesControlSection } from "@/components/games/sections/GamesControlSection";
-import { GamesCountingSection } from "@/components/games/sections/GamesCountingSection";
-import { GamesDailySection } from "@/components/games/sections/GamesDailySection";
-import { GamesMonthlySection } from "@/components/games/sections/GamesMonthlySection";
-import { GamesOverviewSection } from "@/components/games/sections/GamesOverviewSection";
-import { GamesSessionsSection } from "@/components/games/sections/GamesSessionsSection";
-import { GamesWinnersSection } from "@/components/games/sections/GamesWinnersSection";
-import { GamesWipeSection } from "@/components/games/sections/GamesWipeSection";
-import { GamesXpLogsSection } from "@/components/games/sections/GamesXpLogsSection";
+import { PanelFallback } from "@/components/ui/panel-fallback";
 import { can, type PermissionTier } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
+
+const GamesOverviewSection = dynamic(
+  () =>
+    import("@/components/games/sections/GamesOverviewSection").then((m) => ({
+      default: m.GamesOverviewSection,
+    })),
+  { loading: () => <PanelFallback /> }
+);
+const GamesMonthlySection = dynamic(
+  () =>
+    import("@/components/games/sections/GamesMonthlySection").then((m) => ({
+      default: m.GamesMonthlySection,
+    })),
+  { loading: () => <PanelFallback /> }
+);
+const GamesAllTimeSection = dynamic(
+  () =>
+    import("@/components/games/sections/GamesAllTimeSection").then((m) => ({
+      default: m.GamesAllTimeSection,
+    })),
+  { loading: () => <PanelFallback /> }
+);
+const GamesXpLogsSection = dynamic(
+  () =>
+    import("@/components/games/sections/GamesXpLogsSection").then((m) => ({
+      default: m.GamesXpLogsSection,
+    })),
+  { loading: () => <PanelFallback /> }
+);
+const GamesSessionsSection = dynamic(
+  () =>
+    import("@/components/games/sections/GamesSessionsSection").then((m) => ({
+      default: m.GamesSessionsSection,
+    })),
+  { loading: () => <PanelFallback /> }
+);
+const GamesDailySection = dynamic(
+  () =>
+    import("@/components/games/sections/GamesDailySection").then((m) => ({
+      default: m.GamesDailySection,
+    })),
+  { loading: () => <PanelFallback /> }
+);
+const GamesCountingSection = dynamic(
+  () =>
+    import("@/components/games/sections/GamesCountingSection").then((m) => ({
+      default: m.GamesCountingSection,
+    })),
+  { loading: () => <PanelFallback /> }
+);
+const GamesAchievementsSection = dynamic(
+  () =>
+    import("@/components/games/sections/GamesAchievementsSection").then((m) => ({
+      default: m.GamesAchievementsSection,
+    })),
+  { loading: () => <PanelFallback /> }
+);
+const GamesControlSection = dynamic(
+  () =>
+    import("@/components/games/sections/GamesControlSection").then((m) => ({
+      default: m.GamesControlSection,
+    })),
+  { loading: () => <PanelFallback /> }
+);
+const GamesConfigSection = dynamic(
+  () =>
+    import("@/components/games/sections/GamesConfigSection").then((m) => ({
+      default: m.GamesConfigSection,
+    })),
+  { loading: () => <PanelFallback /> }
+);
+const GamesWipeSection = dynamic(
+  () =>
+    import("@/components/games/sections/GamesWipeSection").then((m) => ({
+      default: m.GamesWipeSection,
+    })),
+  { loading: () => <PanelFallback /> }
+);
+const GamesWinnersSection = dynamic(
+  () =>
+    import("@/components/games/sections/GamesWinnersSection").then((m) => ({
+      default: m.GamesWinnersSection,
+    })),
+  { loading: () => <PanelFallback /> }
+);
 
 export type GamesSection =
   | "overview"
@@ -61,11 +136,16 @@ function sectionFromSearchParams(searchParams: URLSearchParams): GamesSection {
 
 const GAMES_BOT_ID = "games";
 
+type GamesOverviewFull = Awaited<
+  ReturnType<typeof import("@/lib/data/games-overview").getGamesOverviewFullPayload>
+>;
+
 interface BotGamesTabProps {
   userTier: PermissionTier;
+  initialOverview?: GamesOverviewFull | null;
 }
 
-export function BotGamesTab({ userTier }: BotGamesTabProps) {
+export function BotGamesTab({ userTier, initialOverview }: BotGamesTabProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const section = sectionFromSearchParams(searchParams);
@@ -112,7 +192,12 @@ export function BotGamesTab({ userTier }: BotGamesTabProps) {
       </aside>
 
       <div className="min-w-0 flex-1">
-        {section === "overview" && <GamesOverviewSection userTier={userTier} />}
+        {section === "overview" && (
+          <GamesOverviewSection
+            userTier={userTier}
+            initialOverview={initialOverview}
+          />
+        )}
         {section === "monthly" && <GamesMonthlySection />}
         {section === "alltime" && <GamesAllTimeSection />}
         {section === "xplogs" && <GamesXpLogsSection userTier={userTier} />}

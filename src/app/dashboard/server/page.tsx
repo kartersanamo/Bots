@@ -1,7 +1,10 @@
-import { Header } from "@/components/layout/Header";
 import { ServerOverview } from "@/components/dashboard/ServerOverview";
+import { Header } from "@/components/layout/Header";
+import { getGuildInfoPayload } from "@/lib/data/guild-info";
 
-export default function ServerPage() {
+export default async function ServerPage() {
+  const initialData = await getGuildInfoPayload();
+
   return (
     <>
       <Header
@@ -11,7 +14,7 @@ export default function ServerPage() {
           { label: "Server" },
         ]}
       />
-      <ServerOverview />
+      <ServerOverview initialData={initialData} />
     </>
   );
 }

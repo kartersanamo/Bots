@@ -2,7 +2,6 @@
 
 import { ActiveGuildBansTable } from "@/components/analytics/ActiveGuildBansTable";
 import { ActiveGuildTimeoutsTable } from "@/components/analytics/ActiveGuildTimeoutsTable";
-import { GamesDiscordUsersProvider } from "@/components/games/GamesDiscordUsersProvider";
 import { ModerationPanel } from "@/components/panels/ModerationPanel";
 
 interface ModerationWorkspaceProps {
@@ -11,7 +10,6 @@ interface ModerationWorkspaceProps {
 
 export function ModerationWorkspace({ canModerate }: ModerationWorkspaceProps) {
   return (
-    <GamesDiscordUsersProvider>
       <div className="space-y-10">
         {canModerate ? (
           <section>
@@ -51,6 +49,5 @@ export function ModerationWorkspace({ canModerate }: ModerationWorkspaceProps) {
           <ActiveGuildTimeoutsTable variant="manage" />
         </section>
       </div>
-    </GamesDiscordUsersProvider>
   );
 }

@@ -1,13 +1,36 @@
 "use client";
 
-import { BotActionsTab } from "@/components/bots/BotActionsTab";
 import { BotInfoTab } from "@/components/bots/BotInfoTab";
 import { BotOverviewTab } from "@/components/bots/BotOverviewTab";
 import { BOT_TABS, parseBotTab, type BotTab } from "@/components/bots/bot-tabs";
-import { ConfigEditor } from "@/components/fleet/ConfigEditor";
-import { DmInbox } from "@/components/fleet/DmInbox";
-import { LogViewer } from "@/components/fleet/LogViewer";
+import { PanelFallback } from "@/components/ui/panel-fallback";
 import { Badge } from "@/components/ui/Badge";
+import dynamic from "next/dynamic";
+
+const LogViewer = dynamic(
+  () =>
+    import("@/components/fleet/LogViewer").then((m) => ({ default: m.LogViewer })),
+  { loading: () => <PanelFallback /> }
+);
+const ConfigEditor = dynamic(
+  () =>
+    import("@/components/fleet/ConfigEditor").then((m) => ({
+      default: m.ConfigEditor,
+    })),
+  { loading: () => <PanelFallback /> }
+);
+const DmInbox = dynamic(
+  () =>
+    import("@/components/fleet/DmInbox").then((m) => ({ default: m.DmInbox })),
+  { loading: () => <PanelFallback /> }
+);
+const BotActionsTab = dynamic(
+  () =>
+    import("@/components/bots/BotActionsTab").then((m) => ({
+      default: m.BotActionsTab,
+    })),
+  { loading: () => <PanelFallback /> }
+);
 import { Button } from "@/components/ui/Button";
 import type { BotDefinition } from "@/lib/bots/registry";
 import {

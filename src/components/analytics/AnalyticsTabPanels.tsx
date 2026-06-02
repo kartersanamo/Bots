@@ -1,16 +1,67 @@
 "use client";
 
-import { AuditAnalyticsSection } from "@/components/analytics/AuditAnalyticsSection";
-import { EngagementAnalyticsSection } from "@/components/analytics/EngagementAnalyticsSection";
-import { GamesAnalyticsSection } from "@/components/analytics/GamesAnalyticsSection";
-import { ModerationAnalyticsSection } from "@/components/analytics/ModerationAnalyticsSection";
-import { OverviewAnalyticsSection } from "@/components/analytics/OverviewAnalyticsSection";
-import { StaffRecentAnalyticsSection } from "@/components/analytics/StaffRecentAnalyticsSection";
-import { StaffTotalAnalyticsSection } from "@/components/analytics/StaffTotalAnalyticsSection";
-import { TicketsAnalytics } from "@/components/analytics/TicketsAnalytics";
+import { PanelFallback } from "@/components/ui/panel-fallback";
 import type { AnalyticsBundle } from "@/lib/analytics/bundle";
 import type { AnalyticsGroupBy } from "@/lib/analytics/group-by";
 import type { AnalyticsRange } from "@/lib/analytics/types";
+import dynamic from "next/dynamic";
+
+const OverviewAnalyticsSection = dynamic(
+  () =>
+    import("@/components/analytics/OverviewAnalyticsSection").then((m) => ({
+      default: m.OverviewAnalyticsSection,
+    })),
+  { loading: () => <PanelFallback /> }
+);
+const TicketsAnalytics = dynamic(
+  () =>
+    import("@/components/analytics/TicketsAnalytics").then((m) => ({
+      default: m.TicketsAnalytics,
+    })),
+  { loading: () => <PanelFallback /> }
+);
+const GamesAnalyticsSection = dynamic(
+  () =>
+    import("@/components/analytics/GamesAnalyticsSection").then((m) => ({
+      default: m.GamesAnalyticsSection,
+    })),
+  { loading: () => <PanelFallback /> }
+);
+const StaffRecentAnalyticsSection = dynamic(
+  () =>
+    import("@/components/analytics/StaffRecentAnalyticsSection").then((m) => ({
+      default: m.StaffRecentAnalyticsSection,
+    })),
+  { loading: () => <PanelFallback /> }
+);
+const StaffTotalAnalyticsSection = dynamic(
+  () =>
+    import("@/components/analytics/StaffTotalAnalyticsSection").then((m) => ({
+      default: m.StaffTotalAnalyticsSection,
+    })),
+  { loading: () => <PanelFallback /> }
+);
+const ModerationAnalyticsSection = dynamic(
+  () =>
+    import("@/components/analytics/ModerationAnalyticsSection").then((m) => ({
+      default: m.ModerationAnalyticsSection,
+    })),
+  { loading: () => <PanelFallback /> }
+);
+const AuditAnalyticsSection = dynamic(
+  () =>
+    import("@/components/analytics/AuditAnalyticsSection").then((m) => ({
+      default: m.AuditAnalyticsSection,
+    })),
+  { loading: () => <PanelFallback /> }
+);
+const EngagementAnalyticsSection = dynamic(
+  () =>
+    import("@/components/analytics/EngagementAnalyticsSection").then((m) => ({
+      default: m.EngagementAnalyticsSection,
+    })),
+  { loading: () => <PanelFallback /> }
+);
 
 export type AnalyticsUiTab =
   | "overview"

@@ -1,8 +1,17 @@
 "use client";
 
 import { TicketlogsFilters } from "@/components/analytics/ticketlogs/TicketlogsFilters";
-import { TicketDetailDrawer } from "@/components/tickets/TicketDetailDrawer";
+import { PanelFallback } from "@/components/ui/panel-fallback";
 import { Badge } from "@/components/ui/Badge";
+import dynamic from "next/dynamic";
+
+const TicketDetailDrawer = dynamic(
+  () =>
+    import("@/components/tickets/TicketDetailDrawer").then((m) => ({
+      default: m.TicketDetailDrawer,
+    })),
+  { loading: () => <PanelFallback /> }
+);
 import { Button } from "@/components/ui/Button";
 import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { useTicketlogsSearch } from "@/hooks/useTicketlogsSearch";

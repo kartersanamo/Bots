@@ -4,11 +4,14 @@ import { Avatar } from "@/components/ui/Avatar";
 import { useGuildRoles } from "@/components/discord/GuildRolesProvider";
 import { useViewerHighlight } from "@/components/discord/ViewerHighlightProvider";
 import { DiscordUserProfileCard } from "@/components/games/DiscordUserProfileCard";
-import { useGamesDiscordUsers, useResolveDiscordUsers } from "@/components/games/GamesDiscordUsersProvider";
+import {
+  GamesDiscordUsersStateContext,
+  useResolveDiscordUsers,
+} from "@/components/games/GamesDiscordUsersProvider";
 import { roleColorHex, roleIconUrl } from "@/lib/discord/guild-roles";
 import { snowflakeString } from "@/lib/games/snowflake";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { memo, useContext, useState } from "react";
 
 interface DiscordUserChipProps {
   userId: string;
@@ -19,7 +22,7 @@ interface DiscordUserChipProps {
   compact?: boolean;
 }
 
-export function DiscordUserChip({
+function DiscordUserChipInner({
   userId,
   className,
   showId = false,
@@ -29,7 +32,7 @@ export function DiscordUserChip({
   const [openProfile, setOpenProfile] = useState(false);
   const id = snowflakeString(userId);
   useResolveDiscordUsers([id]);
-  const { users } = useGamesDiscordUsers();
+  const users = useContext(GamesDiscordUsersStateContext) ?? {};
   const { getTopRole } = useGuildRoles();
   const user = id ? users[id] : undefined;
   const topRole = user ? getTopRole(user.roles) : null;
@@ -80,6 +83,7 @@ export function DiscordUserChip({
                 <img
                   src={iconUrl}
                   alt=""
+                  loading="lazy"
                   className={cn("shrink-0 rounded", compact ? "h-3.5 w-3.5" : "h-4 w-4")}
                 />
               )}
@@ -111,3 +115,5 @@ export function DiscordUserChip({
     </>
   );
 }
+
+export const DiscordUserChip = memo(DiscordUserChipInner);

@@ -3,19 +3,52 @@
 import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/Button";
+import { fetchDedup } from "@/lib/api/fetch-dedup";
+import { useCallback, useEffect, useState } from "react";
 import type { AuditEntry } from "@/lib/audit";
+
+const PAGE_SIZE = 50;
 
 export function DashboardAuditLog() {
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [limit, setLimit] = useState(PAGE_SIZE);
+  const [hasMore, setHasMore] = useState(true);
+
+  const load = useCallback(async (nextLimit: number, append: boolean) => {
+    const data = await fetchDedup<{ entries: AuditEntry[] }>(
+      `/api/audit?limit=${nextLimit}`
+    );
+    const list = data.entries || [];
+    setEntries(list);
+    setHasMore(list.length >= nextLimit);
+    if (append) setLimit(nextLimit);
+  }, []);
 
   useEffect(() => {
-    fetch("/api/audit?limit=200")
-      .then((r) => r.json())
-      .then((d) => setEntries(d.entries || []))
-      .finally(() => setLoading(false));
-  }, []);
+    let cancelled = false;
+    setLoading(true);
+    load(PAGE_SIZE, false)
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [load]);
+
+  async function loadMore() {
+    setLoadingMore(true);
+    const next = limit + PAGE_SIZE;
+    try {
+      await load(next, true);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   return (
     <Card>
@@ -66,6 +99,18 @@ export function DashboardAuditLog() {
         )}
         {!loading && !entries.length && (
           <p className="py-8 text-center text-muted">No audit entries yet.</p>
+        )}
+        {!loading && hasMore && entries.length > 0 && (
+          <div className="mt-4 flex justify-center">
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={loadingMore}
+              onClick={() => void loadMore()}
+            >
+              {loadingMore ? "Loading…" : "Load more"}
+            </Button>
+          </div>
         )}
       </div>
     </Card>

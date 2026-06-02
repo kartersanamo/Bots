@@ -1,6 +1,5 @@
 import { OpenTicketsWorkspace } from "@/components/analytics/open-tickets/OpenTicketsWorkspace";
 import { Header } from "@/components/layout/Header";
-import { GamesDiscordUsersProvider } from "@/components/games/GamesDiscordUsersProvider";
 import { hasDashboardAccess } from "@/lib/auth/dashboard-access";
 import { getSession } from "@/lib/auth/session";
 import { can } from "@/lib/permissions";
@@ -27,9 +26,7 @@ export default async function TicketsPage() {
           <div className="animate-pulse text-muted">Loading open tickets…</div>
         }
       >
-        <GamesDiscordUsersProvider>
-          <OpenTicketsWorkspace userTier={session.tier} />
-        </GamesDiscordUsersProvider>
+        <OpenTicketsWorkspace userTier={session.tier} />
       </Suspense>
     </>
   );

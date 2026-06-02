@@ -1,6 +1,5 @@
 import { TicketlogsWorkspace } from "@/components/analytics/ticketlogs/TicketlogsWorkspace";
 import { Header } from "@/components/layout/Header";
-import { GamesDiscordUsersProvider } from "@/components/games/GamesDiscordUsersProvider";
 import { hasDashboardAccess } from "@/lib/auth/dashboard-access";
 import { getSession } from "@/lib/auth/session";
 import { env } from "@/lib/env";
@@ -30,9 +29,7 @@ export default async function TicketlogsPage() {
           <div className="animate-pulse text-muted">Loading ticket logs…</div>
         }
       >
-        <GamesDiscordUsersProvider>
-          <TicketlogsWorkspace userTier={session.tier} ownerBypass={ownerBypass} />
-        </GamesDiscordUsersProvider>
+        <TicketlogsWorkspace userTier={session.tier} ownerBypass={ownerBypass} />
       </Suspense>
     </>
   );

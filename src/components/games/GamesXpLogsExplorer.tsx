@@ -134,18 +134,26 @@ export function GamesXpLogsExplorer({
   description,
   userTier,
   defaultPageSize = 50,
+  initialSources,
+  initialRows,
+  initialTotal,
+  skipInitialMetaFetch = false,
 }: {
   title?: string;
   description?: string;
   userTier: PermissionTier;
   defaultPageSize?: (typeof PAGE_SIZES)[number];
+  initialSources?: string[];
+  initialRows?: XpLogRow[];
+  initialTotal?: number;
+  skipInitialMetaFetch?: boolean;
 }) {
   const searchParams = useSearchParams();
   const initialUserId = searchParams.get("userId")?.trim() ?? "";
   const appliedUserIdFromUrl = useRef(false);
 
-  const [rows, setRows] = useState<XpLogRow[]>([]);
-  const [total, setTotal] = useState(0);
+  const [rows, setRows] = useState<XpLogRow[]>(initialRows ?? []);
+  const [total, setTotal] = useState(initialTotal ?? 0);
   const [pageCount, setPageCount] = useState(1);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(defaultPageSize);
@@ -153,8 +161,9 @@ export function GamesXpLogsExplorer({
   const [sortDir, setSortDir] = useState<SortDirection>("desc");
   const [draft, setDraft] = useState<FilterDraft>(EMPTY_FILTERS);
   const [applied, setApplied] = useState<FilterDraft>(EMPTY_FILTERS);
-  const [sources, setSources] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [sources, setSources] = useState<string[]>(initialSources ?? []);
+  const [loading, setLoading] = useState(!initialRows?.length);
+  const skipFirstLoad = useRef(!!initialRows?.length);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedGameId, setSelectedGameId] = useState<number | null>(null);
@@ -165,11 +174,12 @@ export function GamesXpLogsExplorer({
   useMergeDiscordUsersFromApi(apiUsers);
 
   useEffect(() => {
+    if (skipInitialMetaFetch && initialSources?.length) return;
     fetch("/api/games/xp-logs?meta=sources")
       .then((r) => r.json())
       .then((d) => setSources(d.sources || []))
       .catch(() => {});
-  }, []);
+  }, [skipInitialMetaFetch, initialSources?.length]);
 
   useEffect(() => {
     if (!initialUserId || appliedUserIdFromUrl.current) return;
@@ -208,6 +218,10 @@ export function GamesXpLogsExplorer({
   }, [page, pageSize, sortBy, sortDir, applied]);
 
   useEffect(() => {
+    if (skipFirstLoad.current) {
+      skipFirstLoad.current = false;
+      return;
+    }
     load();
   }, [load]);
 

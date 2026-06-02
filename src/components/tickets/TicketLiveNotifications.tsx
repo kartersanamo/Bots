@@ -14,7 +14,8 @@ interface TicketLiveEvent {
   channelName?: string;
 }
 
-const POLL_MS = 6000;
+const POLL_VISIBLE_MS = 6000;
+const POLL_HIDDEN_MS = 30000;
 
 function playDing() {
   try {
@@ -101,12 +102,25 @@ export function TicketLiveNotifications() {
     const immediate = window.setTimeout(() => {
       void poll();
     }, 250);
-    const interval = window.setInterval(() => {
+    let interval = window.setInterval(() => {
       void poll();
-    }, POLL_MS);
+    }, POLL_VISIBLE_MS);
+
+    const onVisibility = () => {
+      window.clearInterval(interval);
+      const ms =
+        document.visibilityState === "visible"
+          ? POLL_VISIBLE_MS
+          : POLL_HIDDEN_MS;
+      interval = window.setInterval(() => {
+        void poll();
+      }, ms);
+    };
+    document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
       stopped = true;
+      document.removeEventListener("visibilitychange", onVisibility);
       window.clearTimeout(immediate);
       window.clearInterval(interval);
       if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);

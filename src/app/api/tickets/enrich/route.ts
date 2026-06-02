@@ -12,7 +12,7 @@ export const POST = handleApiRoute(async (request) => {
   }
 
   const body = await request.json();
-  const channelIds = (body.channelIds as string[])?.slice(0, 10) ?? [];
+  const channelIds = (body.channelIds as string[])?.slice(0, 40) ?? [];
   const owners = (body.owners as Record<string, string>) ?? {};
 
   const items = channelIds.map((channelId) => ({

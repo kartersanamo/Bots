@@ -3,26 +3,40 @@
 import { Card } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
 import { GamesXpLogsExplorer } from "@/components/games/GamesXpLogsExplorer";
+import { fetchDedup } from "@/lib/api/fetch-dedup";
 import { can, type PermissionTier } from "@/lib/permissions";
 import { BarChart3, Gamepad2, Users, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 
-export function GamesOverviewSection({ userTier }: { userTier: PermissionTier }) {
-  const [data, setData] = useState<{
-    overview: {
-      activePlayers: number;
-      everPlayed: number;
-      openSessions: number;
-      totalXpLogs: number;
-    } | null;
-    botStatus: { chatGamesRunning: boolean; dmGamesRunning: boolean } | null;
-  } | null>(null);
+type OverviewData = {
+  overview: {
+    activePlayers: number;
+    everPlayed: number;
+    openSessions: number;
+    totalXpLogs: number;
+  } | null;
+  botStatus: { chatGamesRunning: boolean; dmGamesRunning: boolean } | null;
+};
+
+type OverviewFull = OverviewData & {
+  xpSources?: string[];
+  xpLogs?: unknown[];
+  xpLogsTotal?: number;
+};
+
+export function GamesOverviewSection({
+  userTier,
+  initialOverview,
+}: {
+  userTier: PermissionTier;
+  initialOverview?: OverviewFull | null;
+}) {
+  const [data, setData] = useState<OverviewFull | null>(initialOverview ?? null);
 
   useEffect(() => {
-    fetch("/api/games/overview")
-      .then((r) => r.json())
-      .then((d) => setData(d));
-  }, []);
+    if (initialOverview) return;
+    fetchDedup<OverviewFull>("/api/games/overview-full").then((d) => setData(d));
+  }, [initialOverview]);
 
   const o = data?.overview;
 
@@ -77,6 +91,10 @@ export function GamesOverviewSection({ userTier }: { userTier: PermissionTier })
         description="Sort, filter, and paginate all XP log entries. Click a session ID to open details."
         userTier={userTier}
         defaultPageSize={50}
+        initialSources={data?.xpSources}
+        initialRows={data?.xpLogs as never}
+        initialTotal={data?.xpLogsTotal}
+        skipInitialMetaFetch={!!data?.xpSources}
       />
     </div>
   );
