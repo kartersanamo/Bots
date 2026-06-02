@@ -27,6 +27,7 @@ export function GamesAnalyticsSection({
   groupBy,
 }: GamesAnalyticsSectionProps) {
   const topStreaksLimit = useAnalyticsTableRowLimit(8);
+  const topCountersLimit = useAnalyticsTableRowLimit(10);
 
   const { kpis } = data;
 
@@ -74,11 +75,23 @@ export function GamesAnalyticsSection({
                   ).toFixed(1)} claims/player avg`
                 : undefined,
           },
-          { label: "Counting participants", value: kpis.countingUsers },
           {
-            label: "Counting numbers posted",
-            value: formatNumber(kpis.countingTotalCounts),
+            label: "Current count",
+            value:
+              kpis.countingCurrentCount != null
+                ? formatNumber(kpis.countingCurrentCount)
+                : "—",
+            hint: "Last number in the counting channel",
           },
+          {
+            label: "Highest count",
+            value:
+              kpis.countingHighestCount != null
+                ? formatNumber(kpis.countingHighestCount)
+                : "—",
+            hint: "Best streak on the server",
+          },
+          { label: "Counting participants", value: kpis.countingUsers },
           { label: "Counting mistakes", value: kpis.countingMistakes },
         ]}
       />
@@ -218,6 +231,48 @@ export function GamesAnalyticsSection({
         countLabel="XP"
         valueKey="xp"
       />
+
+      {data.topCounters.length > 0 && (
+        <AnalyticsDataTable
+          title="Top counters"
+          headers={["userId", "totalCounts", "highestCount", "mistakes"]}
+          exportFilename="games-top-counters.csv"
+          exportRows={data.topCounters.map((r) => ({
+            userId: r.userId,
+            totalCounts: r.totalCounts,
+            highestCount: r.highestCount,
+            mistakes: r.mistakes,
+          }))}
+          tableRowLimit={topCountersLimit.tableRowLimit}
+        >
+          <AnalyticsTable>
+            <thead>
+              <tr className="border-b border-border text-left text-xs text-muted">
+                <th className="px-4 py-2">#</th>
+                <th className="px-4 py-2">Player</th>
+                <th className="px-4 py-2">Counts</th>
+                <th className="px-4 py-2">Personal best</th>
+                <th className="px-4 py-2">Mistakes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {topCountersLimit.slice(data.topCounters).map((r, i) => (
+                <tr key={r.userId} className="border-b border-border/50">
+                  <td className="px-4 py-2 text-muted">{i + 1}</td>
+                  <td className="px-4 py-2">
+                    <DiscordUserChip userId={r.userId} />
+                  </td>
+                  <td className="px-4 py-2 font-medium text-white">
+                    {formatNumber(r.totalCounts)}
+                  </td>
+                  <td className="px-4 py-2">{formatNumber(r.highestCount)}</td>
+                  <td className="px-4 py-2">{r.mistakes}</td>
+                </tr>
+              ))}
+            </tbody>
+          </AnalyticsTable>
+        </AnalyticsDataTable>
+      )}
 
       {data.topStreaks.length > 0 && (
         <AnalyticsDataTable

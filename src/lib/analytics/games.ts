@@ -9,6 +9,7 @@ import {
 import type { AnalyticsRange, DailyCount, GamesAnalytics } from "@/lib/analytics/types";
 import { getGamesOverview } from "@/lib/db/games";
 import { query, queryOne, isDbConfigured } from "@/lib/db/pool";
+import { env } from "@/lib/env";
 
 /** Matches MinecadiaGames `/daily` XP log entries. */
 const DAILY_CLAIM_XP_WHERE =
@@ -46,6 +47,11 @@ export async function getGamesAnalytics(
       : "";
   const achievementParams = since != null ? [since] : [];
 
+  const guildId =
+    env("DISCORD_GUILD_ID") || env("NEXT_PUBLIC_DISCORD_GUILD_ID") || null;
+  const countingGuildClause = guildId ? " WHERE guild_id = ?" : "";
+  const countingGuildParams = guildId ? [guildId] : [];
+
   try {
     const [
       xpAgg,
@@ -63,6 +69,8 @@ export async function getGamesAnalytics(
       achievementTotals,
       claimTotals,
       countingAgg,
+      countingServer,
+      topCounters,
       topStreaks,
     ] = await Promise.all([
       queryOne<{ total: number; events: number }>(
@@ -172,16 +180,35 @@ export async function getGamesAnalytics(
            WHERE ${DAILY_CLAIM_XP_WHERE}${tsClause}) AS usersInRange`,
         tsParams
       ),
-      queryOne<{
-        users: number;
-        totalCounts: number;
-        mistakes: number;
-      }>(
+      queryOne<{ users: number; mistakes: number }>(
         `SELECT
-          (SELECT COUNT(*) FROM counting_users) AS users,
-          (SELECT COALESCE(SUM(total_counts), 0) FROM counting_users) AS totalCounts,
-          (SELECT COALESCE(SUM(mistakes), 0) FROM counting_users) AS mistakes`
+          (SELECT COUNT(*) FROM counting_users${countingGuildClause}) AS users,
+          (SELECT COALESCE(SUM(mistakes), 0) FROM counting_users${countingGuildClause}) AS mistakes`,
+        countingGuildParams
       ).catch(() => null),
+      guildId
+        ? queryOne<{
+            last_number: number;
+            highest_count: number;
+          }>(
+            `SELECT last_number, highest_count
+             FROM counting_server WHERE guild_id = ?`,
+            [guildId]
+          ).catch(() => null)
+        : Promise.resolve(null),
+      guildId
+        ? query<{
+            user_id: string;
+            total_counts: number;
+            highest_count: number;
+            mistakes: number;
+          }>(
+            `SELECT user_id, total_counts, highest_count, mistakes
+             FROM counting_users WHERE guild_id = ?
+             ORDER BY total_counts DESC LIMIT 25`,
+            [guildId]
+          ).catch(() => [])
+        : Promise.resolve([]),
       query<{ user_id: string; streak: number }>(
         `SELECT user_id, streak FROM daily_claims
          ORDER BY streak DESC LIMIT 10`
@@ -207,9 +234,18 @@ export async function getGamesAnalytics(
         claimsInRange: Number(claimTotals?.claims ?? 0),
         dailyClaimUsersInRange: Number(claimTotals?.usersInRange ?? 0),
         countingUsers: Number(countingAgg?.users ?? 0),
-        countingTotalCounts: Number(countingAgg?.totalCounts ?? 0),
         countingMistakes: Number(countingAgg?.mistakes ?? 0),
+        countingCurrentCount:
+          countingServer != null ? Number(countingServer.last_number) : null,
+        countingHighestCount:
+          countingServer != null ? Number(countingServer.highest_count) : null,
       },
+      topCounters: topCounters.map((r) => ({
+        userId: String(r.user_id),
+        totalCounts: Number(r.total_counts),
+        highestCount: Number(r.highest_count),
+        mistakes: Number(r.mistakes),
+      })),
       xpPerDay: normalizeTimeSeries(mapDaily(xpPerDay), range, groupBy),
       sessionsPerDay: normalizeTimeSeries(
         mapDaily(sessionsPerDay),

@@ -120,9 +120,18 @@ export interface GamesAnalytics {
     /** Distinct players with at least one daily claim in range. */
     dailyClaimUsersInRange: number;
     countingUsers: number;
-    countingTotalCounts: number;
     countingMistakes: number;
+    /** Current number in the counting channel (`counting_server.last_number`). */
+    countingCurrentCount: number | null;
+    /** Highest number reached on the server (`counting_server.highest_count`). */
+    countingHighestCount: number | null;
   };
+  topCounters: {
+    userId: string;
+    totalCounts: number;
+    highestCount: number;
+    mistakes: number;
+  }[];
   xpPerDay: DailyCount[];
   sessionsPerDay: DailyCount[];
   topXpSources: NamedCount[];
