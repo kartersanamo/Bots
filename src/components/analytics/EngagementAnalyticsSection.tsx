@@ -7,7 +7,11 @@ import {
 import { AnalyticsChartCard } from "@/components/analytics/AnalyticsChartCard";
 import { AnalyticsKpiGrid } from "@/components/analytics/AnalyticsKpiGrid";
 import { AnalyticsUserCountTable } from "@/components/analytics/AnalyticsUserCountTable";
-import { DailyLineChart } from "@/components/analytics/charts";
+import {
+  DailyLineChart,
+  DualDailyLineChart,
+  NamedBarChart,
+} from "@/components/analytics/charts";
 import { useAnalyticsTableRowLimit } from "@/components/analytics/table-row-limit";
 import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { cn, formatUnixTimestamp } from "@/lib/utils";
@@ -34,6 +38,8 @@ function MigrationNotice({
   if (!ready.games) missing.push("games");
   if (!ready.voice) missing.push("voice");
   if (!ready.memberEvents) missing.push("member events");
+  if (!ready.snapshots) missing.push("server snapshots");
+  if (!ready.onlineSamples) missing.push("online hourly samples");
   if (!missing.length) return null;
   return (
     <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
@@ -142,6 +148,54 @@ export function EngagementAnalyticsSection({
         >
           <DailyLineChart data={data.voiceSecondsPerDay} color="#2dd4bf" />
         </AnalyticsChartCard>
+
+        {data.playersOnlineByHour.some((r) => r.count > 0) && (
+          <AnalyticsChartCard
+            title="Peak hours — players online"
+            exportHeaders={["hour", "avgOnline"]}
+            exportFilename={`engagement-peak-online-${range}.csv`}
+            exportRows={data.playersOnlineByHour.map((r) => ({
+              hour: r.name,
+              avgOnline: r.count,
+            }))}
+          >
+            <p className="mb-2 text-xs text-muted">
+              Average online members at each hour across all days in the selected
+              period (from hourly guild samples).
+            </p>
+            <NamedBarChart
+              data={data.playersOnlineByHour}
+              compactLabels
+              color="#38bdf8"
+            />
+          </AnalyticsChartCard>
+        )}
+
+        {data.serverSnapshots.length > 0 && (
+          <AnalyticsChartCard
+            title="Server size & online (daily snapshots)"
+            exportHeaders={["date", "total", "online"]}
+            exportFilename={`engagement-server-snapshots-${range}.csv`}
+            exportRows={data.serverSnapshots.map((r) => ({
+              date: r.date,
+              total: r.members,
+              online: r.online,
+            }))}
+          >
+            <DualDailyLineChart
+              opened={data.serverSnapshots.map((r) => ({
+                date: r.date,
+                count: r.members,
+              }))}
+              closed={data.serverSnapshots.map((r) => ({
+                date: r.date,
+                count: r.online,
+              }))}
+              openedLabel="Total"
+              closedLabel="Online"
+            />
+          </AnalyticsChartCard>
+        )}
       </div>
 
       {data.topVoiceUsers.length > 0 && (

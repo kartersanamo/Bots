@@ -217,6 +217,8 @@ export interface EngagementAnalytics {
     games: boolean;
     voice: boolean;
     memberEvents: boolean;
+    snapshots: boolean;
+    onlineSamples: boolean;
   };
   kpis: {
     /** All guild messages from users in the staff roster (`statistics`). */
@@ -235,6 +237,9 @@ export interface EngagementAnalytics {
   voiceSecondsPerDay: DailyCount[];
   topVoiceUsers: UserCountRow[];
   recentJoinLeaves: MemberJoinLeaveEvent[];
+  serverSnapshots: { date: string; members: number; online: number }[];
+  /** Average online members at each hour of day (combined across range). */
+  playersOnlineByHour: NamedCount[];
 }
 
 export interface AnalyticsSummary {

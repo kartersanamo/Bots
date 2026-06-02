@@ -6,6 +6,7 @@
 cd /root/Websites/Bots
 node scripts/apply-analytics-migration.mjs
 node scripts/apply-analytics-migration.mjs docs/migrations/002_total_statistics_and_member_messages.sql
+node scripts/apply-analytics-migration.mjs docs/migrations/003_online_hourly_samples.sql
 ```
 
 Requires `DB_HOST`, `DB_USER` (or `DB_WRITE_USER`), `DB_PASSWORD`, `DB_NAME` in `.env`.
@@ -38,6 +39,7 @@ Open **Analytics → Engagement** for charts. Dashboard moderation actions (`/ap
 | `analytics_poll_votes` | Poll votes |
 | `analytics_game_outcomes` | Game session ends |
 | `analytics_server_snapshots` | Daily member/online/boost stats |
+| `analytics_online_samples` | Hourly online/member samples (peak hours) |
 | `analytics_member_messages_daily` | All guild members’ messages per day |
 | `total_statistics` | All-time staff counters (never reset by `/wipe`) |
 | `statistics` | Current period staff counters (reset every ~2 weeks) |

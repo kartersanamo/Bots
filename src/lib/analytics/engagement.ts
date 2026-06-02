@@ -6,12 +6,27 @@ import {
   buildTimeBucketSpec,
   normalizeTimeSeries,
 } from "@/lib/analytics/time-buckets";
+import { fillHourOfDayBuckets } from "@/lib/analytics/buckets";
 import type {
   AnalyticsRange,
   DailyCount,
   EngagementAnalytics,
 } from "@/lib/analytics/types";
 import { isDbConfigured, query } from "@/lib/db/pool";
+
+function thinSnapshotSeries(
+  rows: { day: string; member_count: number; online_count: number }[],
+  maxPoints: number
+) {
+  const mapped = rows.map((r) => ({
+    date: String(r.day).slice(0, 10),
+    members: Number(r.member_count),
+    online: Number(r.online_count),
+  }));
+  if (mapped.length <= maxPoints) return mapped;
+  const step = Math.ceil(mapped.length / maxPoints);
+  return mapped.filter((_, i) => i % step === 0).slice(0, maxPoints);
+}
 
 function mapDaily(rows: { date: string | Date; count: number }[]): DailyCount[] {
   return rows.map((r) => ({
@@ -55,6 +70,8 @@ export async function getEngagementAnalytics(
     const hasTickets = tableStatus.ticketMessages === true;
     const hasVoice = tableStatus.voice === true;
     const hasMemberEvents = tableStatus.memberEvents === true;
+    const hasSnapshots = tableStatus.snapshots === true;
+    const hasOnlineSamples = tableStatus.onlineSamples === true;
 
     let hasGames = false;
     try {
@@ -73,7 +90,11 @@ export async function getEngagementAnalytics(
       games: hasGames,
       voice: hasVoice,
       memberEvents: hasMemberEvents,
+      snapshots: hasSnapshots,
+      onlineSamples: hasOnlineSamples,
     };
+
+    const snapshotDayBucket = bucketKeySqlFromDate("day", bucketSpec);
 
     const [
       totalStaffPerDay,
@@ -83,6 +104,8 @@ export async function getEngagementAnalytics(
       voicePerDay,
       topVoiceUsers,
       recentJoinLeaves,
+      snapshots,
+      onlineByHour,
     ] = await Promise.all([
         hasMemberMessages
           ? query<{ date: string; count: number }>(
@@ -154,6 +177,33 @@ export async function getEngagementAnalytics(
               memberEventsParams
             )
           : [],
+        hasSnapshots
+          ? query<{
+              day: string;
+              member_count: number;
+              online_count: number;
+            }>(
+              `SELECT ${snapshotDayBucket} AS day,
+                ROUND(AVG(member_count)) AS member_count,
+                ROUND(AVG(online_count)) AS online_count
+               FROM analytics_server_snapshots WHERE 1=1${ticketDayClause}
+               GROUP BY day ORDER BY day`,
+              dayParams
+            )
+          : [],
+        hasOnlineSamples
+          ? query<{ hour: number; count: number }>(
+              `SELECT CAST(HOUR(FROM_UNIXTIME(recorded_at)) AS UNSIGNED) AS hour,
+                ROUND(AVG(online_count)) AS count
+               FROM analytics_online_samples
+               WHERE 1=1${
+                 since != null ? " AND recorded_at >= ?" : ""
+               }
+               GROUP BY HOUR(FROM_UNIXTIME(recorded_at))
+               ORDER BY hour`,
+              memberEventsParams
+            )
+          : [],
       ]);
 
     const totalStaffMessagesPerDay = normalizeTimeSeries(
@@ -217,6 +267,8 @@ export async function getEngagementAnalytics(
           r.account_age_days != null ? Number(r.account_age_days) : null,
         createdAt: Number(r.created_at),
       })),
+      serverSnapshots: thinSnapshotSeries(snapshots, bucketSpec.maxPoints),
+      playersOnlineByHour: fillHourOfDayBuckets(onlineByHour),
     };
   } catch (err) {
     console.error("[analytics] getEngagementAnalytics failed:", err);

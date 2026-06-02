@@ -9,6 +9,7 @@ const TRACKING_TABLES = [
   { key: "moderation", table: "analytics_mod_actions" },
   { key: "gameOutcomes", table: "analytics_game_outcomes" },
   { key: "snapshots", table: "analytics_server_snapshots" },
+  { key: "onlineSamples", table: "analytics_online_samples" },
   { key: "memberMessages", table: "analytics_member_messages_daily" },
 ] as const;
 
