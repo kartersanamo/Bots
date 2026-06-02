@@ -34,7 +34,7 @@ loadEnv();
 
 const sqlPath = path.join(
   root,
-  "docs/migrations/001_analytics_tracking.sql"
+  process.argv[2] || "docs/migrations/001_analytics_tracking.sql"
 );
 
 async function main() {
@@ -94,7 +94,7 @@ async function main() {
   }
 
   await conn.end();
-  console.log("Analytics migration complete.");
+  console.log(`Migration complete: ${path.basename(sqlPath)}`);
 }
 
 main().catch((e) => {

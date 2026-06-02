@@ -52,6 +52,10 @@ export function EngagementAnalyticsSection({
       <AnalyticsKpiGrid
         items={[
           { label: "Staff messages", value: kpis.staffMessagesInRange },
+          {
+            label: "Guild messages",
+            value: formatNumber(kpis.memberMessagesInRange ?? 0),
+          },
           { label: "Ticket staff msgs", value: kpis.ticketStaffMessages },
           { label: "Ticket owner msgs", value: kpis.ticketOwnerMessages },
           { label: "Member joins", value: kpis.memberJoins },
@@ -106,6 +110,30 @@ export function EngagementAnalyticsSection({
         exportFilename={`engagement-top-staff-${range}.csv`}
         countLabel="Messages"
       />
+
+      {data.memberMessagesPerDay.length > 0 && (
+        <>
+          <AnalyticsChartCard
+            title={chartTitleWithPeriod("Guild messages (all members)", groupBy)}
+            exportHeaders={["date", "messages"]}
+            exportFilename={`engagement-member-messages-${range}.csv`}
+            exportRows={data.memberMessagesPerDay.map((r) => ({
+              date: r.date,
+              messages: r.count,
+            }))}
+          >
+            <DailyLineChart data={data.memberMessagesPerDay} color="#38bdf8" />
+          </AnalyticsChartCard>
+          {data.topMembersByMessages.length > 0 && (
+            <AnalyticsUserCountTable
+              title="Top members by messages (range)"
+              rows={data.topMembersByMessages}
+              exportFilename={`engagement-top-members-${range}.csv`}
+              countLabel="Messages"
+            />
+          )}
+        </>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsChartCard

@@ -1,4 +1,5 @@
 import type { StaffAnalytics, StaffLeaderboardRow } from "@/lib/analytics/types";
+import { getTotalStatisticsTotals, totalStatisticsTableExists } from "@/lib/db/total-statistics";
 import { query, queryOne, isDbConfigured } from "@/lib/db/pool";
 
 function mapRow(r: {
@@ -17,50 +18,70 @@ function mapRow(r: {
   };
 }
 
+function leaderboardQuery(table: "total_statistics" | "statistics") {
+  if (table === "total_statistics") {
+    return `SELECT user_ID AS user_id,
+      COALESCE(tickets_closed, 0) AS tickets_closed,
+      COALESCE(messages_sent, 0) AS messages,
+      COALESCE(warnings, 0) AS warnings,
+      COALESCE(screenshares, 0) AS screenshares
+     FROM total_statistics
+     ORDER BY tickets_closed DESC
+     LIMIT 50`;
+  }
+  return `SELECT user_ID AS user_id,
+      COALESCE(CAST(tickets_closed AS UNSIGNED), 0) AS tickets_closed,
+      COALESCE(CAST(messages_sent AS UNSIGNED), 0) AS messages,
+      COALESCE(CAST(warnings AS UNSIGNED), 0) AS warnings,
+      COALESCE(CAST(screenshares AS UNSIGNED), 0) AS screenshares
+     FROM statistics
+     ORDER BY CAST(tickets_closed AS UNSIGNED) DESC
+     LIMIT 50`;
+}
+
+const PERIOD_TOTALS_SQL = `
+  SELECT
+    COALESCE(SUM(CAST(tickets_closed AS UNSIGNED)), 0) AS tickets,
+    COALESCE(SUM(CAST(messages_sent AS UNSIGNED)), 0) AS messages,
+    COALESCE(SUM(CAST(warnings AS UNSIGNED)), 0) AS warnings,
+    COALESCE(SUM(CAST(screenshares AS UNSIGNED)), 0) AS screenshares,
+    COUNT(*) AS staff
+  FROM statistics`;
+
 export async function getStaffAnalytics(): Promise<StaffAnalytics | null> {
   if (!isDbConfigured()) return null;
 
+  const hasTotal = await totalStatisticsTableExists();
+  const lbTable: "total_statistics" | "statistics" = hasTotal
+    ? "total_statistics"
+    : "statistics";
+
   try {
-    const [leaderboard, duplicates, strikeCount, totalsRow] = await Promise.all([
-      query<{
-        user_id: string;
-        tickets_closed: number;
-        messages: number;
-        warnings: number;
-        screenshares: number;
-      }>(
-        `SELECT user_ID AS user_id,
-          COALESCE(CAST(tickets_closed AS UNSIGNED), 0) AS tickets_closed,
-          COALESCE(CAST(messages_sent AS UNSIGNED), 0) AS messages,
-          COALESCE(CAST(warnings AS UNSIGNED), 0) AS warnings,
-          COALESCE(CAST(screenshares AS UNSIGNED), 0) AS screenshares
-         FROM statistics
-         ORDER BY CAST(tickets_closed AS UNSIGNED) DESC
-         LIMIT 50`
-      ).catch(() => []),
-      query<{ user_ID: string; cnt: number }>(
-        `SELECT user_ID, COUNT(*) AS cnt
-         FROM statistics GROUP BY user_ID HAVING COUNT(*) > 1`
-      ).catch(() => []),
-      queryOne<{ total: number }>(
-        `SELECT COUNT(*) AS total FROM strike_reports`
-      ).catch(() => null),
-      queryOne<{
-        tickets: number;
-        messages: number;
-        warnings: number;
-        screenshares: number;
-        staff: number;
-      }>(
-        `SELECT
-          COALESCE(SUM(CAST(tickets_closed AS UNSIGNED)), 0) AS tickets,
-          COALESCE(SUM(CAST(messages_sent AS UNSIGNED)), 0) AS messages,
-          COALESCE(SUM(CAST(warnings AS UNSIGNED)), 0) AS warnings,
-          COALESCE(SUM(CAST(screenshares AS UNSIGNED)), 0) AS screenshares,
-          COUNT(*) AS staff
-         FROM statistics`
-      ).catch(() => null),
-    ]);
+    const [leaderboard, duplicates, strikeCount, periodTotalsRow, allTimeTotals] =
+      await Promise.all([
+        query<{
+          user_id: string;
+          tickets_closed: number;
+          messages: number;
+          warnings: number;
+          screenshares: number;
+        }>(leaderboardQuery(lbTable)).catch(() => []),
+        query<{ user_ID: string; cnt: number }>(
+          `SELECT user_ID, COUNT(*) AS cnt
+           FROM statistics GROUP BY user_ID HAVING COUNT(*) > 1`
+        ).catch(() => []),
+        queryOne<{ total: number }>(
+          `SELECT COUNT(*) AS total FROM strike_reports`
+        ).catch(() => null),
+        queryOne<{
+          tickets: number;
+          messages: number;
+          warnings: number;
+          screenshares: number;
+          staff: number;
+        }>(PERIOD_TOTALS_SQL).catch(() => null),
+        hasTotal ? getTotalStatisticsTotals() : Promise.resolve(null),
+      ]);
 
     const rows = leaderboard.map(mapRow);
     const byMessages = [...rows].sort((a, b) => b.messages - a.messages).slice(0, 20);
@@ -69,18 +90,24 @@ export async function getStaffAnalytics(): Promise<StaffAnalytics | null> {
       .sort((a, b) => b.screenshares - a.screenshares)
       .slice(0, 20);
 
+    const periodTotals = {
+      ticketsClosed: Number(periodTotalsRow?.tickets ?? 0),
+      messages: Number(periodTotalsRow?.messages ?? 0),
+      warnings: Number(periodTotalsRow?.warnings ?? 0),
+      screenshares: Number(periodTotalsRow?.screenshares ?? 0),
+      staffCount: Number(periodTotalsRow?.staff ?? 0),
+    };
+
+    const totals = allTimeTotals ?? periodTotals;
+
     return {
       leaderboard: rows.slice(0, 25),
       topByMessages: byMessages,
       topByWarnings: byWarnings,
       topByScreenshares: byScreenshares,
-      totals: {
-        ticketsClosed: Number(totalsRow?.tickets ?? 0),
-        messages: Number(totalsRow?.messages ?? 0),
-        warnings: Number(totalsRow?.warnings ?? 0),
-        screenshares: Number(totalsRow?.screenshares ?? 0),
-        staffCount: Number(totalsRow?.staff ?? 0),
-      },
+      totals,
+      totalsPeriod: periodTotals,
+      totalsAllTime: allTimeTotals,
       duplicateStatisticsUsers: duplicates.map((r) => ({
         userId: String(r.user_ID),
         count: Number(r.cnt),

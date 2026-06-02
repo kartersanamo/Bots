@@ -152,6 +152,22 @@ export interface StaffAnalytics {
     screenshares: number;
     staffCount: number;
   };
+  /** Current bi-weekly period (`statistics`, reset by /wipe). */
+  totalsPeriod: {
+    ticketsClosed: number;
+    messages: number;
+    warnings: number;
+    screenshares: number;
+    staffCount: number;
+  };
+  /** All-time (`total_statistics`, never wiped). Null if migration not applied. */
+  totalsAllTime: {
+    ticketsClosed: number;
+    messages: number;
+    warnings: number;
+    screenshares: number;
+    staffCount: number;
+  } | null;
   duplicateStatisticsUsers: { userId: string; count: number }[];
   strikeReportsTotal: number | null;
 }
@@ -197,6 +213,7 @@ export interface EngagementAnalytics {
     commandInvocations: number;
     modActions: number;
     gameSessionsEnded: number;
+    memberMessagesInRange: number;
   };
   staffMessagesPerDay: DailyCount[];
   topStaffByMessages: UserCountRow[];
@@ -220,6 +237,8 @@ export interface EngagementAnalytics {
     boostTier: number;
   }[];
   blacklistsCreatedPerDay: DailyCount[];
+  memberMessagesPerDay: DailyCount[];
+  topMembersByMessages: UserCountRow[];
 }
 
 export interface AnalyticsSummary {

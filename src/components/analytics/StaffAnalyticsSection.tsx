@@ -77,7 +77,7 @@ function StaffTable({
 }
 
 export function StaffAnalyticsSection({ data }: StaffAnalyticsSectionProps) {
-  const { totals } = data;
+  const { totals, totalsPeriod, totalsAllTime } = data;
   const duplicatesLimit = useAnalyticsTableRowLimit(8);
   const visibleDuplicates = duplicatesLimit.slice(data.duplicateStatisticsUsers);
   const activityBars = data.leaderboard.slice(0, 12).map((r) => ({
@@ -91,20 +91,32 @@ export function StaffAnalyticsSection({ data }: StaffAnalyticsSectionProps) {
         items={[
           { label: "Staff tracked", value: totals.staffCount },
           {
+            label: "Tickets closed (period)",
+            value: formatNumber(totalsPeriod.ticketsClosed),
+          },
+          {
             label: "Tickets closed (all time)",
-            value: formatNumber(totals.ticketsClosed),
+            value: formatNumber(
+              totalsAllTime?.ticketsClosed ?? totals.ticketsClosed
+            ),
+          },
+          {
+            label: "Messages (period)",
+            value: formatNumber(totalsPeriod.messages),
           },
           {
             label: "Messages (all time)",
-            value: formatNumber(totals.messages),
+            value: formatNumber(totalsAllTime?.messages ?? totals.messages),
           },
           {
             label: "Warnings (all time)",
-            value: formatNumber(totals.warnings),
+            value: formatNumber(totalsAllTime?.warnings ?? totals.warnings),
           },
           {
             label: "Screenshares (all time)",
-            value: formatNumber(totals.screenshares),
+            value: formatNumber(
+              totalsAllTime?.screenshares ?? totals.screenshares
+            ),
           },
           {
             label: "Strike reports (total)",
@@ -131,8 +143,7 @@ export function StaffAnalyticsSection({ data }: StaffAnalyticsSectionProps) {
           }))}
         >
           <p className="mb-2 text-xs text-muted">
-            Sum of tickets closed + messages + warnings + screenshares from the
-            statistics table.
+            All-time totals from total_statistics (not reset by /wipe).
           </p>
           <NamedBarChart data={activityBars} color="#38bdf8" />
         </AnalyticsChartCard>

@@ -71,6 +71,7 @@ export async function getEngagementAnalytics(
     const hasMod = tableStatus.moderation === true;
     const hasGames = tableStatus.gameOutcomes === true;
     const hasSnapshots = tableStatus.snapshots === true;
+    const hasMemberMessages = tableStatus.memberMessages === true;
 
     const [
       staffPerDay,
@@ -90,6 +91,8 @@ export async function getEngagementAnalytics(
       outcomesByType,
       snapshots,
       blacklistCreatedPerDay,
+      memberMessagesPerDay,
+      topMembersByMessages,
     ] = await Promise.all([
       hasStaff
         ? query<{ date: string; count: number }>(
@@ -239,9 +242,29 @@ export async function getEngagementAnalytics(
          GROUP BY date ORDER BY date`,
         since != null ? [since] : []
       ).catch(() => []),
+      hasMemberMessages
+        ? query<{ date: string; count: number }>(
+            `SELECT ${dayBucket} AS date, SUM(message_count) AS count
+             FROM analytics_member_messages_daily WHERE 1=1${dayClause}
+             GROUP BY date ORDER BY date`,
+            dayParams
+          )
+        : [],
+      hasMemberMessages
+        ? query<{ user_id: string; total: number }>(
+            `SELECT user_id, SUM(message_count) AS total
+             FROM analytics_member_messages_daily WHERE 1=1${dayClause}
+             GROUP BY user_id ORDER BY total DESC LIMIT 15`,
+            dayParams
+          )
+        : [],
     ]);
 
     const staffTotal = topStaffMessages.reduce((s, r) => s + Number(r.total), 0);
+    const memberMsgTotal = topMembersByMessages.reduce(
+      (s, r) => s + Number(r.total),
+      0
+    );
     const voiceTotal = topVoiceUsers.reduce((s, r) => s + Number(r.total), 0);
     const joinTotal = joinsPerDay.reduce((s, r) => s + Number(r.count), 0);
     const leaveTotal = leavesPerDay.reduce((s, r) => s + Number(r.count), 0);
@@ -272,6 +295,7 @@ export async function getEngagementAnalytics(
           (s, r) => s + Number(r.count),
           0
         ),
+        memberMessagesInRange: memberMsgTotal,
       },
       staffMessagesPerDay: normalizeTimeSeries(
         mapDaily(staffPerDay),
@@ -336,6 +360,15 @@ export async function getEngagementAnalytics(
         range,
         groupBy
       ),
+      memberMessagesPerDay: normalizeTimeSeries(
+        mapDaily(memberMessagesPerDay),
+        range,
+        groupBy
+      ),
+      topMembersByMessages: topMembersByMessages.map((r) => ({
+        userId: String(r.user_id),
+        count: Number(r.total),
+      })),
     };
   } catch (err) {
     console.error("[analytics] getEngagementAnalytics failed:", err);

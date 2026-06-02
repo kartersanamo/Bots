@@ -3,6 +3,7 @@ import { analyticsPrivatedClause } from "@/lib/analytics/privated";
 import { closedAtRangeClause, openedAtRangeClause, rangeSinceUnix } from "@/lib/analytics/range";
 import type { AnalyticsRange, AnalyticsSummary } from "@/lib/analytics/types";
 import { fetchGuildBanCount } from "@/lib/discord/api";
+import { getTotalStatisticsTotals } from "@/lib/db/total-statistics";
 import { getGamesOverview } from "@/lib/db/games";
 import { getTicketStats } from "@/lib/db/tickets";
 import { isDbConfigured, queryOne } from "@/lib/db/pool";
@@ -61,12 +62,7 @@ export async function getAnalyticsSummaryLight(
        FROM xp_logs WHERE CAST(timestamp AS UNSIGNED) > 0${tsClause}`,
       tsParams
     ).catch(() => null),
-    queryOne<{ tickets: number; messages: number }>(
-      `SELECT
-        COALESCE(SUM(CAST(tickets_closed AS UNSIGNED)), 0) AS tickets,
-        COALESCE(SUM(CAST(messages_sent AS UNSIGNED)), 0) AS messages
-       FROM statistics`
-    ).catch(() => null),
+    getTotalStatisticsTotals(),
   ]);
 
   const openedInRange = Number(openedInRangeRow?.count ?? 0);
@@ -100,7 +96,7 @@ export async function getAnalyticsSummaryLight(
     },
     staff: {
       totalMessages: Number(staffTotals?.messages ?? 0),
-      totalTicketsClosed: Number(staffTotals?.tickets ?? 0),
+      totalTicketsClosed: Number(staffTotals?.ticketsClosed ?? 0),
     },
     audit: {
       actionsInRange: auditSummary.total,
