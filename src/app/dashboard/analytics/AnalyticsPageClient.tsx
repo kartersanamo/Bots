@@ -328,6 +328,9 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
             {refreshing && summaryReady ? " · updating…" : ""}
             {!refreshing && summaryReady && tabReady ? " · cached" : ""}
           </p>
+          <p className="text-xs text-muted">
+            Rolith is bald
+          </p>
         </div>
 
         <div className="flex flex-wrap gap-1 border-b border-border">

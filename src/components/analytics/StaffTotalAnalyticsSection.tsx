@@ -28,21 +28,6 @@ export function StaffTotalAnalyticsSection({
 
   return (
     <div className="space-y-6">
-      <div
-        role="note"
-        className="rounded-lg border border-border bg-surface px-5 py-4"
-      >
-        <p className="text-base font-semibold text-white">
-          All-time staff counters
-        </p>
-        <p className="mt-2 text-sm leading-relaxed text-muted">
-          Same metrics as <strong>Staff (Recent)</strong>, from{" "}
-          <code className="rounded bg-black/20 px-1 text-xs">total_statistics</code>
-          . These lifetime totals are never cleared by{" "}
-          <strong>/wipe</strong> (only the recent period resets). Message volume
-          over time below uses separate daily tracking.
-        </p>
-      </div>
 
       <AnalyticsKpiGrid
         className="sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"

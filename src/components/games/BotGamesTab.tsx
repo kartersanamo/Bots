@@ -118,7 +118,7 @@ export function BotGamesTab({ userTier }: BotGamesTabProps) {
         {section === "monthly" && <GamesMonthlySection userTier={userTier} />}
         {section === "alltime" && <GamesAllTimeSection />}
         {section === "users" && <GamesUsersSection userTier={userTier} />}
-        {section === "xplogs" && <GamesXpLogsSection />}
+        {section === "xplogs" && <GamesXpLogsSection userTier={userTier} />}
         {section === "sessions" && <GamesSessionsSection userTier={userTier} />}
         {section === "daily" && <GamesDailySection userTier={userTier} />}
         {section === "counting" && <GamesCountingSection userTier={userTier} />}

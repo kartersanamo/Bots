@@ -13,6 +13,11 @@ import type {
   XpLogRow,
 } from "@/lib/games/types";
 import { env } from "@/lib/env";
+import {
+  buildXpLogsWhere,
+  xpLogsOrderClause,
+  type ListXpLogsOptions,
+} from "@/lib/games/xp-logs-query";
 
 const CHAT_WIN_SOURCES: Record<string, string> = {
   trivia_wins: "Trivia",
@@ -296,35 +301,19 @@ export async function getAllGamesLeaderboards(
   >;
 }
 
-export async function listXpLogs(opts: {
-  page?: number;
-  limit?: number;
-  userId?: string;
-  source?: string;
-  gameId?: string;
-}): Promise<{ rows: XpLogRow[]; total: number }> {
+export async function listXpLogs(
+  opts: ListXpLogsOptions & { maxLimit?: number } = {}
+): Promise<{ rows: XpLogRow[]; total: number }> {
   if (!isDbConfigured()) return { rows: [], total: 0 };
 
   const page = Math.max(1, opts.page ?? 1);
-  const limit = Math.min(100, Math.max(1, opts.limit ?? 50));
+  const maxLimit = opts.maxLimit ?? 100;
+  const limit = Math.min(maxLimit, Math.max(1, opts.limit ?? 50));
   const offset = (page - 1) * limit;
-  const conditions = ["game_id != -999999"];
-  const params: (string | number)[] = [];
-
-  if (opts.userId) {
-    conditions.push("user_id = ?");
-    params.push(opts.userId);
-  }
-  if (opts.source) {
-    conditions.push("source = ?");
-    params.push(opts.source);
-  }
-  if (opts.gameId) {
-    conditions.push("game_id = ?");
-    params.push(Number(opts.gameId));
-  }
-
+  const { conditions, params } = buildXpLogsWhere(opts);
   const where = conditions.join(" AND ");
+  const order = xpLogsOrderClause(opts.sortBy, opts.sortDir);
+
   const countRow = await queryOne<{ total: number }>(
     `SELECT COUNT(*) AS total FROM xp_logs WHERE ${where}`,
     params
@@ -332,10 +321,21 @@ export async function listXpLogs(opts: {
   const rows = await query<XpLogRow>(
     `SELECT game_id, user_id, xp, channel_id, source, timestamp
      FROM xp_logs WHERE ${where}
-     ORDER BY timestamp DESC LIMIT ? OFFSET ?`,
+     ORDER BY ${order} LIMIT ? OFFSET ?`,
     [...params, limit, offset]
   );
   return { rows, total: countRow?.total ?? 0 };
+}
+
+export async function listXpLogSources(limit = 80): Promise<string[]> {
+  if (!isDbConfigured()) return [];
+  const rows = await query<{ source: string }>(
+    `SELECT DISTINCT TRIM(source) AS source FROM xp_logs
+     WHERE game_id != -999999 AND TRIM(source) != ''
+     ORDER BY source LIMIT ?`,
+    [limit]
+  );
+  return rows.map((r) => r.source).filter(Boolean);
 }
 
 export async function listGameSessions(opts: {

@@ -2,13 +2,9 @@
 
 import { Card } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
+import { GamesXpLogsExplorer } from "@/components/games/GamesXpLogsExplorer";
 import { can, type PermissionTier } from "@/lib/permissions";
 import { BarChart3, Gamepad2, Users, Zap } from "lucide-react";
-import { DiscordUserChip } from "@/components/games/DiscordUserChip";
-import {
-  useMergeDiscordUsersFromApi,
-  type DiscordUserProfile,
-} from "@/components/games/GamesDiscordUsersProvider";
 import { useEffect, useState } from "react";
 
 export function GamesOverviewSection({ userTier }: { userTier: PermissionTier }) {
@@ -19,21 +15,13 @@ export function GamesOverviewSection({ userTier }: { userTier: PermissionTier })
       openSessions: number;
       totalXpLogs: number;
     } | null;
-    recentLogs: { user_id: string; xp: number; source: string | null }[];
     botStatus: { chatGamesRunning: boolean; dmGamesRunning: boolean } | null;
   } | null>(null);
-  const [apiUsers, setApiUsers] = useState<Record<string, DiscordUserProfile>>(
-    {}
-  );
-  useMergeDiscordUsersFromApi(apiUsers);
 
   useEffect(() => {
     fetch("/api/games/overview")
       .then((r) => r.json())
-      .then((d) => {
-        setData(d);
-        setApiUsers(d.users || {});
-      });
+      .then((d) => setData(d));
   }, []);
 
   const o = data?.overview;
@@ -84,26 +72,12 @@ export function GamesOverviewSection({ userTier }: { userTier: PermissionTier })
         </Card>
       )}
 
-      <Card>
-        <h3 className="mb-3 text-sm font-semibold text-white">Recent XP</h3>
-        {!data?.recentLogs?.length ? (
-          <p className="text-sm text-muted">No recent logs.</p>
-        ) : (
-          <div className="space-y-1">
-            {data.recentLogs.map((log, i) => (
-              <div
-                key={i}
-                className="flex justify-between text-sm text-muted"
-              >
-                <DiscordUserChip userId={log.user_id} />
-                <span>
-                  +{log.xp} {log.source || ""}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
+      <GamesXpLogsExplorer
+        title="Recent XP"
+        description="Sort, filter, and paginate all XP log entries. Click a session ID to open details."
+        userTier={userTier}
+        defaultPageSize={50}
+      />
     </div>
   );
 }
