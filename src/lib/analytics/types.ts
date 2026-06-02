@@ -199,22 +199,42 @@ export interface AuditAnalytics {
   successRatePercent: number;
 }
 
+export interface MemberJoinLeaveEvent {
+  id: number;
+  eventType: "join" | "leave";
+  userId: string;
+  inviteCode: string | null;
+  accountAgeDays: number | null;
+  createdAt: number;
+}
+
 export interface EngagementAnalytics {
   range: AnalyticsRange;
   groupBy: AnalyticsGroupBy;
   tablesReady: {
     memberMessages: boolean;
     ticketMessages: boolean;
+    games: boolean;
+    voice: boolean;
+    memberEvents: boolean;
   };
   kpis: {
     /** All guild messages from users in the staff roster (`statistics`). */
     totalStaffMessagesInRange: number;
     /** Staff messages in channels with an active ticket. */
     staffMessagesInRange: number;
+    /** Rows in the legacy `games` table (excludes test sessions). */
+    totalGamesInRange: number;
+    /** Voice channel seconds (`analytics_voice_daily`). */
+    voiceSecondsInRange: number;
   };
   totalStaffMessagesPerDay: DailyCount[];
   topStaffByTotalMessages: UserCountRow[];
   staffMessagesPerDay: DailyCount[];
+  totalGamesPerDay: DailyCount[];
+  voiceSecondsPerDay: DailyCount[];
+  topVoiceUsers: UserCountRow[];
+  recentJoinLeaves: MemberJoinLeaveEvent[];
 }
 
 export interface AnalyticsSummary {

@@ -35,23 +35,55 @@ export async function getEngagementAnalytics(
   const bucketSpec = buildTimeBucketSpec(range, groupBy);
   const dayBucket = bucketKeySqlFromDate("m.day", bucketSpec);
   const ticketDayBucket = bucketKeySqlFromDate("day", bucketSpec);
+  const voiceDayBucket = bucketKeySqlFromDate("day", bucketSpec);
+  const gamesDayBucket = bucketKeySqlFromDate("refreshed_at", bucketSpec);
   const dayClause = since != null ? " AND m.day >= DATE(FROM_UNIXTIME(?))" : "";
   const ticketDayClause =
     since != null ? " AND day >= DATE(FROM_UNIXTIME(?))" : "";
+  const gamesClause =
+    since != null
+      ? " AND CAST(UNIX_TIMESTAMP(refreshed_at) AS UNSIGNED) >= ?"
+      : "";
+  const memberEventsClause = since != null ? " AND created_at >= ?" : "";
   const dayParams = since != null ? [since] : [];
+  const gamesParams = since != null ? [since] : [];
+  const memberEventsParams = since != null ? [since] : [];
 
   try {
     const tableStatus = await getAnalyticsTrackingTableStatus();
     const hasMemberMessages = tableStatus.memberMessages === true;
     const hasTickets = tableStatus.ticketMessages === true;
+    const hasVoice = tableStatus.voice === true;
+    const hasMemberEvents = tableStatus.memberEvents === true;
+
+    let hasGames = false;
+    try {
+      const gamesTable = await query<{ name: string }>(
+        `SELECT table_name AS name FROM information_schema.tables
+         WHERE table_schema = DATABASE() AND table_name = 'games' LIMIT 1`
+      );
+      hasGames = gamesTable.length > 0;
+    } catch {
+      hasGames = false;
+    }
 
     const tablesReady = {
       memberMessages: hasMemberMessages,
       ticketMessages: hasTickets,
+      games: hasGames,
+      voice: hasVoice,
+      memberEvents: hasMemberEvents,
     };
 
-    const [totalStaffPerDay, topTotalStaff, ticketStaffPerDay] =
-      await Promise.all([
+    const [
+      totalStaffPerDay,
+      topTotalStaff,
+      ticketStaffPerDay,
+      gamesPerDay,
+      voicePerDay,
+      topVoiceUsers,
+      recentJoinLeaves,
+    ] = await Promise.all([
         hasMemberMessages
           ? query<{ date: string; count: number }>(
               `SELECT ${dayBucket} AS date, SUM(m.message_count) AS count
@@ -80,6 +112,48 @@ export async function getEngagementAnalytics(
               dayParams
             )
           : [],
+        hasGames
+          ? query<{ date: string; count: number }>(
+              `SELECT ${gamesDayBucket} AS date, COUNT(*) AS count
+               FROM games
+               WHERE game_id != -999999${gamesClause}
+               GROUP BY date ORDER BY date`,
+              gamesParams
+            )
+          : [],
+        hasVoice
+          ? query<{ date: string; count: number }>(
+              `SELECT ${voiceDayBucket} AS date, SUM(seconds) AS count
+               FROM analytics_voice_daily WHERE 1=1${ticketDayClause}
+               GROUP BY date ORDER BY date`,
+              dayParams
+            )
+          : [],
+        hasVoice
+          ? query<{ user_id: string; total: number }>(
+              `SELECT user_id, SUM(seconds) AS total
+               FROM analytics_voice_daily WHERE 1=1${ticketDayClause}
+               GROUP BY user_id ORDER BY total DESC LIMIT 20`,
+              dayParams
+            )
+          : [],
+        hasMemberEvents
+          ? query<{
+              id: number;
+              event_type: string;
+              user_id: string;
+              invite_code: string | null;
+              account_age_days: number | null;
+              created_at: number;
+            }>(
+              `SELECT id, event_type, user_id, invite_code, account_age_days, created_at
+               FROM analytics_member_events
+               WHERE 1=1${memberEventsClause}
+               ORDER BY created_at DESC
+               LIMIT 200`,
+              memberEventsParams
+            )
+          : [],
       ]);
 
     const totalStaffMessagesPerDay = normalizeTimeSeries(
@@ -89,6 +163,16 @@ export async function getEngagementAnalytics(
     );
     const staffMessagesPerDay = normalizeTimeSeries(
       mapDaily(ticketStaffPerDay),
+      range,
+      groupBy
+    );
+    const totalGamesPerDay = normalizeTimeSeries(
+      mapDaily(gamesPerDay),
+      range,
+      groupBy
+    );
+    const voiceSecondsPerDay = normalizeTimeSeries(
+      mapDaily(voicePerDay),
       range,
       groupBy
     );
@@ -106,6 +190,11 @@ export async function getEngagementAnalytics(
           (s, r) => s + r.count,
           0
         ),
+        totalGamesInRange: totalGamesPerDay.reduce((s, r) => s + r.count, 0),
+        voiceSecondsInRange: voiceSecondsPerDay.reduce(
+          (s, r) => s + r.count,
+          0
+        ),
       },
       totalStaffMessagesPerDay,
       topStaffByTotalMessages: topTotalStaff.map((r) => ({
@@ -113,6 +202,21 @@ export async function getEngagementAnalytics(
         count: Number(r.total),
       })),
       staffMessagesPerDay,
+      totalGamesPerDay,
+      voiceSecondsPerDay,
+      topVoiceUsers: topVoiceUsers.map((r) => ({
+        userId: String(r.user_id),
+        count: Number(r.total),
+      })),
+      recentJoinLeaves: recentJoinLeaves.map((r) => ({
+        id: Number(r.id),
+        eventType: r.event_type === "leave" ? "leave" : "join",
+        userId: String(r.user_id),
+        inviteCode: r.invite_code ? String(r.invite_code) : null,
+        accountAgeDays:
+          r.account_age_days != null ? Number(r.account_age_days) : null,
+        createdAt: Number(r.created_at),
+      })),
     };
   } catch (err) {
     console.error("[analytics] getEngagementAnalytics failed:", err);
