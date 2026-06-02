@@ -11,6 +11,7 @@ import {
 import { DailyLineChart } from "@/components/analytics/charts";
 import { chartTitleWithPeriod } from "@/lib/analytics/chart-period";
 import type { AnalyticsGroupBy } from "@/lib/analytics/group-by";
+import { STAFF_STAT_FIELDS } from "@/lib/analytics/staff-stat-fields";
 import type { AnalyticsRange, StaffTotalAnalytics } from "@/lib/analytics/types";
 import { formatNumber } from "@/lib/utils";
 
@@ -27,29 +28,32 @@ export function StaffTotalAnalyticsSection({
 
   return (
     <div className="space-y-6">
+      <div
+        role="note"
+        className="rounded-lg border border-border bg-surface px-5 py-4"
+      >
+        <p className="text-base font-semibold text-white">
+          All-time staff counters
+        </p>
+        <p className="mt-2 text-sm leading-relaxed text-muted">
+          Same metrics as <strong>Staff (Recent)</strong>, from{" "}
+          <code className="rounded bg-black/20 px-1 text-xs">total_statistics</code>
+          . These lifetime totals are never cleared by{" "}
+          <strong>/wipe</strong> (only the recent period resets). Message volume
+          over time below uses separate daily tracking.
+        </p>
+      </div>
 
       <AnalyticsKpiGrid
+        className="sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
         items={[
           kpi("Active staff", totals.staffCount, "staffTotal.activeStaff"),
-          kpi(
-            "Tickets closed (all time)",
-            formatNumber(totals.ticketsClosed),
-            "staffTotal.tickets"
-          ),
-          kpi(
-            "Messages (all time)",
-            formatNumber(totals.messages),
-            "staffTotal.messages"
-          ),
-          kpi(
-            "Warnings (all time)",
-            formatNumber(totals.warnings),
-            "staffTotal.warnings"
-          ),
-          kpi(
-            "Screenshares (all time)",
-            formatNumber(totals.screenshares),
-            "staffTotal.screenshares"
+          ...STAFF_STAT_FIELDS.map((f) =>
+            kpi(
+              `${f.label} (all time)`,
+              formatNumber(totals[f.key]),
+              `staffTotal.${f.hintId}`
+            )
           ),
         ]}
       />
@@ -85,10 +89,11 @@ export function StaffTotalAnalyticsSection({
 
       <StaffOverviewTable
         title="All-time activity by staff"
-        description="Lifetime counts per active staff member from total_statistics. Departed staff (all zeros in the current statistics period) are excluded."
-        rows={data.leaderboard}
+        description="Lifetime counts per active staff member from total_statistics. Departed staff (every counter zero in the current statistics period) are excluded."
+        rows={data.staffRows}
         exportFilename="staff-total-overview.csv"
-        dataHint={chartHint("staffTotal.table.overview", data.messagesPerDay)}
+        dataHint="staffTotal.table.overview"
+        variant="full"
       />
 
       <StaffLeaderboardPanels
@@ -96,6 +101,7 @@ export function StaffTotalAnalyticsSection({
         filePrefix="staff-total"
         hintScope="staffTotal"
         hintSeries={data.messagesPerDay}
+        showAllStats
       />
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { Avatar } from "@/components/ui/Avatar";
 import { useGuildRoles } from "@/components/discord/GuildRolesProvider";
+import { useViewerHighlight } from "@/components/discord/ViewerHighlightProvider";
 import { DiscordUserProfileCard } from "@/components/games/DiscordUserProfileCard";
 import { useGamesDiscordUsers, useResolveDiscordUsers } from "@/components/games/GamesDiscordUsersProvider";
 import { roleColorHex, roleIconUrl } from "@/lib/discord/guild-roles";
@@ -34,6 +35,7 @@ export function DiscordUserChip({
   const topRole = user ? getTopRole(user.roles) : null;
   const nameColor = roleColorHex(topRole?.color);
   const iconUrl = topRole ? roleIconUrl(topRole) : null;
+  const { isViewer, highlightStyle } = useViewerHighlight(id);
   const avatarSize = compact ? 20 : 24;
 
   const displayName = user?.displayName ?? id;
@@ -61,8 +63,14 @@ export function DiscordUserChip({
         <span className="min-w-0 truncate">
           {user ? (
             <span
-              className="inline-flex max-w-full items-center gap-1 font-medium"
-              style={{ color: nameColor ?? "#ffffff" }}
+              className={cn(
+                "inline-flex max-w-full items-center gap-1 font-medium",
+                isViewer && "box-decoration-clone px-0.5"
+              )}
+              style={{
+                color: nameColor ?? "#ffffff",
+                ...(isViewer ? highlightStyle : undefined),
+              }}
             >
               {topRole?.unicode_emoji && (
                 <span className="shrink-0">{topRole.unicode_emoji}</span>

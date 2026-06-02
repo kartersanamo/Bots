@@ -1,5 +1,6 @@
 "use client";
 
+import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { useEffect, useState } from "react";
@@ -38,9 +39,11 @@ export function DashboardAuditLog() {
                 <td className="py-2 pr-4 text-xs text-muted whitespace-nowrap">
                   {new Date(e.timestamp).toLocaleString()}
                 </td>
-                <td className="py-2 pr-4 text-white">
-                  {e.actorUsername || e.actorId}
-                  <span className="ml-1 text-xs text-muted">({e.tier})</span>
+                <td className="py-2 pr-4">
+                  <div className="flex flex-wrap items-center gap-1">
+                    <DiscordUserChip userId={e.actorId} compact />
+                    <span className="text-xs text-muted">({e.tier})</span>
+                  </div>
                 </td>
                 <td className="py-2 pr-4 font-mono text-xs text-accent-light">
                   {e.action}

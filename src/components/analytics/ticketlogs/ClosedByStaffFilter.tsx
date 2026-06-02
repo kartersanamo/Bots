@@ -5,6 +5,7 @@ import {
   useResolveDiscordUsers,
 } from "@/components/games/GamesDiscordUsersProvider";
 import { snowflakeString } from "@/lib/games/snowflake";
+import { ViewerHighlightSpan } from "@/components/discord/ViewerHighlightProvider";
 import { cn } from "@/lib/utils";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -143,7 +144,9 @@ export function ClosedByStaffFilter({
               )}
               title={id}
             >
-              {users[id]?.displayName ?? id}
+              <ViewerHighlightSpan userId={id}>
+                {users[id]?.displayName ?? id}
+              </ViewerHighlightSpan>
             </button>
           ))}
           {sortedStaff.length > 12 && (

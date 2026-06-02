@@ -1,5 +1,6 @@
 "use client";
 
+import { ViewerHighlightSpan } from "@/components/discord/ViewerHighlightProvider";
 import type { SessionUser } from "@/lib/auth/session";
 import { tierColor, tierLabel } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
@@ -109,9 +110,11 @@ export function Sidebar({ user }: SidebarProps) {
           alt={user.username}
         />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-white">
-            {user.globalName || user.username}
-          </p>
+          <ViewerHighlightSpan userId={user.id}>
+            <p className="truncate text-sm font-medium text-white">
+              {user.globalName || user.username}
+            </p>
+          </ViewerHighlightSpan>
           <p className={cn("text-xs", tierColor(user.tier))}>
             {tierLabel(user.tier)}
           </p>

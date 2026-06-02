@@ -21,6 +21,7 @@ import { useEffect, useMemo, useState } from "react";
 import { can } from "@/lib/permissions";
 import type { PermissionTier } from "@/lib/permissions";
 import { TICKET_BOT_COMMANDS } from "@/lib/tickets/commands";
+import { ViewerHighlightSpan } from "@/components/discord/ViewerHighlightProvider";
 import { topRoleForMember } from "@/lib/discord/guild-roles";
 
 interface TicketDetailDrawerProps {
@@ -924,7 +925,9 @@ export function TicketDetailDrawer({
                               {ownerTopRole?.unicode_emoji && (
                                 <span>{ownerTopRole.unicode_emoji}</span>
                               )}
-                              {data.owner.global_name || data.owner.username}
+                              <ViewerHighlightSpan userId={data.owner.id}>
+                                {data.owner.global_name || data.owner.username}
+                              </ViewerHighlightSpan>
                               {ownerIcon && (
                                 <img
                                   src={ownerIcon}
@@ -998,17 +1001,22 @@ export function TicketDetailDrawer({
                                         className="inline-flex items-center gap-1 rounded px-0.5 text-sm font-medium hover:bg-white/5"
                                         style={{ color: nameColor ?? "#ffffff" }}
                                       >
-                                        {topRole?.unicode_emoji && (
-                                          <span>{topRole.unicode_emoji}</span>
-                                        )}
-                                        {displayName}
-                                        {iconUrl && (
-                                          <img
-                                            src={iconUrl}
-                                            alt="Role icon"
-                                            className="h-4 w-4 rounded"
-                                          />
-                                        )}
+                                        <ViewerHighlightSpan
+                                          userId={m.author.id}
+                                          className="inline-flex items-center gap-1"
+                                        >
+                                          {topRole?.unicode_emoji && (
+                                            <span>{topRole.unicode_emoji}</span>
+                                          )}
+                                          {displayName}
+                                          {iconUrl && (
+                                            <img
+                                              src={iconUrl}
+                                              alt="Role icon"
+                                              className="h-4 w-4 rounded"
+                                            />
+                                          )}
+                                        </ViewerHighlightSpan>
                                       </button>
                                       {m.author.bot && (
                                         <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] text-accent-light">
