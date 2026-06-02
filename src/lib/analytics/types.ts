@@ -162,14 +162,11 @@ export interface ModerationAnalytics {
   kpis: {
     activeBans: number;
     totalBlacklists: number;
-    activePolls: number;
-    totalPolls: number;
     mediaEntries: number;
     blacklistsWithExpiry: number;
   };
   blacklistsPerDay: DailyCount[];
   blacklistsByStaff: UserCountRow[];
-  pollsCreatedPerDay: DailyCount[];
 }
 
 export interface AuditAnalytics {
@@ -199,7 +196,6 @@ export interface EngagementAnalytics {
     voiceSecondsInRange: number;
     commandInvocations: number;
     modActions: number;
-    pollVotes: number;
     gameSessionsEnded: number;
   };
   staffMessagesPerDay: DailyCount[];
@@ -215,7 +211,6 @@ export interface EngagementAnalytics {
   modActionsPerDay: DailyCount[];
   modActionsByType: NamedCount[];
   topModActors: UserCountRow[];
-  pollVotesPerDay: DailyCount[];
   gameOutcomesPerDay: DailyCount[];
   gameOutcomesByType: NamedCount[];
   serverSnapshots: {
@@ -245,7 +240,6 @@ export interface AnalyticsSummary {
   moderation: {
     activeBans: number;
     blacklists: number;
-    polls: number;
   };
   staff: {
     totalMessages: number;

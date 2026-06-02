@@ -17,23 +17,18 @@ export async function getModerationAnalytics(
   const since = rangeSinceUnix(range);
   const bucketSpec = buildTimeBucketSpec(range, groupBy);
   const blBucket = bucketKeySqlFromUnix("whenToUnbl", bucketSpec);
-  const pollBucket = bucketKeySqlFromUnix("created_at", bucketSpec);
 
   try {
-    const [kpis, blacklistsPerDay, blacklistsByStaff, pollsPerDay, mediaCount] =
+    const [kpis, blacklistsPerDay, blacklistsByStaff, mediaCount] =
       await Promise.all([
         queryOne<{
           activeBans: number;
           totalBlacklists: number;
-          activePolls: number;
-          totalPolls: number;
           withExpiry: number;
         }>(
           `SELECT
             (SELECT COUNT(*) FROM bans) AS activeBans,
             (SELECT COUNT(*) FROM blacklists) AS totalBlacklists,
-            (SELECT COUNT(*) FROM polls) AS activePolls,
-            (SELECT COUNT(*) FROM polls) AS totalPolls,
             (SELECT COUNT(*) FROM blacklists
              WHERE TRIM(whenToUnbl) != '' AND CAST(whenToUnbl AS UNSIGNED) > 0) AS withExpiry`
         ),
@@ -50,14 +45,6 @@ export async function getModerationAnalytics(
            WHERE TRIM(staffID) != ''
            GROUP BY staffID ORDER BY count DESC LIMIT 15`
         ).catch(() => []),
-        query<{ date: string; count: number }>(
-          `SELECT ${pollBucket} AS date, COUNT(*) AS count
-           FROM polls
-           WHERE CAST(created_at AS UNSIGNED) > 0
-           ${since != null ? "AND CAST(created_at AS UNSIGNED) >= ?" : ""}
-           GROUP BY date ORDER BY date`,
-          since != null ? [since] : []
-        ).catch(() => []),
         queryOne<{ total: number }>(`SELECT COUNT(*) AS total FROM media`).catch(
           () => ({ total: 0 })
         ),
@@ -69,8 +56,6 @@ export async function getModerationAnalytics(
       kpis: {
         activeBans: Number(kpis?.activeBans ?? 0),
         totalBlacklists: Number(kpis?.totalBlacklists ?? 0),
-        activePolls: Number(kpis?.activePolls ?? 0),
-        totalPolls: Number(kpis?.totalPolls ?? 0),
         mediaEntries: Number(mediaCount?.total ?? 0),
         blacklistsWithExpiry: Number(kpis?.withExpiry ?? 0),
       },
@@ -83,11 +68,6 @@ export async function getModerationAnalytics(
         userId: String(r.staffID),
         count: Number(r.count),
       })),
-      pollsCreatedPerDay: normalizeTimeSeries(
-        mapDaily(pollsPerDay),
-        range,
-        groupBy
-      ),
     };
   } catch (err) {
     console.error("[analytics] getModerationAnalytics failed:", err);

@@ -4,20 +4,16 @@ import { AnalyticsChartCard } from "@/components/analytics/AnalyticsChartCard";
 import { AnalyticsKpiGrid } from "@/components/analytics/AnalyticsKpiGrid";
 import { AnalyticsUserCountTable } from "@/components/analytics/AnalyticsUserCountTable";
 import { DailyLineChart, NamedBarChart } from "@/components/analytics/charts";
-import { chartTitleWithPeriod } from "@/lib/analytics/chart-period";
-import type { AnalyticsGroupBy } from "@/lib/analytics/group-by";
 import type { AnalyticsRange, ModerationAnalytics } from "@/lib/analytics/types";
 
 interface ModerationAnalyticsSectionProps {
   data: ModerationAnalytics;
   range: AnalyticsRange;
-  groupBy: AnalyticsGroupBy;
 }
 
 export function ModerationAnalyticsSection({
   data,
   range,
-  groupBy,
 }: ModerationAnalyticsSectionProps) {
   const { kpis } = data;
 
@@ -31,12 +27,11 @@ export function ModerationAnalyticsSection({
             label: "Blacklists with expiry",
             value: kpis.blacklistsWithExpiry,
           },
-          { label: "Poll rows", value: kpis.totalPolls },
           { label: "Media entries", value: kpis.mediaEntries },
         ]}
       />
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4">
         <AnalyticsChartCard
           title="Blacklist expirations by date"
           exportHeaders={["date", "count"]}
@@ -52,20 +47,6 @@ export function ModerationAnalyticsSection({
           </p>
           <DailyLineChart data={data.blacklistsPerDay} color="#ef4444" />
         </AnalyticsChartCard>
-
-        {data.pollsCreatedPerDay.length > 0 && (
-          <AnalyticsChartCard
-            title={chartTitleWithPeriod("Polls created", groupBy)}
-            exportHeaders={["date", "polls"]}
-            exportFilename={`polls-created-${range}.csv`}
-            exportRows={data.pollsCreatedPerDay.map((r) => ({
-              date: r.date,
-              polls: r.count,
-            }))}
-          >
-            <DailyLineChart data={data.pollsCreatedPerDay} color="#a78bfa" />
-          </AnalyticsChartCard>
-        )}
       </div>
 
       {data.blacklistsByStaff.length > 0 && (

@@ -7,7 +7,6 @@ const TRACKING_TABLES = [
   { key: "voice", table: "analytics_voice_daily" },
   { key: "commands", table: "analytics_command_daily" },
   { key: "moderation", table: "analytics_mod_actions" },
-  { key: "pollVotes", table: "analytics_poll_votes" },
   { key: "gameOutcomes", table: "analytics_game_outcomes" },
   { key: "snapshots", table: "analytics_server_snapshots" },
 ] as const;
@@ -21,9 +20,6 @@ export async function getAnalyticsTrackingTableStatus(): Promise<
 > {
   if (cached && Date.now() - cached.at < CACHE_MS) return cached.status;
 
-  const expected = new Set(
-    TRACKING_TABLES.map((t) => t.table.toLowerCase())
-  );
   const found = new Set<string>();
 
   try {

@@ -53,7 +53,7 @@ export function EngagementAnalyticsSection({
         <h2 className="text-lg font-semibold text-white">Community & engagement</h2>
         <p className="mt-1 text-sm text-muted">
           Newly tracked metrics: staff messages, ticket replies, joins/leaves, voice,
-          commands, moderation actions, poll votes, game outcomes, and daily server
+          commands, moderation actions, game outcomes, and daily server
           snapshots.
         </p>
       </div>
@@ -71,7 +71,6 @@ export function EngagementAnalyticsSection({
           },
           { label: "Command uses", value: kpis.commandInvocations },
           { label: "Mod actions", value: kpis.modActions },
-          { label: "Poll votes", value: kpis.pollVotes },
           { label: "Games finished", value: kpis.gameSessionsEnded },
         ]}
       />
@@ -213,18 +212,6 @@ export function EngagementAnalyticsSection({
       />
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <AnalyticsChartCard
-          title={chartTitleWithPeriod("Poll votes", groupBy)}
-          exportHeaders={["date", "votes"]}
-          exportFilename={`engagement-poll-votes-${range}.csv`}
-          exportRows={data.pollVotesPerDay.map((r) => ({
-            date: r.date,
-            votes: r.count,
-          }))}
-        >
-          <DailyLineChart data={data.pollVotesPerDay} color="#c084fc" />
-        </AnalyticsChartCard>
-
         <AnalyticsChartCard
           title={chartTitleWithPeriod("Game sessions ended", groupBy)}
           exportHeaders={["date", "sessions"]}

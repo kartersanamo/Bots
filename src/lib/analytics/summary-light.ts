@@ -52,12 +52,10 @@ export async function getAnalyticsSummaryLight(
     queryOne<{
       activeBans: number;
       totalBlacklists: number;
-      totalPolls: number;
     }>(
       `SELECT
         (SELECT COUNT(*) FROM bans) AS activeBans,
-        (SELECT COUNT(*) FROM blacklists) AS totalBlacklists,
-        (SELECT COUNT(*) FROM polls) AS totalPolls`
+        (SELECT COUNT(*) FROM blacklists) AS totalBlacklists`
     ).catch(() => null),
     getAuditSummaryInRange(range),
     queryOne<{ total: number; events: number }>(
@@ -99,7 +97,6 @@ export async function getAnalyticsSummaryLight(
     moderation: {
       activeBans: Number(mod?.activeBans ?? 0),
       blacklists: Number(mod?.totalBlacklists ?? 0),
-      polls: Number(mod?.totalPolls ?? 0),
     },
     staff: {
       totalMessages: Number(staffTotals?.messages ?? 0),
@@ -143,7 +140,6 @@ function emptySummary(range: AnalyticsRange): AnalyticsSummary {
     moderation: {
       activeBans: 0,
       blacklists: 0,
-      polls: 0,
     },
     staff: { totalMessages: 0, totalTicketsClosed: 0 },
     audit: { actionsInRange: 0, fleetRestarts: 0 },

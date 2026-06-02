@@ -54,7 +54,6 @@ export async function getEngagementAnalytics(
   const bucketSpec = buildTimeBucketSpec(range, groupBy);
   const dayBucket = bucketKeySqlFromDate("day", bucketSpec);
   const tsBucket = bucketKeySqlFromUnix("created_at", bucketSpec);
-  const votedBucket = bucketKeySqlFromUnix("voted_at", bucketSpec);
   const endedBucket = bucketKeySqlFromUnix("ended_at", bucketSpec);
   const blCreatedBucket = bucketKeySqlFromUnix("created_at", bucketSpec);
   const tsClause = since != null ? " AND created_at >= ?" : "";
@@ -70,7 +69,6 @@ export async function getEngagementAnalytics(
     const hasVoice = tableStatus.voice === true;
     const hasCommands = tableStatus.commands === true;
     const hasMod = tableStatus.moderation === true;
-    const hasPollVotes = tableStatus.pollVotes === true;
     const hasGames = tableStatus.gameOutcomes === true;
     const hasSnapshots = tableStatus.snapshots === true;
 
@@ -88,7 +86,6 @@ export async function getEngagementAnalytics(
       modPerDay,
       modByType,
       topModActors,
-      pollVotesPerDay,
       gameOutcomesPerDay,
       outcomesByType,
       snapshots,
@@ -198,16 +195,6 @@ export async function getEngagementAnalytics(
             tsParams
           )
         : [],
-      hasPollVotes
-        ? query<{ date: string; count: number }>(
-            `SELECT ${votedBucket} AS date, COUNT(*) AS count
-             FROM analytics_poll_votes WHERE voted_at > 0${
-               since != null ? " AND voted_at >= ?" : ""
-             }
-             GROUP BY date ORDER BY date`,
-            tsParams
-          )
-        : [],
       hasGames
         ? query<{ date: string; count: number }>(
             `SELECT ${endedBucket} AS date, COUNT(*) AS count
@@ -281,7 +268,6 @@ export async function getEngagementAnalytics(
           0
         ),
         modActions: modPerDay.reduce((s, r) => s + Number(r.count), 0),
-        pollVotes: pollVotesPerDay.reduce((s, r) => s + Number(r.count), 0),
         gameSessionsEnded: gameOutcomesPerDay.reduce(
           (s, r) => s + Number(r.count),
           0
@@ -335,11 +321,6 @@ export async function getEngagementAnalytics(
         userId: String(r.actor_id),
         count: Number(r.count),
       })),
-      pollVotesPerDay: normalizeTimeSeries(
-        mapDaily(pollVotesPerDay),
-        range,
-        groupBy
-      ),
       gameOutcomesPerDay: normalizeTimeSeries(
         mapDaily(gameOutcomesPerDay),
         range,

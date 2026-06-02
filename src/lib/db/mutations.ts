@@ -147,11 +147,6 @@ export async function revokeAchievement(userId: string, achievementId: string) {
   );
 }
 
-export async function closePoll(pollId: string | number) {
-  assertWriteDb();
-  await writeQuery(`UPDATE polls SET active = 0 WHERE id = ?`, [pollId]);
-}
-
 export async function updateFaction(
   factionId: number,
   data: { name?: string; leader_id?: string; channel_id?: string }

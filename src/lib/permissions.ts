@@ -26,7 +26,6 @@ export type PermissionAction =
   | "bans.write"
   | "leveling.read"
   | "leveling.write"
-  | "polls.write"
   | "factions.write"
   | "discord.moderate"
   | "discord.channels"
@@ -64,7 +63,6 @@ export const ACTION_TIER: Record<PermissionAction, PermissionTier> = {
   "bans.write": "admin",
   "leveling.read": "helper",
   "leveling.write": "admin",
-  "polls.write": "admin",
   "factions.write": "admin",
   "discord.moderate": "admin",
   "discord.channels": "manager",

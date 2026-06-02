@@ -115,15 +115,6 @@ export function BotPanels({ botId }: BotPanelsProps) {
         </Card>
       )}
 
-      {botId === "utilities" && (
-        <Card>
-          <h3 className="font-medium text-white mb-3">Polls</h3>
-          <p className="text-sm text-muted">
-            Close polls via Poll ID: POST /api/polls/[id]/close
-          </p>
-        </Card>
-      )}
-
       {botId === "leader" && (
         <Card>
           <h3 className="font-medium text-white mb-3">Factions</h3>

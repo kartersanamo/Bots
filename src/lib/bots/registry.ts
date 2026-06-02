@@ -126,12 +126,11 @@ export const BOT_REGISTRY: BotDefinition[] = [
     name: "MinecadiaUtilities",
     shortName: "Utilities",
     description:
-      "General utility bot — account sync, polls, tags, screenshares, player count, applications, and helper auto-replies.",
+      "General utility bot — account sync, tags, screenshares, player count, applications, and helper auto-replies.",
     accentColor: "#06b6d4",
     icon: "Wrench",
     features: [
       "Minecraft ↔ Discord account sync",
-      "Polls with button voting",
       "Presaved tags",
       "Screenshare management",
       "Live player count",
@@ -140,8 +139,6 @@ export const BOT_REGISTRY: BotDefinition[] = [
       "Message counter & suggestions",
     ],
     commands: [
-      "/poll",
-      "/manage-polls",
       "/tags",
       "/start-screenshare",
       "/player-count",
@@ -153,7 +150,7 @@ export const BOT_REGISTRY: BotDefinition[] = [
       "Assets/applications.json",
       "Assets/tags.json",
     ],
-    databaseTables: ["statistics", "polls", "tickets"],
+    databaseTables: ["statistics", "tickets"],
   },
   {
     id: "staff",

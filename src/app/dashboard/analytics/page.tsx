@@ -14,7 +14,6 @@ export default async function AnalyticsPage() {
     <>
       <Header
         title="Analytics"
-        description="Server-wide analytics — tickets, games, staff, moderation, audit, and cross-system overview."
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },
           { label: "Analytics" },

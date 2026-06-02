@@ -26,7 +26,6 @@ export function BotActionsTab({ bot }: BotActionsTabProps) {
   const [userId, setUserId] = useState("");
   const [channelId, setChannelId] = useState("");
   const [closeReason, setCloseReason] = useState("");
-  const [pollId, setPollId] = useState("");
   const [factionId, setFactionId] = useState("");
   const [statField, setStatField] = useState("tickets_closed");
   const [statDelta, setStatDelta] = useState("1");
@@ -74,19 +73,6 @@ export function BotActionsTab({ bot }: BotActionsTabProps) {
       setMessage(
         res.ok ? `${action} applied` : `Error: ${data.error || "Failed"}`
       );
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function closePoll() {
-    if (!pollId.trim()) return;
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/polls/${pollId.trim()}/close`, {
-        method: "POST",
-      });
-      setMessage(res.ok ? "Poll closed" : "Error: failed to close poll");
     } finally {
       setLoading(false);
     }
@@ -180,23 +166,6 @@ export function BotActionsTab({ bot }: BotActionsTabProps) {
               disabled={loading}
             >
               Remove timeout
-            </Button>
-          </div>
-        </Card>
-      )}
-
-      {bot.id === "utilities" && (
-        <Card>
-          <h3 className="mb-3 font-medium text-white">Polls</h3>
-          <div className="flex flex-wrap gap-2">
-            <input
-              placeholder="Poll ID"
-              value={pollId}
-              onChange={(e) => setPollId(e.target.value)}
-              className={inputClass}
-            />
-            <Button size="sm" onClick={closePoll} disabled={loading}>
-              Close poll
             </Button>
           </div>
         </Card>

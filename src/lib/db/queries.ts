@@ -2,7 +2,6 @@ export interface OverviewStats {
   totalTickets: number;
   openTickets: number;
   closedTickets: number;
-  totalPolls: number;
   totalLevelingUsers: number;
   totalBlacklists: number;
   ticketsToday: number;
@@ -23,7 +22,7 @@ export async function getOverviewStats(): Promise<OverviewStats | null> {
   if (!isDbConfigured()) return null;
 
   try {
-    const [ticketStats, pollRow, levelingRow, blacklistRow] = await Promise.all([
+    const [ticketStats, levelingRow, blacklistRow] = await Promise.all([
       queryOne<{
         totalTickets: number;
         openTickets: number;
@@ -40,7 +39,6 @@ export async function getOverviewStats(): Promise<OverviewStats | null> {
           ) AS ticketsToday
          FROM tickets`
       ),
-      queryOne<{ totalPolls: number }>(`SELECT COUNT(*) AS totalPolls FROM polls`),
       queryOne<{ totalLevelingUsers: number }>(
         `SELECT COUNT(*) AS totalLevelingUsers FROM leveling`
       ),
@@ -56,7 +54,6 @@ export async function getOverviewStats(): Promise<OverviewStats | null> {
       openTickets: Number(ticketStats.openTickets ?? 0),
       closedTickets: Number(ticketStats.closedTickets ?? 0),
       ticketsToday: Number(ticketStats.ticketsToday ?? 0),
-      totalPolls: Number(pollRow?.totalPolls ?? 0),
       totalLevelingUsers: Number(levelingRow?.totalLevelingUsers ?? 0),
       totalBlacklists: Number(blacklistRow?.totalBlacklists ?? 0),
     };

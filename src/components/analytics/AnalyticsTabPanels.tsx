@@ -80,13 +80,7 @@ export function AnalyticsTabPanels({
     if (!bundle.moderation) {
       return <p className="text-muted">No moderation data available.</p>;
     }
-    return (
-      <ModerationAnalyticsSection
-        data={bundle.moderation}
-        range={range}
-        groupBy={groupBy}
-      />
-    );
+    return <ModerationAnalyticsSection data={bundle.moderation} range={range} />;
   }
 
   if (tab === "audit") {

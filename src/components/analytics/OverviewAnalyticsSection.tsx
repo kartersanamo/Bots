@@ -52,7 +52,6 @@ export function OverviewAnalyticsSection({
           { label: "XP events", value: summary.games.xpEventsInRange },
           { label: "Active bans", value: summary.moderation.activeBans },
           { label: "Blacklists", value: summary.moderation.blacklists },
-          { label: "Polls", value: summary.moderation.polls },
           {
             label: "Staff tickets closed",
             value: summary.staff.totalTicketsClosed,

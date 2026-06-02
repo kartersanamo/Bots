@@ -19,7 +19,6 @@ interface OverviewStats {
   totalTickets: number;
   openTickets: number;
   closedTickets: number;
-  totalPolls: number;
   totalLevelingUsers: number;
   totalBlacklists: number;
   ticketsToday: number;
@@ -214,13 +213,7 @@ export function DashboardOverview() {
         </Card>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <StatCard
-          label="Polls"
-          value={stats?.totalPolls ?? "—"}
-          icon={BarChart3}
-          loading={loading}
-        />
+      <div className="grid gap-3 sm:grid-cols-2">
         <StatCard
           label="Blacklists"
           value={stats?.totalBlacklists ?? "—"}
