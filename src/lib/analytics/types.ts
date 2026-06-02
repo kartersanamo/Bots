@@ -113,8 +113,12 @@ export interface GamesAnalytics {
     avgXpPerEvent: number;
     totalAchievements: number;
     achievementsInRange: number;
+    /** Players with a row in `daily_claims` (ever used /daily). */
     dailyClaimUsers: number;
+    /** `/daily` reward events in `xp_logs` for the selected range. */
     claimsInRange: number;
+    /** Distinct players with at least one daily claim in range. */
+    dailyClaimUsersInRange: number;
     countingUsers: number;
     countingTotalCounts: number;
     countingMistakes: number;

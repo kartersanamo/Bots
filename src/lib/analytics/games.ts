@@ -10,6 +10,10 @@ import type { AnalyticsRange, DailyCount, GamesAnalytics } from "@/lib/analytics
 import { getGamesOverview } from "@/lib/db/games";
 import { query, queryOne, isDbConfigured } from "@/lib/db/pool";
 
+/** Matches MinecadiaGames `/daily` XP log entries. */
+const DAILY_CLAIM_XP_WHERE =
+  "CAST(timestamp AS UNSIGNED) > 0 AND TRIM(source) = 'Daily Reward'";
+
 export async function getGamesAnalytics(
   range: AnalyticsRange,
   groupBy: AnalyticsGroupBy
@@ -26,7 +30,7 @@ export async function getGamesAnalytics(
   const bucketSpec = buildTimeBucketSpec(range, groupBy);
   const xpBucket = bucketKeySqlFromUnix("timestamp", bucketSpec);
   const sessionBucket = bucketKeySqlFromDate("refreshed_at", bucketSpec);
-  const claimBucket = bucketKeySqlFromUnix("last_claimed", bucketSpec);
+  const dailyClaimBucket = bucketKeySqlFromUnix("timestamp", bucketSpec);
   const earnedBucket = bucketKeySqlFromUnix("earned_at", bucketSpec);
   const skipNewPlayers = range === "all" || range === "365d";
 
@@ -35,12 +39,6 @@ export async function getGamesAnalytics(
       ? " AND CAST(UNIX_TIMESTAMP(refreshed_at) AS UNSIGNED) >= ?"
       : "";
   const sessionParams = since != null ? [since] : [];
-
-  const claimClause =
-    since != null
-      ? " AND CAST(last_claimed AS UNSIGNED) >= ?"
-      : "";
-  const claimParams = since != null ? [since] : [];
 
   const achievementClause =
     since != null
@@ -129,11 +127,11 @@ export async function getGamesAnalytics(
          GROUP BY name ORDER BY count DESC`
       ),
       query<{ date: string; count: number }>(
-        `SELECT ${claimBucket} AS date, COUNT(*) AS count
-         FROM daily_claims
-         WHERE CAST(last_claimed AS UNSIGNED) > 0${claimClause}
+        `SELECT ${dailyClaimBucket} AS date, COUNT(*) AS count
+         FROM xp_logs
+         WHERE ${DAILY_CLAIM_XP_WHERE}${tsClause}
          GROUP BY date ORDER BY date`,
-        claimParams
+        tsParams
       ),
       query<{ date: string; count: number }>(
         `SELECT ${earnedBucket} AS date, COUNT(*) AS count
@@ -165,12 +163,14 @@ export async function getGamesAnalytics(
            WHERE CAST(earned_at AS UNSIGNED) > 0${achievementClause}) AS inRange`,
         achievementParams
       ),
-      queryOne<{ users: number; claims: number }>(
+      queryOne<{ users: number; claims: number; usersInRange: number }>(
         `SELECT
           (SELECT COUNT(*) FROM daily_claims) AS users,
-          (SELECT COUNT(*) FROM daily_claims
-           WHERE CAST(last_claimed AS UNSIGNED) > 0${claimClause}) AS claims`,
-        claimParams
+          (SELECT COUNT(*) FROM xp_logs
+           WHERE ${DAILY_CLAIM_XP_WHERE}${tsClause}) AS claims,
+          (SELECT COUNT(DISTINCT user_id) FROM xp_logs
+           WHERE ${DAILY_CLAIM_XP_WHERE}${tsClause}) AS usersInRange`,
+        tsParams
       ),
       queryOne<{
         users: number;
@@ -205,6 +205,7 @@ export async function getGamesAnalytics(
         achievementsInRange: Number(achievementTotals?.inRange ?? 0),
         dailyClaimUsers: Number(claimTotals?.users ?? 0),
         claimsInRange: Number(claimTotals?.claims ?? 0),
+        dailyClaimUsersInRange: Number(claimTotals?.usersInRange ?? 0),
         countingUsers: Number(countingAgg?.users ?? 0),
         countingTotalCounts: Number(countingAgg?.totalCounts ?? 0),
         countingMistakes: Number(countingAgg?.mistakes ?? 0),

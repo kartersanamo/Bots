@@ -59,8 +59,21 @@ export function GamesAnalyticsSection({
             label: "Achievements (range)",
             value: kpis.achievementsInRange,
           },
-          { label: "Daily claim users", value: kpis.dailyClaimUsers },
-          { label: "Claims in range", value: kpis.claimsInRange },
+          {
+            label: "Daily claim users",
+            value: kpis.dailyClaimUsers,
+            hint: "All-time players with a /daily record",
+          },
+          {
+            label: "Claims in range",
+            value: formatNumber(kpis.claimsInRange),
+            hint:
+              kpis.dailyClaimUsersInRange > 0
+                ? `${formatNumber(kpis.dailyClaimUsersInRange)} players · ${(
+                    kpis.claimsInRange / kpis.dailyClaimUsersInRange
+                  ).toFixed(1)} claims/player avg`
+                : undefined,
+          },
           { label: "Counting participants", value: kpis.countingUsers },
           {
             label: "Counting numbers posted",
