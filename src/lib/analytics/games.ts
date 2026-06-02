@@ -163,7 +163,10 @@ export async function getGamesAnalytics(
       ),
       query<{ name: string; count: number }>(
         `SELECT
-          CASE WHEN dm_game IN ('1', 1, 'true', 'True') THEN 'DM games' ELSE 'Channel games' END AS name,
+          CASE
+            WHEN COALESCE(CAST(dm_game AS UNSIGNED), 0) = 1 THEN 'DM games'
+            ELSE 'Channel games'
+          END AS name,
           COUNT(*) AS count
          FROM games
          WHERE game_id != -999999${sessionClause}
@@ -187,9 +190,8 @@ export async function getGamesAnalytics(
         since != null ? [since, since] : []
       ),
       queryOne<{ users: number; mistakes: number }>(
-        `SELECT
-          (SELECT COUNT(*) FROM counting_users${countingGuildClause}) AS users,
-          (SELECT COALESCE(SUM(mistakes), 0) FROM counting_users${countingGuildClause}) AS mistakes`,
+        `SELECT COUNT(*) AS users, COALESCE(SUM(mistakes), 0) AS mistakes
+         FROM counting_users${countingGuildClause}`,
         countingGuildParams
       ).catch(() => null),
       guildId
