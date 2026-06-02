@@ -1,8 +1,10 @@
 "use client";
 
 import { downloadCsv } from "@/components/analytics/download";
+import { downloadPng } from "@/components/analytics/download-image";
 import { cn } from "@/lib/utils";
-import { Download } from "lucide-react";
+import { Download, ImageDown } from "lucide-react";
+import { useMemo, useRef } from "react";
 import type { ReactNode } from "react";
 
 interface AnalyticsChartCardProps {
@@ -22,8 +24,13 @@ export function AnalyticsChartCard({
   exportFilename,
   className,
 }: AnalyticsChartCardProps) {
+  const chartRef = useRef<HTMLDivElement | null>(null);
   const canExport =
     exportHeaders?.length && exportRows && exportFilename;
+  const pngFilename = useMemo(() => {
+    const base = exportFilename?.replace(/\.csv$/i, "") ?? "analytics-chart";
+    return `${base}.png`;
+  }, [exportFilename]);
 
   return (
     <div
@@ -34,20 +41,35 @@ export function AnalyticsChartCard({
     >
       <div className="mb-3 flex items-center justify-between gap-2">
         <h3 className="text-sm font-medium text-white">{title}</h3>
-        {canExport && (
+        <div className="flex items-center gap-1">
           <button
             type="button"
             className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted hover:bg-surface-hover hover:text-white"
-            onClick={() =>
-              downloadCsv(exportFilename!, exportHeaders!, exportRows!)
-            }
+            onClick={async () => {
+              if (!chartRef.current) return;
+              await downloadPng(chartRef.current, pngFilename);
+            }}
           >
-            <Download className="h-3.5 w-3.5" />
-            CSV
+            <ImageDown className="h-3.5 w-3.5" />
+            PNG
           </button>
-        )}
+          {canExport && (
+            <button
+              type="button"
+              className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted hover:bg-surface-hover hover:text-white"
+              onClick={() =>
+                downloadCsv(exportFilename!, exportHeaders!, exportRows!)
+              }
+            >
+              <Download className="h-3.5 w-3.5" />
+              CSV
+            </button>
+          )}
+        </div>
       </div>
-      <div className="min-h-[200px]">{children}</div>
+      <div ref={chartRef} className="min-h-[200px]">
+        {children}
+      </div>
     </div>
   );
 }
