@@ -9,7 +9,6 @@ import { GamesDailySection } from "@/components/games/sections/GamesDailySection
 import { GamesMonthlySection } from "@/components/games/sections/GamesMonthlySection";
 import { GamesOverviewSection } from "@/components/games/sections/GamesOverviewSection";
 import { GamesSessionsSection } from "@/components/games/sections/GamesSessionsSection";
-import { GamesUsersSection } from "@/components/games/sections/GamesUsersSection";
 import { GamesWinnersSection } from "@/components/games/sections/GamesWinnersSection";
 import { GamesWipeSection } from "@/components/games/sections/GamesWipeSection";
 import { GamesXpLogsSection } from "@/components/games/sections/GamesXpLogsSection";
@@ -21,7 +20,6 @@ export type GamesSection =
   | "overview"
   | "monthly"
   | "alltime"
-  | "users"
   | "xplogs"
   | "sessions"
   | "daily"
@@ -36,7 +34,6 @@ const SECTIONS: { id: GamesSection; label: string; minAction?: "games.write" | "
   { id: "overview", label: "Overview" },
   { id: "monthly", label: "Leaderboard" },
   { id: "alltime", label: "All-time" },
-  { id: "users", label: "Users" },
   { id: "xplogs", label: "XP logs" },
   { id: "sessions", label: "Sessions" },
   { id: "daily", label: "Daily" },
@@ -49,6 +46,7 @@ const SECTIONS: { id: GamesSection; label: string; minAction?: "games.write" | "
 ];
 
 function parseSection(value: string | null): GamesSection {
+  if (value === "users") return "overview";
   if (value && SECTIONS.some((s) => s.id === value)) {
     return value as GamesSection;
   }
@@ -115,9 +113,8 @@ export function BotGamesTab({ userTier }: BotGamesTabProps) {
 
       <div className="min-w-0 flex-1">
         {section === "overview" && <GamesOverviewSection userTier={userTier} />}
-        {section === "monthly" && <GamesMonthlySection userTier={userTier} />}
+        {section === "monthly" && <GamesMonthlySection />}
         {section === "alltime" && <GamesAllTimeSection />}
-        {section === "users" && <GamesUsersSection userTier={userTier} />}
         {section === "xplogs" && <GamesXpLogsSection userTier={userTier} />}
         {section === "sessions" && <GamesSessionsSection userTier={userTier} />}
         {section === "daily" && <GamesDailySection userTier={userTier} />}

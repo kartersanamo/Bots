@@ -17,6 +17,7 @@ export default async function DashboardLayout({
     <DashboardDiscordProviders
       viewerId={session.id}
       viewerRoleIds={session.roleIds}
+      userTier={session.tier}
     >
       <div className="flex min-h-screen bg-background">
         <Sidebar user={session} />

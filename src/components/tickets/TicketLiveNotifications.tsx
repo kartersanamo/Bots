@@ -1,6 +1,5 @@
 "use client";
 
-import { DashboardDiscordProviders } from "@/components/discord/DashboardDiscordProviders";
 import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -122,7 +121,6 @@ export function TicketLiveNotifications() {
   if (!banner || !enabled) return null;
 
   return (
-    <DashboardDiscordProviders>
     <div
       role="status"
       className="fixed left-1/2 top-3 z-[120] w-[min(860px,calc(100vw-1rem))] -translate-x-1/2 rounded-lg border border-accent/50 bg-zinc-950/95 px-4 py-3 shadow-xl backdrop-blur"
@@ -161,6 +159,5 @@ export function TicketLiveNotifications() {
         </div>
       </div>
     </div>
-    </DashboardDiscordProviders>
   );
 }

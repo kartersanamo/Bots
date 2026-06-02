@@ -7,9 +7,6 @@ import {
   useMergeDiscordUsersFromApi,
   type DiscordUserProfile,
 } from "@/components/games/GamesDiscordUsersProvider";
-import { GamesUserDrawer } from "@/components/games/GamesUserDrawer";
-import { snowflakeString } from "@/lib/games/snowflake";
-import { can, type PermissionTier } from "@/lib/permissions";
 import { useEffect, useState } from "react";
 
 interface Row {
@@ -18,13 +15,12 @@ interface Row {
   level: number;
 }
 
-export function GamesMonthlySection({ userTier }: { userTier: PermissionTier }) {
+export function GamesMonthlySection() {
   const [rows, setRows] = useState<Row[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-  const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [apiUsers, setApiUsers] = useState<Record<string, DiscordUserProfile>>({});
   useMergeDiscordUsersFromApi(apiUsers);
 
@@ -78,14 +74,13 @@ export function GamesMonthlySection({ userTier }: { userTier: PermissionTier }) 
               {rows.map((r, i) => (
                 <tr
                   key={r.user_id}
-                  className="cursor-pointer border-b border-border/50 hover:bg-surface-hover"
-                  onClick={() => setSelectedUser(snowflakeString(r.user_id))}
+                  className="border-b border-border/50 hover:bg-surface-hover"
                 >
                   <td className="py-2 pr-4 text-muted">
                     {(page - 1) * 50 + i + 1}
                   </td>
                   <td className="py-2 pr-4">
-                    <DiscordUserChip userId={r.user_id} onClick={() => setSelectedUser(r.user_id)} />
+                    <DiscordUserChip userId={r.user_id} />
                   </td>
                   <td className="py-2 pr-4">{r.level}</td>
                   <td className="py-2 pr-4">{r.xp}</td>
@@ -114,14 +109,6 @@ export function GamesMonthlySection({ userTier }: { userTier: PermissionTier }) 
           </Button>
         </div>
       </Card>
-
-      {selectedUser && (
-        <GamesUserDrawer
-          userId={selectedUser}
-          onClose={() => setSelectedUser(null)}
-          canWrite={can(userTier, "games.write")}
-        />
-      )}
     </div>
   );
 }

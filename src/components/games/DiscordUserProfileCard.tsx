@@ -2,7 +2,9 @@
 
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import type { DiscordUserProfile } from "@/components/games/GamesDiscordUsersProvider";
+import { useGamesPlayerDrawer } from "@/components/games/GamesPlayerDrawerProvider";
 import type { TicketRow } from "@/lib/tickets/types";
 import { isTicketOpen } from "@/lib/tickets/types";
 import { cn, formatNumber, formatUnixTimestamp, isTruthyFlag } from "@/lib/utils";
@@ -29,6 +31,13 @@ type XpPreviewRow = {
   xp: number;
   source: string | null;
   timestamp: string | null;
+};
+
+type GamesProfilePreview = {
+  leveling: { xp: number; level: number };
+  daily: { streak: number; last_claimed: string | null } | null;
+  allTimeXp: number;
+  achievements: { achievement_id: string }[];
 };
 
 function formatDiscordTimestamp(iso: string | null): string {
@@ -65,6 +74,11 @@ export function DiscordUserProfileCard({
   const [xpRows, setXpRows] = useState<XpPreviewRow[] | null>(null);
   const [xpError, setXpError] = useState<string | null>(null);
   const [xpLoading, setXpLoading] = useState(false);
+  const [gamesProfile, setGamesProfile] = useState<GamesProfilePreview | null>(
+    null
+  );
+  const [gamesProfileLoading, setGamesProfileLoading] = useState(false);
+  const gamesDrawer = useGamesPlayerDrawer();
 
   useEffect(() => {
     let cancelled = false;
@@ -139,33 +153,52 @@ export function DiscordUserProfileCard({
     let cancelled = false;
     setXpLoading(true);
     setXpError(null);
-    const params = new URLSearchParams({
+    setGamesProfileLoading(true);
+    setGamesProfile(null);
+
+    const xpParams = new URLSearchParams({
       userId: user.id,
       sortBy: "timestamp",
       sortDir: "desc",
       limit: "8",
       page: "1",
     });
-    fetch(`/api/games/xp-logs?${params}`)
-      .then(async (r) => {
+
+    const xpPromise = fetch(`/api/games/xp-logs?${xpParams}`).then(async (r) => {
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || "Could not load XP logs");
+      return d.rows as XpPreviewRow[];
+    });
+
+    const profilePromise = fetch(`/api/games/users/${user.id}`).then(
+      async (r) => {
         const d = await r.json();
+        if (!r.ok) return null;
+        return d.profile as GamesProfilePreview | null;
+      }
+    );
+
+    Promise.all([xpPromise, profilePromise])
+      .then(([rows, profile]) => {
         if (cancelled) return;
-        if (!r.ok) {
-          setXpError(d.error || "Could not load XP logs");
-          setXpRows([]);
-          return;
-        }
-        setXpRows(d.rows || []);
+        setXpRows(rows);
+        setGamesProfile(profile);
       })
-      .catch(() => {
+      .catch((err) => {
         if (!cancelled) {
-          setXpError("Could not load XP logs");
+          setXpError(
+            err instanceof Error ? err.message : "Could not load XP logs"
+          );
           setXpRows([]);
         }
       })
       .finally(() => {
-        if (!cancelled) setXpLoading(false);
+        if (!cancelled) {
+          setXpLoading(false);
+          setGamesProfileLoading(false);
+        }
       });
+
     return () => {
       cancelled = true;
     };
@@ -349,6 +382,43 @@ export function DiscordUserProfileCard({
 
             {tab === "games" && (
               <div className="space-y-3">
+                {gamesProfileLoading && !gamesProfile && (
+                  <p className="text-sm text-muted">Loading games profile…</p>
+                )}
+                {gamesProfile && (
+                  <div className="rounded-lg border border-border bg-surface/80 p-3 text-sm">
+                    <p className="text-white">
+                      Level {gamesProfile.leveling.level} ·{" "}
+                      {formatNumber(gamesProfile.leveling.xp)} monthly XP
+                    </p>
+                    <p className="mt-1 text-xs text-muted">
+                      All-time XP (logs):{" "}
+                      {formatNumber(gamesProfile.allTimeXp)}
+                    </p>
+                    {gamesProfile.daily && (
+                      <p className="mt-1 text-xs text-muted">
+                        Daily streak {gamesProfile.daily.streak} · last claim{" "}
+                        {formatUnixTimestamp(gamesProfile.daily.last_claimed)}
+                      </p>
+                    )}
+                    <p className="mt-1 text-xs text-muted">
+                      Achievements: {gamesProfile.achievements.length}
+                    </p>
+                  </div>
+                )}
+                {gamesDrawer && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="w-full"
+                    onClick={() => {
+                      gamesDrawer.openGamesUser(user.id);
+                      onClose();
+                    }}
+                  >
+                    Open games profile & edits
+                  </Button>
+                )}
                 {xpLoading && (
                   <p className="text-sm text-muted">Loading XP logs…</p>
                 )}
