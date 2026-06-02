@@ -34,7 +34,7 @@ export type GamesSection =
 
 const SECTIONS: { id: GamesSection; label: string; minAction?: "games.write" | "games.control" | "games.wipe" }[] = [
   { id: "overview", label: "Overview" },
-  { id: "monthly", label: "Monthly LB" },
+  { id: "monthly", label: "Leaderboard" },
   { id: "alltime", label: "All-time" },
   { id: "users", label: "Users" },
   { id: "xplogs", label: "XP logs" },

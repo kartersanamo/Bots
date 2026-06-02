@@ -10,14 +10,12 @@ import {
 import { GamesUserDrawer } from "@/components/games/GamesUserDrawer";
 import { snowflakeString } from "@/lib/games/snowflake";
 import { can, type PermissionTier } from "@/lib/permissions";
-import { formatBoolFlag } from "@/lib/utils";
 import { useEffect, useState } from "react";
 
 interface Row {
   user_id: string;
   xp: number;
   level: number;
-  active: string | number;
 }
 
 export function GamesMonthlySection({ userTier }: { userTier: PermissionTier }) {
@@ -74,7 +72,6 @@ export function GamesMonthlySection({ userTier }: { userTier: PermissionTier }) 
                 <th className="pb-2 pr-4">User</th>
                 <th className="pb-2 pr-4">Level</th>
                 <th className="pb-2 pr-4">XP</th>
-                <th className="pb-2">Active</th>
               </tr>
             </thead>
             <tbody>
@@ -92,7 +89,6 @@ export function GamesMonthlySection({ userTier }: { userTier: PermissionTier }) 
                   </td>
                   <td className="py-2 pr-4">{r.level}</td>
                   <td className="py-2 pr-4">{r.xp}</td>
-                  <td className="py-2">{formatBoolFlag(r.active)}</td>
                 </tr>
               ))}
             </tbody>

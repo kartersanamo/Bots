@@ -90,7 +90,7 @@ export async function listMonthlyLeaderboard(opts: {
   const limit = Math.min(200, Math.max(1, opts.limit ?? 50));
   const offset = (page - 1) * limit;
 
-  const conditions = ["1=1"];
+  const conditions = ["(active = 1 OR active = '1' OR active = 'True')"];
   const params: string[] = [];
   if (opts.search?.trim()) {
     conditions.push("user_id LIKE ?");
