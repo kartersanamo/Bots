@@ -1,5 +1,6 @@
 "use client";
 
+import { AnalyticsLabelWithHint } from "@/components/analytics/AnalyticsHint";
 import {
   allowedGroupByForRange,
   groupByLabel,
@@ -40,9 +41,12 @@ function ToggleGroup<T extends string>({
 }) {
   return (
     <div className="space-y-1.5">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted">
-        {label}
-      </p>
+      <AnalyticsLabelWithHint
+        as="p"
+        className="text-xs font-medium uppercase tracking-wide text-muted"
+        label={label}
+        meta={label === "Range" ? "controls.range" : "controls.groupBy"}
+      />
       <div className="flex flex-wrap gap-1 rounded-lg border border-border bg-surface p-1">
         {options.map((opt) => (
           <button

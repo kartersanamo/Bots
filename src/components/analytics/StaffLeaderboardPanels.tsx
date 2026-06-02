@@ -18,6 +18,7 @@ function StaffTable({
   rows,
   filename,
   highlight,
+  dataHint,
 }: {
   title: string;
   rows: StaffLeaderboardRow[];
@@ -26,6 +27,7 @@ function StaffTable({
     StaffLeaderboardRow,
     "ticketsClosed" | "messages" | "warnings" | "screenshares"
   >;
+  dataHint: string;
 }) {
   const labels = {
     ticketsClosed: "Tickets closed",
@@ -39,6 +41,7 @@ function StaffTable({
   return (
     <AnalyticsDataTable
       title={title}
+      dataHint={dataHint}
       headers={["userId", highlight]}
       exportFilename={filename}
       exportRows={rows.map((r) => ({
@@ -78,11 +81,13 @@ export function StaffOverviewTable({
   description,
   rows,
   exportFilename,
+  dataHint,
 }: {
   title: string;
   description: string;
   rows: StaffLeaderboardRow[];
   exportFilename: string;
+  dataHint: string;
 }) {
   const overviewLimit = useAnalyticsTableRowLimit(12);
   const overviewRows = [...rows]
@@ -95,6 +100,7 @@ export function StaffOverviewTable({
   return (
     <AnalyticsDataTable
       title={title}
+      dataHint={dataHint}
       headers={[
         "userId",
         "ticketsClosed",
@@ -152,6 +158,7 @@ export function StaffOverviewTable({
 export function StaffLeaderboardPanels({
   data,
   filePrefix,
+  hintScope,
 }: {
   data: {
     leaderboard: StaffLeaderboardRow[];
@@ -160,7 +167,15 @@ export function StaffLeaderboardPanels({
     topByScreenshares: StaffLeaderboardRow[];
   };
   filePrefix: string;
+  hintScope: "staffRecent" | "staffTotal";
 }) {
+  const leaderboardHints = {
+    ticketsClosed: `${hintScope}.leaderboard.tickets`,
+    messages: `${hintScope}.leaderboard.messages`,
+    warnings: `${hintScope}.leaderboard.warnings`,
+    screenshares: `${hintScope}.leaderboard.screenshares`,
+  } as const;
+
   return (
     <>
       <StaffTable
@@ -168,6 +183,7 @@ export function StaffLeaderboardPanels({
         rows={data.leaderboard}
         filename={`${filePrefix}-leaderboard-tickets.csv`}
         highlight="ticketsClosed"
+        dataHint={leaderboardHints.ticketsClosed}
       />
       <div className="grid gap-4 lg:grid-cols-2">
         <StaffTable
@@ -175,12 +191,14 @@ export function StaffLeaderboardPanels({
           rows={data.topByMessages}
           filename={`${filePrefix}-leaderboard-messages.csv`}
           highlight="messages"
+          dataHint={leaderboardHints.messages}
         />
         <StaffTable
           title="Leaderboard — warnings issued"
           rows={data.topByWarnings}
           filename={`${filePrefix}-leaderboard-warnings.csv`}
           highlight="warnings"
+          dataHint={leaderboardHints.warnings}
         />
       </div>
       <StaffTable
@@ -188,6 +206,7 @@ export function StaffLeaderboardPanels({
         rows={data.topByScreenshares}
         filename={`${filePrefix}-leaderboard-screenshares.csv`}
         highlight="screenshares"
+        dataHint={leaderboardHints.screenshares}
       />
     </>
   );

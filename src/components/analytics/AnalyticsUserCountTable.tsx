@@ -6,10 +6,12 @@ import {
 } from "@/components/analytics/AnalyticsDataTable";
 import { useAnalyticsTableRowLimit } from "@/components/analytics/table-row-limit";
 import { DiscordUserChip } from "@/components/games/DiscordUserChip";
+import type { AnalyticsDataMeta } from "@/lib/analytics/hint";
 import { formatNumber } from "@/lib/utils";
 
 interface AnalyticsUserCountTableProps {
   title: string;
+  dataHint?: AnalyticsDataMeta | string;
   rows: { userId: string; count: number }[];
   exportFilename: string;
   countLabel?: string;
@@ -20,6 +22,7 @@ interface AnalyticsUserCountTableProps {
 
 export function AnalyticsUserCountTable({
   title,
+  dataHint,
   rows,
   exportFilename,
   countLabel = "Count",
@@ -35,6 +38,7 @@ export function AnalyticsUserCountTable({
   return (
     <AnalyticsDataTable
       title={title}
+      dataHint={dataHint}
       headers={["rank", "userId", valueKey]}
       exportFilename={exportFilename}
       exportRows={rows.map((r, i) => ({

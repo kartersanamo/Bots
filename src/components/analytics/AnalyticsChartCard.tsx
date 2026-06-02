@@ -1,7 +1,9 @@
 "use client";
 
+import { AnalyticsLabelWithHint } from "@/components/analytics/AnalyticsHint";
 import { downloadCsv } from "@/components/analytics/download";
 import { downloadPng } from "@/components/analytics/download-image";
+import type { AnalyticsDataMeta } from "@/lib/analytics/hint";
 import { cn } from "@/lib/utils";
 import { Download, ImageDown } from "lucide-react";
 import { useMemo, useRef } from "react";
@@ -9,6 +11,7 @@ import type { ReactNode } from "react";
 
 interface AnalyticsChartCardProps {
   title: string;
+  dataHint?: AnalyticsDataMeta | string;
   children: ReactNode;
   exportHeaders?: string[];
   exportRows?: Record<string, unknown>[];
@@ -18,6 +21,7 @@ interface AnalyticsChartCardProps {
 
 export function AnalyticsChartCard({
   title,
+  dataHint,
   children,
   exportHeaders,
   exportRows,
@@ -40,7 +44,12 @@ export function AnalyticsChartCard({
       )}
     >
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-medium text-white">{title}</h3>
+        <AnalyticsLabelWithHint
+          as="h3"
+          className="text-sm font-medium text-white"
+          label={title}
+          meta={dataHint}
+        />
         <div className="flex items-center gap-1">
           <button
             type="button"

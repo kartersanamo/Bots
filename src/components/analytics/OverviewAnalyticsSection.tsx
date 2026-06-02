@@ -1,6 +1,7 @@
 "use client";
 
 import { AnalyticsChartCard } from "@/components/analytics/AnalyticsChartCard";
+import { kpi } from "@/components/analytics/bind-metric-hints";
 import { AnalyticsKpiGrid } from "@/components/analytics/AnalyticsKpiGrid";
 import { AnalyticsUserCountTable } from "@/components/analytics/AnalyticsUserCountTable";
 import { DailyLineChart, DualDailyLineChart, NamedBarChart } from "@/components/analytics/charts";
@@ -30,27 +31,32 @@ export function OverviewAnalyticsSection({
       <AnalyticsKpiGrid
         className="xl:grid-cols-6"
         items={[
-          { label: "Open tickets", value: summary.tickets.openCount },
-          { label: "Opened (range)", value: summary.tickets.openedInRange },
-          { label: "Closed (range)", value: summary.tickets.closedInRange },
-          {
-            label: "Close rate",
-            value:
-              summary.tickets.closeRatePercent != null
-                ? `${summary.tickets.closeRatePercent}%`
-                : "—",
-          },
-          { label: "Leveling users", value: summary.games.activePlayers },
-          { label: "XP in range", value: formatNumber(summary.games.xpInRange) },
-          { label: "XP events", value: summary.games.xpEventsInRange },
-          { label: "Active bans", value: summary.moderation.activeBans },
-          { label: "Ticket blacklists", value: summary.moderation.blacklists },
-          {
-            label: "Staff tickets closed",
-            value: summary.staff.totalTicketsClosed,
-          },
-          { label: "Staff messages", value: summary.staff.totalMessages },
-          { label: "Dashboard actions", value: summary.audit.actionsInRange },
+          kpi("Open tickets", summary.tickets.openCount, "overview.openTickets"),
+          kpi("Opened (range)", summary.tickets.openedInRange, "overview.openedRange"),
+          kpi("Closed (range)", summary.tickets.closedInRange, "overview.closedRange"),
+          kpi(
+            "Close rate",
+            summary.tickets.closeRatePercent != null
+              ? `${summary.tickets.closeRatePercent}%`
+              : "—",
+            "overview.closeRate"
+          ),
+          kpi("Leveling users", summary.games.activePlayers, "overview.levelingUsers"),
+          kpi("XP in range", formatNumber(summary.games.xpInRange), "overview.xpInRange"),
+          kpi("XP events", summary.games.xpEventsInRange, "overview.xpEvents"),
+          kpi("Active bans", summary.moderation.activeBans, "overview.activeBans"),
+          kpi("Ticket blacklists", summary.moderation.blacklists, "overview.blacklists"),
+          kpi(
+            "Staff tickets closed",
+            summary.staff.totalTicketsClosed,
+            "overview.staffTicketsClosed"
+          ),
+          kpi("Staff messages", summary.staff.totalMessages, "overview.staffMessages"),
+          kpi(
+            "Dashboard actions",
+            summary.audit.actionsInRange,
+            "overview.auditActions"
+          ),
         ]}
       />
 
@@ -58,6 +64,7 @@ export function OverviewAnalyticsSection({
         {metrics && (
           <AnalyticsChartCard
             title="Ticket flow"
+            dataHint="overview.chart.ticketFlow"
             exportHeaders={["date", "opened", "closed"]}
             exportFilename={`overview-tickets-${range}.csv`}
             exportRows={metrics.openedPerDay.map((r) => {
@@ -84,6 +91,7 @@ export function OverviewAnalyticsSection({
         {games && (
           <AnalyticsChartCard
             title={chartTitleWithPeriod("XP awarded", groupBy)}
+            dataHint="overview.chart.xp"
             exportHeaders={["date", "xp"]}
             exportFilename={`overview-xp-${range}.csv`}
             exportRows={games.xpPerDay.map((r) => ({ date: r.date, xp: r.count }))}
@@ -103,6 +111,7 @@ export function OverviewAnalyticsSection({
         {audit && (
           <AnalyticsChartCard
             title="Dashboard activity"
+            dataHint="overview.chart.audit"
             exportHeaders={["date", "actions"]}
             exportFilename={`overview-audit-${range}.csv`}
             exportRows={audit.actionsPerDay.map((r) => ({
@@ -127,6 +136,7 @@ export function OverviewAnalyticsSection({
         {metrics && metrics.byType.length > 0 && (
           <AnalyticsChartCard
             title="Tickets by type"
+            dataHint="overview.chart.ticketTypes"
             exportHeaders={["type", "count"]}
             exportFilename={`overview-ticket-types-${range}.csv`}
             exportRows={metrics.byType.map((r) => ({
@@ -141,6 +151,7 @@ export function OverviewAnalyticsSection({
         {games && games.topXpSources.length > 0 && (
           <AnalyticsChartCard
             title="Top XP sources"
+            dataHint="overview.chart.xpSources"
             exportHeaders={["source", "events"]}
             exportFilename={`overview-xp-sources-${range}.csv`}
             exportRows={games.topXpSources.map((r) => ({
@@ -157,6 +168,7 @@ export function OverviewAnalyticsSection({
         {metrics && (
           <AnalyticsUserCountTable
             title="Top ticket closers (range)"
+            dataHint="overview.table.topClosers"
             rows={metrics.topClosersInRange}
             exportFilename={`overview-closers-${range}.csv`}
             countLabel="Closed"
@@ -165,6 +177,7 @@ export function OverviewAnalyticsSection({
         {games && (
           <AnalyticsUserCountTable
             title="Top XP earners (range)"
+            dataHint="overview.table.topXp"
             rows={games.topXpEarners.map((r) => ({
               userId: r.userId,
               count: r.value,
@@ -177,6 +190,7 @@ export function OverviewAnalyticsSection({
         {staffTotal && (
           <AnalyticsUserCountTable
             title="Staff — tickets closed (all time)"
+            dataHint="overview.table.staffTickets"
             rows={staffTotal.leaderboard.map((r) => ({
               userId: r.userId,
               count: r.ticketsClosed,

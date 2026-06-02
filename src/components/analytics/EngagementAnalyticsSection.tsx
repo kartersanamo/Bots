@@ -5,6 +5,7 @@ import {
   AnalyticsTable,
 } from "@/components/analytics/AnalyticsDataTable";
 import { AnalyticsChartCard } from "@/components/analytics/AnalyticsChartCard";
+import { kpi } from "@/components/analytics/bind-metric-hints";
 import { AnalyticsKpiGrid } from "@/components/analytics/AnalyticsKpiGrid";
 import { AnalyticsUserCountTable } from "@/components/analytics/AnalyticsUserCountTable";
 import {
@@ -78,28 +79,33 @@ export function EngagementAnalyticsSection({
 
       <AnalyticsKpiGrid
         items={[
-          {
-            label: "Total staff messages",
-            value: formatNumber(kpis.totalStaffMessagesInRange),
-          },
-          {
-            label: "Staff messages",
-            value: formatNumber(kpis.staffMessagesInRange),
-          },
-          {
-            label: "Total games",
-            value: formatNumber(kpis.totalGamesInRange),
-          },
-          {
-            label: "Voice time",
-            value: formatDurationSeconds(kpis.voiceSecondsInRange),
-          },
+          kpi(
+            "Total staff messages",
+            formatNumber(kpis.totalStaffMessagesInRange),
+            "engagement.totalStaffMessages"
+          ),
+          kpi(
+            "Staff messages",
+            formatNumber(kpis.staffMessagesInRange),
+            "engagement.staffTicketMessages"
+          ),
+          kpi(
+            "Total games",
+            formatNumber(kpis.totalGamesInRange),
+            "engagement.totalGames"
+          ),
+          kpi(
+            "Voice time",
+            formatDurationSeconds(kpis.voiceSecondsInRange),
+            "engagement.voiceTime"
+          ),
         ]}
       />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsChartCard
           title={chartTitleWithPeriod("Total staff messages", groupBy)}
+          dataHint="engagement.chart.totalStaffMessages"
           exportHeaders={["date", "messages"]}
           exportFilename={`engagement-total-staff-msgs-${range}.csv`}
           exportRows={data.totalStaffMessagesPerDay.map((r) => ({
@@ -115,6 +121,7 @@ export function EngagementAnalyticsSection({
 
         <AnalyticsChartCard
           title={chartTitleWithPeriod("Staff messages (active tickets)", groupBy)}
+          dataHint="engagement.chart.staffTicketMessages"
           exportHeaders={["date", "messages"]}
           exportFilename={`engagement-ticket-staff-msgs-${range}.csv`}
           exportRows={data.staffMessagesPerDay.map((r) => ({
@@ -127,6 +134,7 @@ export function EngagementAnalyticsSection({
 
         <AnalyticsChartCard
           title={chartTitleWithPeriod("Total games", groupBy)}
+          dataHint="engagement.chart.games"
           exportHeaders={["date", "games"]}
           exportFilename={`engagement-total-games-${range}.csv`}
           exportRows={data.totalGamesPerDay.map((r) => ({
@@ -139,6 +147,7 @@ export function EngagementAnalyticsSection({
 
         <AnalyticsChartCard
           title={chartTitleWithPeriod("Voice time", groupBy)}
+          dataHint="engagement.chart.voice"
           exportHeaders={["date", "seconds"]}
           exportFilename={`engagement-voice-${range}.csv`}
           exportRows={data.voiceSecondsPerDay.map((r) => ({
@@ -152,6 +161,7 @@ export function EngagementAnalyticsSection({
         {data.playersOnlineByHour.some((r) => r.count > 0) && (
           <AnalyticsChartCard
             title="Peak hours — players online"
+            dataHint="engagement.chart.peakOnline"
             exportHeaders={["hour", "avgOnline"]}
             exportFilename={`engagement-peak-online-${range}.csv`}
             exportRows={data.playersOnlineByHour.map((r) => ({
@@ -174,6 +184,7 @@ export function EngagementAnalyticsSection({
         {data.serverSnapshots.length > 0 && (
           <AnalyticsChartCard
             title="Server size & online (daily snapshots)"
+            dataHint="engagement.chart.snapshots"
             exportHeaders={["date", "total", "online"]}
             exportFilename={`engagement-server-snapshots-${range}.csv`}
             exportRows={data.serverSnapshots.map((r) => ({
@@ -201,6 +212,7 @@ export function EngagementAnalyticsSection({
       {data.topVoiceUsers.length > 0 && (
         <AnalyticsUserCountTable
           title="Top voice users (range)"
+          dataHint="engagement.table.topVoice"
           rows={data.topVoiceUsers}
           exportFilename={`engagement-voice-users-${range}.csv`}
           countLabel="Time"
@@ -210,6 +222,7 @@ export function EngagementAnalyticsSection({
 
       <AnalyticsUserCountTable
         title="Staff by total messages (range)"
+        dataHint="engagement.table.topStaffMessages"
         rows={data.topStaffByTotalMessages}
         exportFilename={`engagement-total-staff-by-user-${range}.csv`}
         countLabel="Messages"
@@ -218,6 +231,7 @@ export function EngagementAnalyticsSection({
       {data.recentJoinLeaves.length > 0 && (
         <AnalyticsDataTable
           title="Recent join / leaves"
+          dataHint="engagement.table.joinLeaves"
           headers={[
             "event",
             "userId",

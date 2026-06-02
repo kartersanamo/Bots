@@ -1,6 +1,7 @@
 "use client";
 
 import { AnalyticsControls } from "@/components/analytics/AnalyticsControls";
+import { AnalyticsHintProvider } from "@/components/analytics/AnalyticsHint";
 import { AnalyticsTabPanels } from "@/components/analytics/AnalyticsTabPanels";
 import { GamesDiscordUsersProvider } from "@/components/games/GamesDiscordUsersProvider";
 import type { AnalyticsBundle } from "@/lib/analytics/bundle";
@@ -91,6 +92,7 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [chunkLoadFailed, setChunkLoadFailed] = useState(false);
+  const [dataFetchedAt, setDataFetchedAt] = useState(() => Date.now());
   const summaryAbortRef = useRef<AbortController | null>(null);
   const tabAbortRef = useRef<AbortController | null>(null);
   const loadedTabsRef = useRef<string>("");
@@ -278,6 +280,7 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
         writeAnalyticsCache(tabCacheKey, tabData);
         loadedTabsRef.current = loadKey;
         setTabReady(true);
+        setDataFetchedAt(Date.now());
       })
       .catch((e) => {
         if (ac.signal.aborted || (e as Error).name === "AbortError") return;
@@ -290,10 +293,20 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
     return () => ac.abort();
   }, [range, groupBy, tab, summaryReady, tabCacheKey, mergeBundle]);
 
+  useEffect(() => {
+    if (summaryReady) setDataFetchedAt(Date.now());
+  }, [summaryReady, summaryCacheKey]);
+
   const showTabSkeleton = summaryReady && !tabReady && refreshing;
 
   return (
     <GamesDiscordUsersProvider>
+      <AnalyticsHintProvider
+        range={range}
+        groupBy={groupBy}
+        fetchedAt={dataFetchedAt}
+        rangeApplies={tabUsesRangeControls(tab)}
+      >
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           {tabUsesRangeControls(tab) ? (
@@ -370,6 +383,7 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
           )
         )}
       </div>
+      </AnalyticsHintProvider>
     </GamesDiscordUsersProvider>
   );
 }

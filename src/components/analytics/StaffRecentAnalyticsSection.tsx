@@ -1,6 +1,7 @@
 "use client";
 
 import { AnalyticsKpiGrid } from "@/components/analytics/AnalyticsKpiGrid";
+import { kpi } from "@/components/analytics/bind-metric-hints";
 import {
   StaffLeaderboardPanels,
   StaffOverviewTable,
@@ -47,31 +48,35 @@ export function StaffRecentAnalyticsSection({
 
       <AnalyticsKpiGrid
         items={[
-          { label: "Active staff (period)", value: totals.staffCount },
-          {
-            label: "Tickets closed (this period)",
-            value: formatNumber(totals.ticketsClosed),
-          },
-          {
-            label: "Messages (this period)",
-            value: formatNumber(totals.messages),
-          },
-          {
-            label: "Warnings (this period)",
-            value: formatNumber(totals.warnings),
-          },
-          {
-            label: "Screenshares (this period)",
-            value: formatNumber(totals.screenshares),
-          },
-          {
-            label: "Strike reports (total)",
-            value:
-              data.strikeReportsTotal != null
-                ? formatNumber(data.strikeReportsTotal)
-                : "N/A",
-            hint: "All-time table; not reset by /wipe",
-          },
+          kpi("Active staff (period)", totals.staffCount, "staffRecent.activeStaff"),
+          kpi(
+            "Tickets closed (this period)",
+            formatNumber(totals.ticketsClosed),
+            "staffRecent.tickets"
+          ),
+          kpi(
+            "Messages (this period)",
+            formatNumber(totals.messages),
+            "staffRecent.messages"
+          ),
+          kpi(
+            "Warnings (this period)",
+            formatNumber(totals.warnings),
+            "staffRecent.warnings"
+          ),
+          kpi(
+            "Screenshares (this period)",
+            formatNumber(totals.screenshares),
+            "staffRecent.screenshares"
+          ),
+          kpi(
+            "Strike reports (total)",
+            data.strikeReportsTotal != null
+              ? formatNumber(data.strikeReportsTotal)
+              : "N/A",
+            "staffRecent.strikes",
+            { subtitle: "All-time table; not reset by /wipe" }
+          ),
         ]}
       />
 
@@ -80,9 +85,14 @@ export function StaffRecentAnalyticsSection({
         description="Counts since the last /wipe from the statistics table. Departed staff (all zeros in statistics) are excluded."
         rows={data.leaderboard}
         exportFilename="staff-recent-overview.csv"
+        dataHint="staffRecent.table.overview"
       />
 
-      <StaffLeaderboardPanels data={data} filePrefix="staff-recent" />
+      <StaffLeaderboardPanels
+        data={data}
+        filePrefix="staff-recent"
+        hintScope="staffRecent"
+      />
     </div>
   );
 }

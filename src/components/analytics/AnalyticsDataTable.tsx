@@ -1,7 +1,9 @@
 "use client";
 
+import { AnalyticsLabelWithHint } from "@/components/analytics/AnalyticsHint";
 import { TableRowLimitSelect } from "@/components/analytics/table-row-limit";
 import { downloadCsv } from "@/components/analytics/download";
+import type { AnalyticsDataMeta } from "@/lib/analytics/hint";
 import { cn } from "@/lib/utils";
 import { Download } from "lucide-react";
 import type { ReactNode } from "react";
@@ -13,6 +15,7 @@ export interface AnalyticsTableRowLimitConfig {
 
 interface AnalyticsDataTableProps {
   title: string;
+  dataHint?: AnalyticsDataMeta | string;
   headers: string[];
   exportFilename: string;
   exportRows: Record<string, unknown>[];
@@ -23,6 +26,7 @@ interface AnalyticsDataTableProps {
 
 export function AnalyticsDataTable({
   title,
+  dataHint,
   headers,
   exportFilename,
   exportRows,
@@ -38,7 +42,12 @@ export function AnalyticsDataTable({
       )}
     >
       <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2">
-        <h3 className="text-sm font-medium text-white">{title}</h3>
+        <AnalyticsLabelWithHint
+          as="h3"
+          className="text-sm font-medium text-white"
+          label={title}
+          meta={dataHint}
+        />
         <div className="flex shrink-0 items-center gap-2">
           {tableRowLimit && (
             <TableRowLimitSelect

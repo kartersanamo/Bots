@@ -1,12 +1,17 @@
 "use client";
 
+import { AnalyticsLabelWithHint } from "@/components/analytics/AnalyticsHint";
+import type { AnalyticsDataMeta } from "@/lib/analytics/hint";
 import { formatNumber } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 export interface KpiItem {
   label: string;
   value: string | number;
+  /** Subtitle shown under the value (not the ? tooltip). */
   hint?: string;
+  /** ? tooltip: registry key or full meta. */
+  dataHint?: AnalyticsDataMeta | string;
 }
 
 interface AnalyticsKpiGridProps {
@@ -27,7 +32,12 @@ export function AnalyticsKpiGrid({ items, className }: AnalyticsKpiGridProps) {
           key={item.label}
           className="rounded-lg border border-border bg-surface px-4 py-3"
         >
-          <p className="text-xs text-muted">{item.label}</p>
+          <AnalyticsLabelWithHint
+            as="p"
+            className="text-xs text-muted"
+            label={item.label}
+            meta={item.dataHint}
+          />
           <p className="mt-1 text-2xl font-semibold text-white">
             {typeof item.value === "number"
               ? formatNumber(item.value)
