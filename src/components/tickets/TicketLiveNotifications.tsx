@@ -1,5 +1,7 @@
 "use client";
 
+import { DashboardDiscordProviders } from "@/components/discord/DashboardDiscordProviders";
+import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 interface TicketLiveEvent {
@@ -120,6 +122,7 @@ export function TicketLiveNotifications() {
   if (!banner || !enabled) return null;
 
   return (
+    <DashboardDiscordProviders>
     <div
       role="status"
       className="fixed left-1/2 top-3 z-[120] w-[min(860px,calc(100vw-1rem))] -translate-x-1/2 rounded-lg border border-accent/50 bg-zinc-950/95 px-4 py-3 shadow-xl backdrop-blur"
@@ -127,8 +130,16 @@ export function TicketLiveNotifications() {
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-white">New ticket created</p>
-          <p className="truncate text-xs text-zinc-300">
-            {title} • {banner.ticketType} • owner `{banner.ownerId}`
+          <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-zinc-300">
+            <span className="truncate">{title}</span>
+            <span className="shrink-0">•</span>
+            <span className="truncate">{banner.ticketType}</span>
+            <span className="shrink-0">• owner</span>
+            <DiscordUserChip
+              userId={banner.ownerId}
+              compact
+              className="inline-flex max-w-[14rem] shrink-0 rounded px-1 py-0.5 hover:bg-zinc-800/80"
+            />
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -150,5 +161,6 @@ export function TicketLiveNotifications() {
         </div>
       </div>
     </div>
+    </DashboardDiscordProviders>
   );
 }
