@@ -40,7 +40,13 @@ export interface DiscordMessage {
   id: string;
   content: string;
   timestamp: string;
-  author: { id: string; username?: string; bot?: boolean };
+  author: {
+    id: string;
+    username?: string;
+    global_name?: string | null;
+    avatar?: string | null;
+    bot?: boolean;
+  };
   embeds?: { description?: string; title?: string }[];
 }
 
@@ -78,6 +84,29 @@ export async function getTicketChannelMessages(
         ? "Bot cannot read this channel"
         : err || res.statusText
     );
+  }
+  return res.json();
+}
+
+export async function sendTicketChannelMessage(
+  channelId: string,
+  content: string
+): Promise<DiscordMessage> {
+  const token = env("BOT_TICKETS_TOKEN") || env("DISCORD_BOT_TOKEN");
+  if (!token) throw new Error("Discord bot token is not configured");
+
+  const res = await fetch(`${DISCORD_API}/channels/${channelId}/messages`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bot ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ content: content.slice(0, 2000) }),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Discord send failed (${res.status})`);
   }
   return res.json();
 }

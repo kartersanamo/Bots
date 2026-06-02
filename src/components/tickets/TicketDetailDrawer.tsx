@@ -13,6 +13,8 @@ import {
   MessageSquare,
   FileText,
   ClipboardList,
+  RefreshCw,
+  Send,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
@@ -40,6 +42,20 @@ interface DetailData {
   discordUrl: string;
 }
 
+interface TicketMessage {
+  id: string;
+  content: string;
+  timestamp: string;
+  author: {
+    id: string;
+    username?: string;
+    global_name?: string | null;
+    avatar?: string | null;
+    bot?: boolean;
+  };
+  embeds?: { description?: string; title?: string }[];
+}
+
 function openedAtDate(openedAt: string): Date {
   const n = Number(openedAt);
   if (!Number.isNaN(n) && n > 0) return new Date(n * 1000);
@@ -59,6 +75,11 @@ export function TicketDetailDrawer({
   const [showCloseForm, setShowCloseForm] = useState(false);
   const [closeReason, setCloseReason] = useState("");
   const [closeError, setCloseError] = useState<string | null>(null);
+  const [messages, setMessages] = useState<TicketMessage[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [composer, setComposer] = useState("");
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     if (!channelId) {
@@ -76,6 +97,38 @@ export function TicketDetailDrawer({
         else setData(null);
       })
       .finally(() => setLoading(false));
+  }, [channelId]);
+
+  async function loadMessages() {
+    if (!channelId) return;
+    setMessagesLoading(true);
+    try {
+      const res = await fetch(`/api/tickets/${channelId}/messages?limit=80`);
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSendError(
+          typeof payload.error === "string"
+            ? payload.error
+            : "Failed to load ticket messages"
+        );
+        return;
+      }
+      setMessages(Array.isArray(payload.messages) ? payload.messages : []);
+      setSendError(null);
+    } finally {
+      setMessagesLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!channelId) {
+      setMessages([]);
+      setComposer("");
+      setSendError(null);
+      return;
+    }
+    void loadMessages();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelId]);
 
   async function copyText(text: string) {
@@ -111,6 +164,32 @@ export function TicketDetailDrawer({
       onClose();
     } finally {
       setClosing(false);
+    }
+  }
+
+  async function sendMessage() {
+    if (!channelId) return;
+    const content = composer.trim();
+    if (!content) return;
+    setSending(true);
+    setSendError(null);
+    try {
+      const res = await fetch(`/api/tickets/${channelId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSendError(
+          typeof payload.error === "string" ? payload.error : "Failed to send message"
+        );
+        return;
+      }
+      setComposer("");
+      await loadMessages();
+    } finally {
+      setSending(false);
     }
   }
 
@@ -281,6 +360,123 @@ export function TicketDetailDrawer({
                           No intake embed found (user may not have submitted the form yet).
                         </p>
                       )}
+                    </section>
+                  )}
+
+                  {ticketOpen && (
+                    <section>
+                      <div className="mb-3 flex items-center justify-between gap-2">
+                        <h3 className="flex items-center gap-2 text-sm font-semibold text-accent-light">
+                          <MessageSquare className="h-4 w-4" />
+                          Ticket chat history
+                        </h3>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => void loadMessages()}
+                          disabled={messagesLoading}
+                        >
+                          <RefreshCw
+                            className={`h-4 w-4 ${messagesLoading ? "animate-spin" : ""}`}
+                          />
+                          Refresh
+                        </Button>
+                      </div>
+                      <div className="rounded-xl border border-border bg-background p-3">
+                        {messagesLoading ? (
+                          <div className="space-y-2">
+                            {[1, 2, 3].map((i) => (
+                              <div
+                                key={i}
+                                className="h-14 animate-pulse rounded-md bg-surface-hover"
+                              />
+                            ))}
+                          </div>
+                        ) : messages.length === 0 ? (
+                          <p className="py-4 text-center text-sm text-muted">
+                            No channel messages found.
+                          </p>
+                        ) : (
+                          <div className="max-h-[380px] space-y-3 overflow-y-auto pr-1">
+                            {messages.map((m) => {
+                              const displayName =
+                                m.author.global_name || m.author.username || m.author.id;
+                              const body =
+                                m.content?.trim() ||
+                                m.embeds
+                                  ?.map((e) =>
+                                    [e.title, e.description]
+                                      .filter(Boolean)
+                                      .join(" — ")
+                                      .trim()
+                                  )
+                                  .filter(Boolean)
+                                  .join("\n") ||
+                                "(embed/attachment)";
+                              return (
+                                <div key={m.id} className="flex gap-3">
+                                  <Avatar
+                                    userId={m.author.id}
+                                    avatarHash={m.author.avatar ?? null}
+                                    size={32}
+                                  />
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <p className="text-sm font-medium text-white">
+                                        {displayName}
+                                      </p>
+                                      {m.author.bot && (
+                                        <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] text-accent-light">
+                                          BOT
+                                        </span>
+                                      )}
+                                      <span className="text-xs text-muted">
+                                        {formatRelativeTime(new Date(m.timestamp))}
+                                      </span>
+                                    </div>
+                                    <p className="mt-1 whitespace-pre-wrap break-words text-sm text-white/90">
+                                      {body}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                        {sendError && (
+                          <p className="mt-3 text-sm text-red-400">{sendError}</p>
+                        )}
+                        {canWrite && (
+                          <div className="mt-3 space-y-2">
+                            <p className="text-xs text-muted">
+                              Messages sent here are posted by the configured bot account.
+                            </p>
+                            <div className="flex gap-2">
+                              <textarea
+                                value={composer}
+                                onChange={(e) => setComposer(e.target.value)}
+                                placeholder="Reply to this ticket…"
+                                rows={2}
+                                maxLength={2000}
+                                className="flex-1 resize-none rounded-lg border border-border bg-surface px-3 py-2 text-sm text-white"
+                              />
+                              <Button
+                                variant="primary"
+                                onClick={sendMessage}
+                                disabled={sending || !composer.trim()}
+                              >
+                                <Send className="h-4 w-4" />
+                                {sending ? "Sending…" : "Send"}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                        {!canWrite && (
+                          <p className="mt-3 text-xs text-muted">
+                            You have read-only access to ticket messages.
+                          </p>
+                        )}
+                      </div>
                     </section>
                   )}
 
