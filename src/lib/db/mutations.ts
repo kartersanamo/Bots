@@ -235,7 +235,7 @@ export async function adjustStatistics(
   assertWriteDb();
   const allowed = [
     "tickets_closed",
-    "messages",
+    "messages_sent",
     "warnings",
     "screenshares",
   ];
@@ -243,8 +243,8 @@ export async function adjustStatistics(
     throw new Error("Invalid statistics field");
   }
   await writeQuery(
-    `INSERT INTO statistics (user_id, ${field}) VALUES (?, ?)
-     ON DUPLICATE KEY UPDATE ${field} = ${field} + ?`,
+    `INSERT INTO statistics (user_ID, ${field}) VALUES (?, ?)
+     ON DUPLICATE KEY UPDATE ${field} = CAST(${field} AS SIGNED) + ?`,
     [userId, delta, delta]
   );
 }

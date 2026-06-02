@@ -51,7 +51,6 @@ export function OverviewAnalyticsSection({
           },
           { label: "Staff messages", value: summary.staff.totalMessages },
           { label: "Dashboard actions", value: summary.audit.actionsInRange },
-          { label: "Fleet restarts", value: summary.audit.fleetRestarts },
         ]}
       />
 

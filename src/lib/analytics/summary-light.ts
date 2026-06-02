@@ -62,8 +62,10 @@ export async function getAnalyticsSummaryLight(
       tsParams
     ).catch(() => null),
     queryOne<{ tickets: number; messages: number }>(
-      `SELECT COALESCE(SUM(tickets_closed), 0) AS tickets,
-        COALESCE(SUM(messages), 0) AS messages FROM statistics`
+      `SELECT
+        COALESCE(SUM(CAST(tickets_closed AS UNSIGNED)), 0) AS tickets,
+        COALESCE(SUM(CAST(messages_sent AS UNSIGNED)), 0) AS messages
+       FROM statistics`
     ).catch(() => null),
   ]);
 

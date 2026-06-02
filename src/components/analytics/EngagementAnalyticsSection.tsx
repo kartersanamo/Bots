@@ -49,15 +49,6 @@ export function EngagementAnalyticsSection({
     <div className="space-y-6">
       <MigrationNotice ready={tablesReady} />
 
-      <div className="rounded-xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-transparent p-4">
-        <h2 className="text-lg font-semibold text-white">Community & engagement</h2>
-        <p className="mt-1 text-sm text-muted">
-          Newly tracked metrics: staff messages, ticket replies, joins/leaves, voice,
-          commands, moderation actions, game outcomes, and daily server
-          snapshots.
-        </p>
-      </div>
-
       <AnalyticsKpiGrid
         items={[
           { label: "Staff messages", value: kpis.staffMessagesInRange },
