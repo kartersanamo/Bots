@@ -118,6 +118,70 @@ function extractMentionUserIds(content: string): string[] {
   return Array.from(content.matchAll(USER_MENTION_RE), (m) => m[1]);
 }
 
+function formatDiscordTimestampToken(unixSeconds: number, style?: string): string {
+  if (!Number.isFinite(unixSeconds)) return "";
+  const date = new Date(unixSeconds * 1000);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const locale = undefined;
+  const shortDate = new Intl.DateTimeFormat(locale, {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+  const longDate = new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  const shortTime = new Intl.DateTimeFormat(locale, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  const longTime = new Intl.DateTimeFormat(locale, {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  const longDateTime = new Intl.DateTimeFormat(locale, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  switch (style) {
+    case "t":
+      return shortTime.format(date);
+    case "T":
+      return longTime.format(date);
+    case "d":
+      return shortDate.format(date);
+    case "D":
+      return longDate.format(date);
+    case "f":
+      return `${longDate.format(date)} ${shortTime.format(date)}`;
+    case "F":
+      return longDateTime.format(date);
+    case "R": {
+      const now = Date.now();
+      const diffSec = Math.round((date.getTime() - now) / 1000);
+      const abs = Math.abs(diffSec);
+      const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+      if (abs < 60) return rtf.format(diffSec, "second");
+      if (abs < 3600) return rtf.format(Math.round(diffSec / 60), "minute");
+      if (abs < 86400) return rtf.format(Math.round(diffSec / 3600), "hour");
+      if (abs < 2592000) return rtf.format(Math.round(diffSec / 86400), "day");
+      if (abs < 31536000) return rtf.format(Math.round(diffSec / 2592000), "month");
+      return rtf.format(Math.round(diffSec / 31536000), "year");
+    }
+    default:
+      return `${longDate.format(date)} ${shortTime.format(date)}`;
+  }
+}
+
 function extractMentionUserIdsFromEmbeds(embeds: DiscordEmbed[] | undefined): string[] {
   if (!embeds?.length) return [];
   const out: string[] = [];
@@ -158,6 +222,17 @@ function renderDiscordMarkdown(
     .replace(/<#(\d{15,22})>/g, (_m, id: string) => `#channel:${id}`)
     .replace(/@everyone/g, "@everyone")
     .replace(/@here/g, "@here");
+
+  text = text.replace(
+    /<t:(\d{1,12})(?::([tTdDfFR]))?>?/g,
+    (_m, unixRaw: string, styleRaw?: string) => {
+      const rendered = formatDiscordTimestampToken(
+        Number(unixRaw),
+        styleRaw || undefined
+      );
+      return rendered || `<t:${unixRaw}${styleRaw ? `:${styleRaw}` : ""}>`;
+    }
+  );
 
   text = escapeHtml(text).replaceAll("\r\n", "\n");
 
