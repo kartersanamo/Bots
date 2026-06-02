@@ -2,6 +2,7 @@ import { handleApiRoute, requireAction } from "@/lib/api/helpers";
 import { rowsToCsv, csvResponse } from "@/lib/analytics/export";
 import { fetchGuildChannels, isDiscordConfigured } from "@/lib/discord/api";
 import { filterVisibleTicketChannelIds } from "@/lib/discord/channel-visibility";
+import { env } from "@/lib/env";
 import {
   getDistinctTicketTypes,
   getTicketStats,
@@ -114,7 +115,14 @@ export const GET = handleApiRoute(async (request) => {
   let visibleStats = stats;
   let visibleTypes = types;
 
-  if (status === "open" && tickets.length > 0 && isDiscordConfigured()) {
+  const ownerOverrideId = env("OWNER_DISCORD_ID");
+  const ownerBypass = !!ownerOverrideId && session.id === ownerOverrideId;
+  if (
+    status === "open" &&
+    tickets.length > 0 &&
+    isDiscordConfigured() &&
+    !ownerBypass
+  ) {
     try {
       const channels = await fetchGuildChannels();
       const visibleIds = filterVisibleTicketChannelIds(

@@ -14,6 +14,7 @@ import { useState } from "react";
 
 interface TicketlogsWorkspaceProps {
   userTier: PermissionTier;
+  ownerBypass?: boolean;
 }
 
 function hasTranscriptUrl(t: TicketRow): boolean {
@@ -33,7 +34,10 @@ function isSensitiveTicketVisibility(privated: string | null | undefined): boole
   );
 }
 
-export function TicketlogsWorkspace({ userTier }: TicketlogsWorkspaceProps) {
+export function TicketlogsWorkspace({
+  userTier,
+  ownerBypass = false,
+}: TicketlogsWorkspaceProps) {
   const {
     state,
     setParams,
@@ -49,7 +53,7 @@ export function TicketlogsWorkspace({ userTier }: TicketlogsWorkspaceProps) {
   } = useTicketlogsSearch();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const canViewPrivate = can(userTier, "tickets.view_private");
+  const canViewPrivate = can(userTier, "tickets.view_private") || ownerBypass;
 
   const exportCsv = () => {
     window.open(`/api/tickets?${buildQueryString()}&format=csv`, "_blank");

@@ -2,6 +2,7 @@ import { TicketlogsWorkspace } from "@/components/analytics/ticketlogs/Ticketlog
 import { Header } from "@/components/layout/Header";
 import { GamesDiscordUsersProvider } from "@/components/games/GamesDiscordUsersProvider";
 import { getSession } from "@/lib/auth/session";
+import { env } from "@/lib/env";
 import { can } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -10,6 +11,8 @@ export default async function TicketlogsPage() {
   const session = await getSession();
   if (!session || session.tier === "none") redirect("/login");
   if (!can(session.tier, "tickets.read")) redirect("/unauthorized");
+  const ownerOverrideId = env("OWNER_DISCORD_ID");
+  const ownerBypass = !!ownerOverrideId && session.id === ownerOverrideId;
 
   return (
     <>
@@ -27,7 +30,7 @@ export default async function TicketlogsPage() {
         }
       >
         <GamesDiscordUsersProvider>
-          <TicketlogsWorkspace userTier={session.tier} />
+          <TicketlogsWorkspace userTier={session.tier} ownerBypass={ownerBypass} />
         </GamesDiscordUsersProvider>
       </Suspense>
     </>
