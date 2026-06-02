@@ -7,9 +7,18 @@ import { PanelFallback } from "@/components/ui/panel-fallback";
 import { Badge } from "@/components/ui/Badge";
 import dynamic from "next/dynamic";
 
-const LogViewer = dynamic(
+const TmuxConsole = dynamic(
   () =>
-    import("@/components/fleet/LogViewer").then((m) => ({ default: m.LogViewer })),
+    import("@/components/fleet/TmuxConsole").then((m) => ({
+      default: m.TmuxConsole,
+    })),
+  { loading: () => <PanelFallback /> }
+);
+const BotLogFileViewer = dynamic(
+  () =>
+    import("@/components/fleet/BotLogFileViewer").then((m) => ({
+      default: m.BotLogFileViewer,
+    })),
   { loading: () => <PanelFallback /> }
 );
 const ConfigEditor = dynamic(
@@ -198,7 +207,10 @@ export function BotWorkspace({
         <BotOverviewTab bot={bot} canRestart={canRestart} fleet={fleet} />
       )}
       {activeTab === "console" && can(userTier, "logs.view") && (
-        <LogViewer botId={bot.id} />
+        <TmuxConsole botId={bot.id} />
+      )}
+      {activeTab === "logs" && can(userTier, "logs.view") && (
+        <BotLogFileViewer botId={bot.id} />
       )}
       {activeTab === "config" && can(userTier, "config.view") && (
         <ConfigEditor botId={bot.id} canEdit={canEditConfig} />

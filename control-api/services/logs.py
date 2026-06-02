@@ -23,16 +23,8 @@ def _collect_log_files(bot_id: str) -> list[Path]:
             files.extend(
                 sorted(d.glob("*.log*"), key=lambda p: p.stat().st_mtime, reverse=True)
             )
-    dashboard_log = root / "logs" / "dashboard-start.log"
-    if not dashboard_log.is_file():
-        for name in ("logs", "Logs"):
-            candidate = root / name / "dashboard-start.log"
-            if candidate.is_file():
-                dashboard_log = candidate
-                break
-    if dashboard_log.is_file():
-        files.append(dashboard_log)
-    return files[:20]
+    # dashboard-start.log is legacy fallback output — not shown in the Logs tab.
+    return [f for f in files[:20] if f.name != "dashboard-start.log"]
 
 
 def _filter_lines(lines: List[str], search: Optional[str]) -> List[str]:
@@ -55,7 +47,7 @@ def _tail_file_lines(
 ) -> dict:
     files = _collect_log_files(bot_id)
     if not files:
-        return {"lines": [], "file": None, "files": []}
+        return {"lines": [], "file": None, "files": [], "source": "file"}
 
     target = files[0]
     if file_name:
@@ -67,20 +59,21 @@ def _tail_file_lines(
     try:
         content = target.read_text(encoding="utf-8", errors="replace")
     except OSError as e:
-        return {"lines": [f"Error reading log: {e}"], "file": target.name, "files": [f.name for f in files]}
+        return {
+            "lines": [f"Error reading log: {e}"],
+            "file": target.name,
+            "files": [f.name for f in files],
+            "source": "file",
+        }
 
     all_lines = content.splitlines()
     chunk = all_lines[-lines:] if lines > 0 else all_lines
     chunk = _filter_lines(chunk, search)
 
-    file_names = [f.name for f in files]
-    if tcx.uses_tmux(bot_id):
-        file_names = ["tmux console", *file_names]
-
     return {
         "lines": chunk,
         "file": target.name,
-        "files": file_names,
+        "files": [f.name for f in files],
         "source": "file",
     }
 
@@ -92,26 +85,57 @@ def tail_logs(
     file_name: Optional[str] = None,
     source: LogSource = "auto",
 ) -> dict:
-    if source in ("auto", "console") and tcx.uses_tmux(bot_id):
-        console_lines = tcx.capture_pane(bot_id, lines=max(lines, 100))
-        console_lines = _filter_lines(console_lines, search)
-        if console_lines or source == "console":
-            file_list = ["tmux console"]
-            file_list.extend(f.name for f in _collect_log_files(bot_id))
-            return {
-                "lines": console_lines[-lines:] if lines > 0 else console_lines,
-                "file": "tmux console",
-                "files": file_list,
-                "source": "console",
-            }
-
     if source == "console":
+        if not tcx.uses_tmux(bot_id):
+            return {
+                "lines": [
+                    f"Tmux window unavailable for this bot "
+                    f"(session {tcx.tmux_session()}). "
+                    "Open the matching tmux pane on the host."
+                ],
+                "file": None,
+                "files": [],
+                "source": "console",
+                "tmuxAvailable": False,
+            }
+        console_lines = tcx.capture_pane(
+            bot_id,
+            lines=max(lines, 500),
+            full_scrollback=True,
+        )
+        console_lines = _filter_lines(console_lines, search)
+        if lines > 0:
+            console_lines = console_lines[-lines:]
         return {
-            "lines": [],
-            "file": None,
+            "lines": console_lines,
+            "file": "tmux console",
             "files": [],
             "source": "console",
+            "tmuxAvailable": True,
         }
 
+    if source == "file":
+        return _tail_file_lines(bot_id, lines, search, file_name)
+
+    # auto: prefer tmux console when available, else log files
+    if tcx.uses_tmux(bot_id):
+        console_lines = tcx.capture_pane(
+            bot_id,
+            lines=max(lines, 500),
+            full_scrollback=True,
+        )
+        console_lines = _filter_lines(console_lines, search)
+        if console_lines:
+            if lines > 0:
+                console_lines = console_lines[-lines:]
+            return {
+                "lines": console_lines,
+                "file": "tmux console",
+                "files": [f.name for f in _collect_log_files(bot_id)],
+                "source": "console",
+                "tmuxAvailable": True,
+            }
+
     result = _tail_file_lines(bot_id, lines, search, file_name)
+    result["tmuxAvailable"] = tcx.uses_tmux(bot_id)
     return result

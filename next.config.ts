@@ -87,7 +87,7 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/dashboard/bots/:botId/logs",
-        destination: "/dashboard/bots/:botId?tab=console",
+        destination: "/dashboard/bots/:botId?tab=logs",
         permanent: false,
       },
       {

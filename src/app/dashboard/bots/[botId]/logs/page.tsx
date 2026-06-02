@@ -6,5 +6,5 @@ export default async function BotLogsRedirect({
   params: Promise<{ botId: string }>;
 }) {
   const { botId } = await params;
-  redirect(`/dashboard/bots/${botId}?tab=console`);
+  redirect(`/dashboard/bots/${botId}?tab=logs`);
 }

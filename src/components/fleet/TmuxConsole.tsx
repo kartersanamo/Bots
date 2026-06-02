@@ -6,70 +6,64 @@ import { cn } from "@/lib/utils";
 import { Maximize2, Minimize2, RefreshCw, Search } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-interface LogViewerProps {
+interface TmuxConsoleProps {
   botId: string;
 }
 
-type LogSource = "auto" | "console" | "file";
-
-export function LogViewer({ botId }: LogViewerProps) {
+/** Live mirror of the bot's tmux pane — never reads log files. */
+export function TmuxConsole({ botId }: TmuxConsoleProps) {
   const [lines, setLines] = useState<string[]>([]);
-  const [files, setFiles] = useState<string[]>([]);
-  const [file, setFile] = useState<string | null>(null);
-  const [source, setSource] = useState<LogSource>("auto");
-  const [activeSource, setActiveSource] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
   const [pauseScroll, setPauseScroll] = useState(false);
+  const [search, setSearch] = useState("");
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [tmuxAvailable, setTmuxAvailable] = useState<boolean | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const preRef = useRef<HTMLPreElement>(null);
 
-  const fetchLogs = useCallback(async () => {
+  const fetchConsole = useCallback(async () => {
     setLoading(true);
     setFetchError(null);
     try {
-      const params = new URLSearchParams({ lines: "200", source });
+      const params = new URLSearchParams({
+        lines: "5000",
+        source: "console",
+      });
       if (search) params.set("search", search);
-      if (file && file !== "tmux console") params.set("file", file);
       const res = await fetch(`/api/bots/${botId}/logs?${params}`);
       const data = await res.json();
       if (!res.ok) {
-        setFetchError(data.error || "Failed to load logs");
+        setFetchError(data.error || "Failed to load console");
         setLines([]);
         return;
       }
       setLines(data.lines || []);
-      setFiles(data.files || []);
-      setActiveSource(data.source ?? null);
-      if (data.file && !file) setFile(data.file);
+      setTmuxAvailable(data.tmuxAvailable !== false);
     } catch {
-      setFetchError("Could not reach log API");
+      setFetchError("Could not reach console API");
       setLines([]);
     } finally {
       setLoading(false);
     }
-  }, [botId, search, file, source]);
+  }, [botId, search]);
 
   useEffect(() => {
-    fetchLogs();
-  }, [fetchLogs]);
+    fetchConsole();
+  }, [fetchConsole]);
 
   useEffect(() => {
     if (!autoRefresh) return;
-    const intervalMs = source === "file" ? 10_000 : 3_000;
     const tick = () => {
-      if (document.visibilityState !== "hidden") fetchLogs();
+      if (document.visibilityState !== "hidden") fetchConsole();
     };
-    const t = setInterval(tick, intervalMs);
+    const t = setInterval(tick, 1000);
     return () => clearInterval(t);
-  }, [autoRefresh, fetchLogs, source]);
+  }, [autoRefresh, fetchConsole]);
 
   useEffect(() => {
     if (pauseScroll) return;
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    bottomRef.current?.scrollIntoView({ behavior: "auto" });
   }, [lines, pauseScroll]);
 
   return (
@@ -85,40 +79,19 @@ export function LogViewer({ botId }: LogViewerProps) {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
           <input
             type="text"
-            placeholder="Filter output..."
+            placeholder="Filter pane output..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && fetchLogs()}
+            onKeyDown={(e) => e.key === "Enter" && fetchConsole()}
             className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-sm text-white"
           />
         </div>
-        <select
-          value={source}
-          onChange={(e) => {
-            setSource(e.target.value as LogSource);
-            setFile(null);
-          }}
-          className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-white"
-          title="Log source"
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={fetchConsole}
+          disabled={loading}
         >
-          <option value="auto">Tmux + files</option>
-          <option value="console">Tmux console only</option>
-          <option value="file">Log files only</option>
-        </select>
-        {files.length > 0 && source !== "console" && (
-          <select
-            value={file || ""}
-            onChange={(e) => setFile(e.target.value || null)}
-            className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-white"
-          >
-            {files.map((f) => (
-              <option key={f} value={f === "tmux console" ? "" : f}>
-                {f}
-              </option>
-            ))}
-          </select>
-        )}
-        <Button size="sm" variant="secondary" onClick={fetchLogs} disabled={loading}>
           <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
         </Button>
         <label className="flex items-center gap-2 text-sm text-muted">
@@ -127,7 +100,7 @@ export function LogViewer({ botId }: LogViewerProps) {
             checked={autoRefresh}
             onChange={(e) => setAutoRefresh(e.target.checked)}
           />
-          Live
+          Live (1s)
         </label>
         <label className="flex items-center gap-2 text-sm text-muted">
           <input
@@ -152,9 +125,8 @@ export function LogViewer({ botId }: LogViewerProps) {
       </div>
 
       <p className="mt-2 text-xs text-muted">
-        {lines.length} line{lines.length !== 1 ? "s" : ""}
-        {file ? ` · ${file}` : ""}
-        {activeSource === "console" ? " · live tmux pane" : ""}
+        {lines.length} line{lines.length !== 1 ? "s" : ""} · live tmux pane
+        {tmuxAvailable === false ? " · tmux unavailable" : ""}
       </p>
 
       {fetchError && (
@@ -162,7 +134,6 @@ export function LogViewer({ botId }: LogViewerProps) {
       )}
 
       <pre
-        ref={preRef}
         className={cn(
           "mt-2 overflow-auto rounded-lg bg-background p-4 font-mono text-xs leading-relaxed text-green-300/90",
           fullscreen ? "max-h-[calc(100vh-12rem)] flex-1" : "max-h-[60vh]"
@@ -174,9 +145,9 @@ export function LogViewer({ botId }: LogViewerProps) {
           <span className="text-muted">
             {loading
               ? "Loading console…"
-              : fetchError
-                ? "—"
-                : "No output yet. Start or restart the bot — output appears from its tmux pane."}
+              : tmuxAvailable === false
+                ? "Tmux pane not available. Ensure the bots session and this bot's window exist on the host."
+                : "No output in tmux pane yet. Use Start to run ./run.sh in the window."}
           </span>
         )}
         <div ref={bottomRef} />

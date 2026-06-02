@@ -1,4 +1,4 @@
-"""Bot process status and lifecycle via systemd or direct subprocess."""
+"""Bot process status and lifecycle via systemd or tmux + run.sh."""
 from __future__ import annotations
 
 import os
@@ -180,16 +180,6 @@ def _resolve_bot_python(root: Path) -> str:
     return "python3"
 
 
-def _bot_log_dir(root: Path) -> Path:
-    for name in ("logs", "Logs"):
-        d = root / name
-        if d.is_dir():
-            return d
-    d = root / "logs"
-    d.mkdir(parents=True, exist_ok=True)
-    return d
-
-
 def _kill_bot_processes(bot_id: str) -> None:
     """Stop detached/orphan processes started outside tmux."""
     entry = get_bot(bot_id)
@@ -228,12 +218,18 @@ def start_bot(bot_id: str) -> ProcessInfo:
     root = bot_root(bot_id)
     run_sh = root / "run.sh"
     script = root / entry.entry_script
-    if not script.is_file() and not run_sh.exists():
+    if not script.is_file() and not run_sh.is_file():
         raise FileNotFoundError(f"No {entry.entry_script} or run.sh under {root}")
 
+    # Production bots use ./run.sh inside their tmux pane — never a detached process.
+    if run_sh.is_file():
+        _kill_bot_processes(bot_id)
+        tcx.start_run_sh(bot_id)
+        time.sleep(2)
+        invalidate_process_cache(bot_id)
+        return get_process_info(bot_id)
+
     if tcx.uses_tmux(bot_id):
-        if not run_sh.is_file():
-            raise FileNotFoundError(f"No run.sh under {root}")
         _kill_bot_processes(bot_id)
         tcx.start_run_sh(bot_id)
         time.sleep(2)
@@ -244,23 +240,15 @@ def start_bot(bot_id: str) -> ProcessInfo:
     if info.status == "online":
         return info
 
-    log_out = _bot_log_dir(root) / "dashboard-start.log"
-    if run_sh.is_file():
-        cmd: list[str] = ["/bin/bash", str(run_sh)]
-    else:
-        python = _resolve_bot_python(root)
-        cmd = [python, entry.entry_script]
-
-    with open(log_out, "a") as logf:
-        logf.write(f"\n--- start {time.strftime('%Y-%m-%d %H:%M:%S')} cmd={cmd!r} ---\n")
-        logf.flush()
-        subprocess.Popen(
-            cmd,
-            cwd=str(root),
-            stdout=logf,
-            stderr=subprocess.STDOUT,
-            start_new_session=True,
-        )
+    python = _resolve_bot_python(root)
+    cmd = [python, entry.entry_script]
+    subprocess.Popen(
+        cmd,
+        cwd=str(root),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
     time.sleep(2)
     invalidate_process_cache(bot_id)
     return get_process_info(bot_id)
@@ -316,8 +304,8 @@ def restart_bot(bot_id: str) -> ProcessInfo:
         invalidate_process_cache(bot_id)
         return get_process_info(bot_id)
 
-    if tcx.uses_tmux(bot_id):
-        _kill_bot_processes(bot_id)
+    _kill_bot_processes(bot_id)
+    if tcx.uses_tmux(bot_id) or (bot_root(bot_id) / "run.sh").is_file():
         tcx.restart_run_sh(bot_id)
         time.sleep(2)
         invalidate_process_cache(bot_id)

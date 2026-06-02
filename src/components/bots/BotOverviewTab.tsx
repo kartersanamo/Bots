@@ -44,7 +44,7 @@ export function BotOverviewTab({ bot, canRestart, fleet }: BotOverviewTabProps) 
       setLogPreview([]);
       return;
     }
-    fetch(`/api/bots/${bot.id}/logs?lines=8`)
+    fetch(`/api/bots/${bot.id}/logs?lines=8&source=console`)
       .then((r) => r.json())
       .then((d) => setLogPreview((d.lines || []).slice(-8)))
       .catch(() => setLogPreview([]));
@@ -115,7 +115,7 @@ export function BotOverviewTab({ bot, canRestart, fleet }: BotOverviewTabProps) 
 
       <Card>
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="font-semibold text-white">Recent log lines</h3>
+          <h3 className="font-semibold text-white">Console preview</h3>
           <Link
             href={`/dashboard/bots/${bot.id}?tab=console`}
             className="text-sm text-accent-light hover:underline"
@@ -126,13 +126,14 @@ export function BotOverviewTab({ bot, canRestart, fleet }: BotOverviewTabProps) 
         <pre className="max-h-40 overflow-auto rounded-lg bg-background p-3 font-mono text-xs text-green-300/90">
           {logPreview.length
             ? logPreview.join("\n")
-            : "No logs available (bot offline or no log file)."}
+            : "No console output (bot offline or tmux pane empty)."}
         </pre>
       </Card>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
           { tab: "console", label: "Console" },
+          { tab: "logs", label: "Logs" },
           { tab: "config", label: "Config" },
           { tab: "inbox", label: "DM inbox" },
           { tab: "actions", label: "Actions" },
