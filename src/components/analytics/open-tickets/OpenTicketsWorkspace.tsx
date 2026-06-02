@@ -205,7 +205,14 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "/" && document.activeElement?.tagName !== "INPUT") {
+      const active = document.activeElement as HTMLElement | null;
+      const tag = active?.tagName;
+      const isTypingField =
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        active?.isContentEditable === true;
+
+      if (e.key === "/" && !isTypingField) {
         e.preventDefault();
         searchRef.current?.focus();
       }
