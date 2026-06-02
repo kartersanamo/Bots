@@ -4,9 +4,7 @@ import {
   AnalyticsDataTable,
   AnalyticsTable,
 } from "@/components/analytics/AnalyticsDataTable";
-import { AnalyticsChartCard } from "@/components/analytics/AnalyticsChartCard";
 import { AnalyticsKpiGrid } from "@/components/analytics/AnalyticsKpiGrid";
-import { NamedBarChart } from "@/components/analytics/charts";
 import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { useAnalyticsTableRowLimit } from "@/components/analytics/table-row-limit";
 import type { StaffAnalytics, StaffLeaderboardRow } from "@/lib/analytics/types";
@@ -76,14 +74,19 @@ function StaffTable({
   );
 }
 
+function staffActivityTotal(r: StaffLeaderboardRow): number {
+  return r.ticketsClosed + r.messages + r.warnings + r.screenshares;
+}
+
 export function StaffAnalyticsSection({ data }: StaffAnalyticsSectionProps) {
   const { totals, totalsPeriod, totalsAllTime } = data;
+  const overviewLimit = useAnalyticsTableRowLimit(12);
+  const overviewRows = [...data.leaderboard]
+    .sort((a, b) => staffActivityTotal(b) - staffActivityTotal(a))
+    .slice(0, 12);
+  const visibleOverview = overviewLimit.slice(overviewRows);
   const duplicatesLimit = useAnalyticsTableRowLimit(8);
   const visibleDuplicates = duplicatesLimit.slice(data.duplicateStatisticsUsers);
-  const activityBars = data.leaderboard.slice(0, 12).map((r) => ({
-    name: r.userId.slice(-6),
-    count: r.ticketsClosed + r.messages + r.warnings + r.screenshares,
-  }));
 
   return (
     <div className="space-y-6">
@@ -132,21 +135,66 @@ export function StaffAnalyticsSection({ data }: StaffAnalyticsSectionProps) {
         ]}
       />
 
-      {activityBars.length > 0 && (
-        <AnalyticsChartCard
-          title="Combined staff activity score (top 12)"
-          exportHeaders={["staffSuffix", "score"]}
-          exportFilename="staff-activity-score.csv"
-          exportRows={activityBars.map((r) => ({
-            staffSuffix: r.name,
-            score: r.count,
+      {overviewRows.length > 0 && (
+        <AnalyticsDataTable
+          title="All-time activity by staff"
+          headers={[
+            "userId",
+            "ticketsClosed",
+            "messages",
+            "warnings",
+            "screenshares",
+            "total",
+          ]}
+          exportFilename="staff-all-time-overview.csv"
+          exportRows={overviewRows.map((r) => ({
+            userId: r.userId,
+            ticketsClosed: r.ticketsClosed,
+            messages: r.messages,
+            warnings: r.warnings,
+            screenshares: r.screenshares,
+            total: staffActivityTotal(r),
           }))}
+          tableRowLimit={overviewLimit.tableRowLimit}
         >
-          <p className="mb-2 text-xs text-muted">
-            All-time totals from total_statistics (not reset by /wipe).
+          <p className="px-4 pt-3 text-xs text-muted">
+            Lifetime counts per active staff member from{" "}
+            <code className="text-[11px]">total_statistics</code> (not reset by
+            /wipe). Staff with all zeros in the current{" "}
+            <code className="text-[11px]">statistics</code> period are excluded
+            (departed).
           </p>
-          <NamedBarChart data={activityBars} color="#38bdf8" />
-        </AnalyticsChartCard>
+          <AnalyticsTable>
+            <thead>
+              <tr className="border-b border-border text-left text-xs text-muted">
+                <th className="px-4 py-2">#</th>
+                <th className="px-4 py-2">Staff</th>
+                <th className="px-4 py-2">Tickets</th>
+                <th className="px-4 py-2">Messages</th>
+                <th className="px-4 py-2">Warnings</th>
+                <th className="px-4 py-2">Screenshares</th>
+                <th className="px-4 py-2">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleOverview.map((r, i) => (
+                <tr key={r.userId} className="border-b border-border/50">
+                  <td className="px-4 py-2 text-muted">{i + 1}</td>
+                  <td className="px-4 py-2">
+                    <DiscordUserChip userId={r.userId} />
+                  </td>
+                  <td className="px-4 py-2">{formatNumber(r.ticketsClosed)}</td>
+                  <td className="px-4 py-2">{formatNumber(r.messages)}</td>
+                  <td className="px-4 py-2">{formatNumber(r.warnings)}</td>
+                  <td className="px-4 py-2">{formatNumber(r.screenshares)}</td>
+                  <td className="px-4 py-2 font-medium text-white">
+                    {formatNumber(staffActivityTotal(r))}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </AnalyticsTable>
+        </AnalyticsDataTable>
       )}
 
       <StaffTable
