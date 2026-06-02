@@ -1,3 +1,7 @@
+import {
+  ACTIVE_STAFF_USER_IDS_SUBQUERY,
+  ACTIVE_STAFF_WHERE_STATISTICS,
+} from "@/lib/analytics/staff-roster";
 import type { StaffAnalytics, StaffLeaderboardRow } from "@/lib/analytics/types";
 import { getTotalStatisticsTotals, totalStatisticsTableExists } from "@/lib/db/total-statistics";
 import { query, queryOne, isDbConfigured } from "@/lib/db/pool";
@@ -20,13 +24,14 @@ function mapRow(r: {
 
 function leaderboardQuery(table: "total_statistics" | "statistics") {
   if (table === "total_statistics") {
-    return `SELECT user_ID AS user_id,
-      COALESCE(tickets_closed, 0) AS tickets_closed,
-      COALESCE(messages_sent, 0) AS messages,
-      COALESCE(warnings, 0) AS warnings,
-      COALESCE(screenshares, 0) AS screenshares
-     FROM total_statistics
-     ORDER BY tickets_closed DESC
+    return `SELECT t.user_ID AS user_id,
+      COALESCE(t.tickets_closed, 0) AS tickets_closed,
+      COALESCE(t.messages_sent, 0) AS messages,
+      COALESCE(t.warnings, 0) AS warnings,
+      COALESCE(t.screenshares, 0) AS screenshares
+     FROM total_statistics t
+     WHERE t.user_ID IN (${ACTIVE_STAFF_USER_IDS_SUBQUERY})
+     ORDER BY t.tickets_closed DESC
      LIMIT 50`;
   }
   return `SELECT user_ID AS user_id,
@@ -35,6 +40,7 @@ function leaderboardQuery(table: "total_statistics" | "statistics") {
       COALESCE(CAST(warnings AS UNSIGNED), 0) AS warnings,
       COALESCE(CAST(screenshares AS UNSIGNED), 0) AS screenshares
      FROM statistics
+     WHERE ${ACTIVE_STAFF_WHERE_STATISTICS}
      ORDER BY CAST(tickets_closed AS UNSIGNED) DESC
      LIMIT 50`;
 }
@@ -46,7 +52,8 @@ const PERIOD_TOTALS_SQL = `
     COALESCE(SUM(CAST(warnings AS UNSIGNED)), 0) AS warnings,
     COALESCE(SUM(CAST(screenshares AS UNSIGNED)), 0) AS screenshares,
     COUNT(*) AS staff
-  FROM statistics`;
+  FROM statistics
+  WHERE ${ACTIVE_STAFF_WHERE_STATISTICS}`;
 
 export async function getStaffAnalytics(): Promise<StaffAnalytics | null> {
   if (!isDbConfigured()) return null;
@@ -68,7 +75,9 @@ export async function getStaffAnalytics(): Promise<StaffAnalytics | null> {
         }>(leaderboardQuery(lbTable)).catch(() => []),
         query<{ user_ID: string; cnt: number }>(
           `SELECT user_ID, COUNT(*) AS cnt
-           FROM statistics GROUP BY user_ID HAVING COUNT(*) > 1`
+           FROM statistics
+           WHERE ${ACTIVE_STAFF_WHERE_STATISTICS}
+           GROUP BY user_ID HAVING COUNT(*) > 1`
         ).catch(() => []),
         queryOne<{ total: number }>(
           `SELECT COUNT(*) AS total FROM strike_reports`

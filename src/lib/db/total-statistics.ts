@@ -1,3 +1,4 @@
+import { ACTIVE_STAFF_USER_IDS_SUBQUERY } from "@/lib/analytics/staff-roster";
 import { query, queryOne, isDbConfigured } from "@/lib/db/pool";
 
 export interface TotalStatisticsTotals {
@@ -15,7 +16,8 @@ const TOTALS_SQL = `
     COALESCE(SUM(warnings), 0) AS warnings,
     COALESCE(SUM(screenshares), 0) AS screenshares,
     COUNT(*) AS staff
-  FROM total_statistics`;
+  FROM total_statistics
+  WHERE user_ID IN (${ACTIVE_STAFF_USER_IDS_SUBQUERY})`;
 
 export async function getTotalStatisticsTotals(): Promise<TotalStatisticsTotals | null> {
   if (!isDbConfigured()) return null;

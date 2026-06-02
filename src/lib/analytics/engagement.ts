@@ -1,5 +1,6 @@
 import type { AnalyticsGroupBy } from "@/lib/analytics/group-by";
 import { rangeSinceUnix } from "@/lib/analytics/range";
+import { activeStaffStatisticsJoin } from "@/lib/analytics/staff-roster";
 import { getAnalyticsTrackingTableStatus } from "@/lib/analytics/table-check";
 import {
   bucketKeySqlFromDate,
@@ -39,7 +40,8 @@ function mapDaily(rows: { date: string | Date; count: number }[]): DailyCount[] 
   }));
 }
 
-const STAFF_MEMBER_JOIN = `INNER JOIN statistics s ON s.user_ID = m.user_id`;
+const STAFF_MEMBER_JOIN = `INNER JOIN statistics s ON s.user_ID = m.user_id
+  AND ${activeStaffStatisticsJoin("s")}`;
 
 export async function getEngagementAnalytics(
   range: AnalyticsRange,
