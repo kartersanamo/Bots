@@ -5,12 +5,14 @@ import type {
   CountingUserRow,
   DailyClaimRow,
   GameSessionRow,
+  GamesLeaderboardType,
   GamesOverview,
   LeaderboardEntry,
   LevelingRow,
   UserAchievementRow,
   XpLogRow,
 } from "@/lib/games/types";
+import { env } from "@/lib/env";
 
 const CHAT_WIN_SOURCES: Record<string, string> = {
   trivia_wins: "Trivia",
@@ -165,6 +167,127 @@ export async function getAllTimeLeaderboard(
   }
 
   return [];
+}
+
+export async function getGamesLeaderboard(
+  type: GamesLeaderboardType,
+  limit = 100,
+  opts?: { guildId?: string | null }
+): Promise<LeaderboardEntry[]> {
+  if (!isDbConfigured()) return [];
+
+  const guildId =
+    opts?.guildId ??
+    env("DISCORD_GUILD_ID") ??
+    env("NEXT_PUBLIC_DISCORD_GUILD_ID") ??
+    null;
+
+  if (type === "monthly_level") {
+    const rows = await query<{ user_id: string; level: number; xp: number }>(
+      `SELECT user_id, CAST(level AS UNSIGNED) AS level, CAST(xp AS UNSIGNED) AS xp
+       FROM leveling
+       WHERE CAST(xp AS UNSIGNED) > 0 OR CAST(level AS UNSIGNED) > 1
+       ORDER BY CAST(level AS UNSIGNED) DESC, CAST(xp AS UNSIGNED) DESC
+       LIMIT ?`,
+      [limit]
+    );
+    return rows.map((r, i) => ({
+      userId: String(r.user_id),
+      value: Number(r.level),
+      rank: i + 1,
+      extra: `${Number(r.xp)} xp`,
+    }));
+  }
+
+  if (type === "monthly_xp") {
+    const rows = await query<{ user_id: string; value: number }>(
+      `SELECT user_id, CAST(xp AS UNSIGNED) AS value FROM leveling
+       WHERE CAST(xp AS UNSIGNED) > 0
+       ORDER BY value DESC LIMIT ?`,
+      [limit]
+    );
+    return rows.map((r, i) => ({
+      userId: String(r.user_id),
+      value: Number(r.value),
+      rank: i + 1,
+    }));
+  }
+
+  if (type === "achievements_earned") {
+    const rows = await query<{ user_id: string; value: number }>(
+      `SELECT user_id, COUNT(*) AS value FROM user_achievements
+       GROUP BY user_id ORDER BY value DESC LIMIT ?`,
+      [limit]
+    );
+    return rows.map((r, i) => ({
+      userId: String(r.user_id),
+      value: Number(r.value),
+      rank: i + 1,
+    }));
+  }
+
+  if (type === "daily_streak") {
+    const rows = await query<{ user_id: string; value: number }>(
+      `SELECT user_id, streak AS value FROM daily_claims
+       WHERE streak > 0 ORDER BY value DESC LIMIT ?`,
+      [limit]
+    );
+    return rows.map((r, i) => ({
+      userId: String(r.user_id),
+      value: Number(r.value),
+      rank: i + 1,
+    }));
+  }
+
+  if (type === "counting_counts") {
+    if (!guildId) return [];
+    const rows = await query<{ user_id: string; value: number }>(
+      `SELECT user_id, total_counts AS value FROM counting_users
+       WHERE guild_id = ? AND total_counts > 0
+       ORDER BY value DESC LIMIT ?`,
+      [guildId, limit]
+    );
+    return rows.map((r, i) => ({
+      userId: String(r.user_id),
+      value: Number(r.value),
+      rank: i + 1,
+    }));
+  }
+
+  if (type === "distinct_games_played") {
+    const rows = await query<{ user_id: string; value: number }>(
+      `SELECT user_id, COUNT(DISTINCT game_id) AS value FROM xp_logs
+       WHERE game_id != -999999 AND CAST(game_id AS UNSIGNED) > 0
+       GROUP BY user_id ORDER BY value DESC LIMIT ?`,
+      [limit]
+    );
+    return rows.map((r, i) => ({
+      userId: String(r.user_id),
+      value: Number(r.value),
+      rank: i + 1,
+    }));
+  }
+
+  return getAllTimeLeaderboard(type as AllTimeLeaderboardType, limit);
+}
+
+export async function getAllGamesLeaderboards(
+  limit = 10,
+  guildId?: string | null
+): Promise<Record<GamesLeaderboardType, LeaderboardEntry[]>> {
+  const { GAMES_LEADERBOARD_CATALOG } = await import("@/lib/games/types");
+  const entries = await Promise.all(
+    GAMES_LEADERBOARD_CATALOG.map(async (def) => {
+      const rows = await getGamesLeaderboard(def.id, limit, { guildId }).catch(
+        () => [] as LeaderboardEntry[]
+      );
+      return [def.id, rows] as const;
+    })
+  );
+  return Object.fromEntries(entries) as Record<
+    GamesLeaderboardType,
+    LeaderboardEntry[]
+  >;
 }
 
 export async function listXpLogs(opts: {

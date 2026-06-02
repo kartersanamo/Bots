@@ -194,6 +194,12 @@ const H: Record<string, AnalyticsDataMeta> = {
     description: "Longest current /daily streak from daily_claims.",
     rangeLabel: `All-time streak column. ${ALL_TIME_DATA_CAVEAT}`,
   },
+  "games.leaderboards": {
+    description:
+      "Top players per games category (XP, wins per game, monthly level, counting, achievements, etc.). Same data as the bot’s All Time Leaderboard menu; each category uses its own table or xp_logs source.",
+    rangeLabel:
+      "All-time and monthly leaderboards are not filtered by the dashboard range. Monthly boards reset on /wipe-levels.",
+  },
 
   // —— Engagement ——
   "engagement.totalStaffMessages": {

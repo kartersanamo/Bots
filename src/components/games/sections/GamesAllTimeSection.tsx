@@ -3,7 +3,7 @@
 import { Card } from "@/components/ui/Card";
 import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { useResolveDiscordUsers } from "@/components/games/GamesDiscordUsersProvider";
-import { ALL_TIME_LEADERBOARD_TYPES } from "@/lib/games/types";
+import { GAMES_LEADERBOARD_CATALOG } from "@/lib/games/types";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -67,7 +67,7 @@ export function GamesAllTimeSection() {
   }, [type, load]);
 
   const typeLabel =
-    ALL_TIME_LEADERBOARD_TYPES.find((t) => t.id === type)?.label ?? type;
+    GAMES_LEADERBOARD_CATALOG.find((t) => t.id === type)?.label ?? type;
   const showSkeleton = loading && entries.length === 0;
   const showOverlay = loading && entries.length > 0;
 
@@ -79,7 +79,7 @@ export function GamesAllTimeSection() {
           onChange={(e) => setType(e.target.value)}
           className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-white"
         >
-          {ALL_TIME_LEADERBOARD_TYPES.map((t) => (
+          {GAMES_LEADERBOARD_CATALOG.map((t) => (
             <option key={t.id} value={t.id}>
               {t.label}
             </option>

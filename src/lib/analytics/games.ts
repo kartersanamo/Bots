@@ -6,8 +6,12 @@ import {
   buildTimeBucketSpec,
   normalizeTimeSeries,
 } from "@/lib/analytics/time-buckets";
-import type { AnalyticsRange, DailyCount, GamesAnalytics } from "@/lib/analytics/types";
-import { getGamesOverview } from "@/lib/db/games";
+import type {
+  AnalyticsRange,
+  DailyCount,
+  GamesAnalytics,
+} from "@/lib/analytics/types";
+import { getAllGamesLeaderboards, getGamesOverview } from "@/lib/db/games";
 import { query, queryOne, isDbConfigured } from "@/lib/db/pool";
 import { env } from "@/lib/env";
 
@@ -72,6 +76,7 @@ export async function getGamesAnalytics(
       countingServer,
       topCounters,
       topStreaks,
+      leaderboards,
     ] = await Promise.all([
       queryOne<{ total: number; events: number }>(
         `SELECT COALESCE(SUM(xp), 0) AS total, COUNT(*) AS events
@@ -213,6 +218,9 @@ export async function getGamesAnalytics(
         `SELECT user_id, streak FROM daily_claims
          ORDER BY streak DESC LIMIT 10`
       ).catch(() => []),
+      getAllGamesLeaderboards(10, guildId).catch(
+        () => ({}) as Record<string, never>
+      ),
     ]);
 
     const events = Number(xpAgg?.events ?? 0);
@@ -291,6 +299,7 @@ export async function getGamesAnalytics(
         userId: String(r.user_id),
         streak: Number(r.streak),
       })),
+      leaderboards: (leaderboards ?? {}) as GamesAnalytics["leaderboards"],
     };
   } catch (err) {
     console.error("[analytics] getGamesAnalytics failed:", err);

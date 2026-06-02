@@ -1,6 +1,7 @@
 "use client";
 
 import { AnalyticsChartCard } from "@/components/analytics/AnalyticsChartCard";
+import { GamesLeaderboardsPanel } from "@/components/analytics/GamesLeaderboardsPanel";
 import { kpi } from "@/components/analytics/bind-metric-hints";
 import {
   AnalyticsDataTable,
@@ -103,6 +104,8 @@ export function GamesAnalyticsSection({
           kpi("Counting mistakes", kpis.countingMistakes, "games.countingMistakes"),
         ]}
       />
+
+      <GamesLeaderboardsPanel leaderboards={data.leaderboards} />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <AnalyticsChartCard

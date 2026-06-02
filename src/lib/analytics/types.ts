@@ -1,4 +1,5 @@
 import type { AnalyticsGroupBy } from "@/lib/analytics/group-by";
+import type { GamesLeaderboardType, LeaderboardEntry } from "@/lib/games/types";
 
 export type AnalyticsRange =
   | "today"
@@ -144,6 +145,8 @@ export interface GamesAnalytics {
   sessionsByGame: NamedCount[];
   sessionModeSplit: NamedCount[];
   topStreaks: { userId: string; streak: number }[];
+  /** Top players per games leaderboard category (all-time & monthly). */
+  leaderboards: Record<GamesLeaderboardType, LeaderboardEntry[]>;
 }
 
 export interface StaffLeaderboardRow {
