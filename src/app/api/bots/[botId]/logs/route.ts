@@ -15,6 +15,11 @@ export const GET = handleApiRoute(async (request, { params }) => {
   const lines = Number(url.searchParams.get("lines") || 100);
   const search = url.searchParams.get("search") || undefined;
   const file = url.searchParams.get("file") || undefined;
-  const data = await tailBotLogs(botId, { lines, search, file });
+  const sourceParam = url.searchParams.get("source");
+  const source =
+    sourceParam === "console" || sourceParam === "file" || sourceParam === "auto"
+      ? sourceParam
+      : "auto";
+  const data = await tailBotLogs(botId, { lines, search, file, source });
   return Response.json(data);
 });

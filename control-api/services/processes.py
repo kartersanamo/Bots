@@ -280,6 +280,13 @@ def stop_bot(bot_id: str) -> ProcessInfo:
         invalidate_process_cache(bot_id)
         return get_process_info(bot_id)
 
+    if tcx.uses_tmux(bot_id):
+        tcx.interrupt_pane(bot_id)
+        _kill_bot_processes(bot_id)
+        time.sleep(0.5)
+        invalidate_process_cache(bot_id)
+        return get_process_info(bot_id)
+
     root = bot_root(bot_id)
     pids = _find_pids_by_bot_dir(root, entry.entry_script)
     for pid in pids:
@@ -306,6 +313,13 @@ def restart_bot(bot_id: str) -> ProcessInfo:
         if result.returncode != 0:
             raise RuntimeError(result.stderr or "Failed to restart unit")
         time.sleep(1)
+        invalidate_process_cache(bot_id)
+        return get_process_info(bot_id)
+
+    if tcx.uses_tmux(bot_id):
+        _kill_bot_processes(bot_id)
+        tcx.restart_run_sh(bot_id)
+        time.sleep(2)
         invalidate_process_cache(bot_id)
         return get_process_info(bot_id)
 

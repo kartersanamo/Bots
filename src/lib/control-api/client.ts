@@ -111,16 +111,25 @@ export async function putBotConfig(
 
 export async function tailBotLogs(
   botId: string,
-  opts: { lines?: number; search?: string; file?: string } = {}
+  opts: {
+    lines?: number;
+    search?: string;
+    file?: string;
+    source?: "auto" | "console" | "file";
+  } = {}
 ) {
   const params = new URLSearchParams();
   if (opts.lines) params.set("lines", String(opts.lines));
   if (opts.search) params.set("search", opts.search);
   if (opts.file) params.set("file", opts.file);
+  if (opts.source) params.set("source", opts.source);
   const q = params.toString();
-  return controlFetch<{ lines: string[]; file: string | null; files: string[] }>(
-    `/bots/${botId}/logs${q ? `?${q}` : ""}`
-  );
+  return controlFetch<{
+    lines: string[];
+    file: string | null;
+    files: string[];
+    source?: string;
+  }>(`/bots/${botId}/logs${q ? `?${q}` : ""}`);
 }
 
 export async function listBotDms(botId: string, limit = 50) {

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, Query
 
@@ -16,5 +16,8 @@ def tail_bot_logs(
     lines: int = Query(100, ge=1, le=2000),
     search: Optional[str] = None,
     file: Optional[str] = None,
+    source: Literal["auto", "console", "file"] = Query("auto"),
 ):
-    return log_svc.tail_logs(bot_id, lines=lines, search=search, file_name=file)
+    return log_svc.tail_logs(
+        bot_id, lines=lines, search=search, file_name=file, source=source
+    )
