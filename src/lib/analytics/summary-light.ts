@@ -2,6 +2,7 @@ import { getAuditSummaryInRange } from "@/lib/analytics/audit-data";
 import { analyticsPrivatedClause } from "@/lib/analytics/privated";
 import { closedAtRangeClause, openedAtRangeClause, rangeSinceUnix } from "@/lib/analytics/range";
 import type { AnalyticsRange, AnalyticsSummary } from "@/lib/analytics/types";
+import { fetchGuildBanCount } from "@/lib/discord/api";
 import { getGamesOverview } from "@/lib/db/games";
 import { getTicketStats } from "@/lib/db/tickets";
 import { isDbConfigured, queryOne } from "@/lib/db/pool";
@@ -35,6 +36,7 @@ export async function getAnalyticsSummaryLight(
     closedInRangeRow,
     games,
     mod,
+    discordBanCount,
     auditSummary,
     xpRow,
     staffTotals,
@@ -49,14 +51,10 @@ export async function getAnalyticsSummaryLight(
       [...baseParams, ...closedRange.params]
     ),
     getGamesOverview(),
-    queryOne<{
-      activeBans: number;
-      totalBlacklists: number;
-    }>(
-      `SELECT
-        (SELECT COUNT(*) FROM bans) AS activeBans,
-        (SELECT COUNT(*) FROM blacklists) AS totalBlacklists`
+    queryOne<{ totalBlacklists: number }>(
+      `SELECT COUNT(*) AS totalBlacklists FROM blacklists`
     ).catch(() => null),
+    fetchGuildBanCount().catch(() => null),
     getAuditSummaryInRange(range),
     queryOne<{ total: number; events: number }>(
       `SELECT COALESCE(SUM(xp), 0) AS total, COUNT(*) AS events
@@ -95,7 +93,7 @@ export async function getAnalyticsSummaryLight(
       xpEventsInRange: Number(xpRow?.events ?? 0),
     },
     moderation: {
-      activeBans: Number(mod?.activeBans ?? 0),
+      activeBans: discordBanCount ?? 0,
       blacklists: Number(mod?.totalBlacklists ?? 0),
     },
     staff: {

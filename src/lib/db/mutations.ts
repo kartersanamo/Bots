@@ -47,19 +47,6 @@ export async function removeBlacklist(userId: string) {
   await writeQuery(`DELETE FROM blacklists WHERE userID = ?`, [userId]);
 }
 
-export async function setBanAppeal(userId: string, canAppeal: boolean) {
-  assertWriteDb();
-  await writeQuery(`UPDATE bans SET can_appeal = ? WHERE user_id = ?`, [
-    canAppeal ? 1 : 0,
-    userId,
-  ]);
-}
-
-export async function removeBanRecord(userId: string) {
-  assertWriteDb();
-  await writeQuery(`DELETE FROM bans WHERE user_id = ?`, [userId]);
-}
-
 export async function setLevelingXp(userId: string, xp: number, level: number) {
   assertWriteDb();
   await writeQuery(

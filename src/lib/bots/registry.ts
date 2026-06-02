@@ -119,7 +119,7 @@ export const BOT_REGISTRY: BotDefinition[] = [
       "/analyze",
     ],
     configFiles: ["Assets/config.json", "Assets/yt_info.json"],
-    databaseTables: ["bans", "media", "tickets", "statistics"],
+    databaseTables: ["media", "tickets", "statistics"],
   },
   {
     id: "utilities",

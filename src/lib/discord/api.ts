@@ -133,3 +133,44 @@ export const CHANNEL_TYPE_LABELS: Record<number, string> = {
   13: "Stage",
   15: "Forum",
 };
+
+interface GuildBanEntry {
+  user?: { id?: string };
+}
+
+/** Total guild bans from Discord (paginated). Requires BAN_MEMBERS intent. */
+export async function fetchGuildBanCount(): Promise<number | null> {
+  if (!isDiscordConfigured()) return null;
+
+  const guildId = envRequired("DISCORD_GUILD_ID");
+  let total = 0;
+  let after: string | undefined;
+
+  for (;;) {
+    const url = new URL(`${DISCORD_API}/guilds/${guildId}/bans`);
+    url.searchParams.set("limit", "1000");
+    if (after) url.searchParams.set("after", after);
+
+    const res = await fetch(url.toString(), {
+      headers: botHeaders(),
+      next: { revalidate: 120 },
+    });
+
+    if (!res.ok) {
+      console.error("[discord] fetchGuildBanCount failed:", res.status);
+      return null;
+    }
+
+    const batch = (await res.json()) as GuildBanEntry[];
+    if (!batch.length) break;
+
+    total += batch.length;
+    if (batch.length < 1000) break;
+
+    const lastId = batch[batch.length - 1]?.user?.id;
+    if (!lastId) break;
+    after = lastId;
+  }
+
+  return total;
+}

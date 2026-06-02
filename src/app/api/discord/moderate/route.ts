@@ -12,7 +12,6 @@ import {
   guildId,
 } from "@/lib/discord/actions";
 import { recordModAction } from "@/lib/db/analytics-tracking";
-import { setBanAppeal, removeBanRecord } from "@/lib/db/mutations";
 
 export const POST = handleApiRoute(async (request) => {
   const session = await requireAction("discord.moderate");
@@ -30,7 +29,6 @@ export const POST = handleApiRoute(async (request) => {
     kick: "kick",
     ban: "ban",
     unban: "unban",
-    set_appeal: "set_appeal",
   };
 
   const result = await withAudit(
@@ -51,15 +49,7 @@ export const POST = handleApiRoute(async (request) => {
           return { banned: true };
         case "unban":
           await unbanMember(gid, userId, reason);
-          try {
-            await removeBanRecord(userId);
-          } catch {
-            /* db optional */
-          }
           return { unbanned: true };
-        case "set_appeal":
-          await setBanAppeal(userId, !!body.canAppeal);
-          return { ok: true };
         default:
           throw new Error("Unknown action");
       }

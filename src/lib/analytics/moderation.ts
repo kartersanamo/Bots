@@ -6,6 +6,7 @@ import {
   normalizeTimeSeries,
 } from "@/lib/analytics/time-buckets";
 import type { AnalyticsRange, DailyCount, ModerationAnalytics } from "@/lib/analytics/types";
+import { fetchGuildBanCount } from "@/lib/discord/api";
 import { query, queryOne, isDbConfigured } from "@/lib/db/pool";
 
 export async function getModerationAnalytics(
@@ -19,19 +20,18 @@ export async function getModerationAnalytics(
   const blBucket = bucketKeySqlFromUnix("whenToUnbl", bucketSpec);
 
   try {
-    const [kpis, blacklistsPerDay, blacklistsByStaff, mediaCount] =
+    const [kpis, discordBanCount, blacklistsPerDay, blacklistsByStaff, mediaCount] =
       await Promise.all([
         queryOne<{
-          activeBans: number;
           totalBlacklists: number;
           withExpiry: number;
         }>(
           `SELECT
-            (SELECT COUNT(*) FROM bans) AS activeBans,
             (SELECT COUNT(*) FROM blacklists) AS totalBlacklists,
             (SELECT COUNT(*) FROM blacklists
              WHERE TRIM(whenToUnbl) != '' AND CAST(whenToUnbl AS UNSIGNED) > 0) AS withExpiry`
         ),
+        fetchGuildBanCount().catch(() => null),
         query<{ date: string; count: number }>(
           `SELECT ${blBucket} AS date, COUNT(*) AS count
            FROM blacklists
@@ -54,7 +54,7 @@ export async function getModerationAnalytics(
       range,
       groupBy,
       kpis: {
-        activeBans: Number(kpis?.activeBans ?? 0),
+        activeBans: discordBanCount ?? 0,
         totalBlacklists: Number(kpis?.totalBlacklists ?? 0),
         mediaEntries: Number(mediaCount?.total ?? 0),
         blacklistsWithExpiry: Number(kpis?.withExpiry ?? 0),
