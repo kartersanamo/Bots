@@ -248,7 +248,7 @@ export function TmuxConsole({ botId }: TmuxConsoleProps) {
         "flex flex-col overflow-hidden rounded-xl border border-border/80 bg-[#070709] shadow-[0_0_0_1px_rgba(139,92,246,0.06),0_20px_50px_-20px_rgba(0,0,0,0.8)]",
         isLive && "ring-1 ring-accent/15",
         fullscreen &&
-          "fixed inset-3 z-50 max-h-none rounded-2xl shadow-2xl ring-1 ring-accent/25"
+          "fixed inset-3 z-50 flex max-h-none flex-col rounded-2xl shadow-2xl ring-1 ring-accent/25"
       )}
     >
       {/* Terminal chrome */}
@@ -405,12 +405,14 @@ export function TmuxConsole({ botId }: TmuxConsoleProps) {
       )}
 
       {/* Console viewport */}
-      <div className="relative min-h-0 flex-1">
+      <div
+        className={cn(
+          "relative min-h-0 bg-[#050508]",
+          fullscreen ? "flex-1" : "h-[min(68vh,720px)]"
+        )}
+      >
         <div
-          className={cn(
-            "absolute inset-0 overflow-auto",
-            fullscreen ? "max-h-[calc(100vh-10rem)]" : "max-h-[min(68vh,720px)]"
-          )}
+          className="h-full overflow-auto"
           ref={scrollRef}
           onScroll={onScroll}
         >
