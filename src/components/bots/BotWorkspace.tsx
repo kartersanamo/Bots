@@ -50,31 +50,14 @@ import {
 import { can, type PermissionTier } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import {
-  Bot,
-  Crown,
-  Gamepad2,
   ChevronLeft,
   Play,
   RefreshCw,
-  Shield,
   Square,
-  Ticket,
-  Users,
-  Wrench,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { ElementType } from "react";
 import { useMemo } from "react";
-
-const ICON_MAP: Record<string, ElementType> = {
-  Gamepad2,
-  Ticket,
-  Shield,
-  Wrench,
-  Users,
-  Crown,
-};
 
 const STATUS_VARIANT: Record<
   BotProcessStatus,
@@ -109,7 +92,6 @@ export function BotWorkspace({
   const { bots, actionLoading, runAction } = fleet;
   const row = bots.find((b) => b.id === bot.id);
   const status = row?.status ?? "unknown";
-  const Icon = ICON_MAP[bot.icon] || Bot;
 
   const visibleTabs = useMemo(
     () =>
@@ -143,15 +125,12 @@ export function BotWorkspace({
 
       <div className="sticky top-0 z-10 border-b border-border bg-background pb-0">
         <div className="flex flex-wrap items-center justify-between gap-3 pb-3">
-          <div className="flex items-center gap-3">
-            <Icon className="h-5 w-5" style={{ color: bot.accentColor }} />
-            <div>
-              <h1 className="text-lg font-semibold text-white">{bot.shortName}</h1>
-              <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
-                <Badge variant={STATUS_VARIANT[status]}>{status}</Badge>
-                <span>{formatBotUptime(row?.uptimeSeconds)}</span>
-                {row?.pid ? <span>PID {row.pid}</span> : null}
-              </div>
+          <div>
+            <h1 className="text-lg font-semibold text-white">{bot.shortName}</h1>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
+              <Badge variant={STATUS_VARIANT[status]}>{status}</Badge>
+              <span>{formatBotUptime(row?.uptimeSeconds)}</span>
+              {row?.pid ? <span>PID {row.pid}</span> : null}
             </div>
           </div>
           {canRestart && (

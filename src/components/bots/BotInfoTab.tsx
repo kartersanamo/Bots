@@ -3,38 +3,11 @@
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import type { BotDefinition } from "@/lib/bots/registry";
-import {
-  Bot,
-  Crown,
-  Gamepad2,
-  Shield,
-  Ticket,
-  Users,
-  Wrench,
-} from "lucide-react";
-import type { ElementType } from "react";
-
-const ICON_MAP: Record<string, ElementType> = {
-  Gamepad2,
-  Ticket,
-  Shield,
-  Wrench,
-  Users,
-  Crown,
-};
 
 export function BotInfoTab({ bot }: { bot: BotDefinition }) {
-  const Icon = ICON_MAP[bot.icon] || Bot;
-
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       <Card className="lg:col-span-1">
-        <div
-          className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-2xl"
-          style={{ backgroundColor: `${bot.accentColor}20` }}
-        >
-          <Icon className="h-10 w-10" style={{ color: bot.accentColor }} />
-        </div>
         <h2 className="text-center text-xl font-bold text-white">{bot.name}</h2>
         <p className="mt-1 text-center text-sm text-muted">{bot.id}</p>
         <div className="mt-6 space-y-3 text-sm">
