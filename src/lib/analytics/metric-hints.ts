@@ -505,6 +505,50 @@ const H: Record<string, AnalyticsDataMeta> = {
     description: "Lifetime screenshares (total_statistics).",
     rangeLabel: `Lifetime total_statistics. ${ALL_TIME_DATA_CAVEAT}`,
   },
+  "staffTotal.mutes": {
+    description: "Lifetime mutes (total_statistics).",
+    rangeLabel: `Lifetime total_statistics. ${ALL_TIME_DATA_CAVEAT}`,
+  },
+  "staffTotal.tempBans": {
+    description: "Lifetime temp bans (total_statistics).",
+    rangeLabel: `Lifetime total_statistics. ${ALL_TIME_DATA_CAVEAT}`,
+  },
+  "staffTotal.bans": {
+    description: "Lifetime bans (total_statistics).",
+    rangeLabel: `Lifetime total_statistics. ${ALL_TIME_DATA_CAVEAT}`,
+  },
+  "staffTotal.manualBans": {
+    description: "Lifetime manual bans (total_statistics).",
+    rangeLabel: `Lifetime total_statistics. ${ALL_TIME_DATA_CAVEAT}`,
+  },
+  "staffTotal.blacklists": {
+    description: "Lifetime blacklists (total_statistics).",
+    rangeLabel: `Lifetime total_statistics. ${ALL_TIME_DATA_CAVEAT}`,
+  },
+  "staffTotal.revives": {
+    description: "Lifetime revives (total_statistics).",
+    rangeLabel: `Lifetime total_statistics. ${ALL_TIME_DATA_CAVEAT}`,
+  },
+  "staffTotal.appeals": {
+    description: "Lifetime appeals (total_statistics).",
+    rangeLabel: `Lifetime total_statistics. ${ALL_TIME_DATA_CAVEAT}`,
+  },
+  "staffTotal.threadsLocked": {
+    description: "Lifetime threads locked (total_statistics).",
+    rangeLabel: `Lifetime total_statistics. ${ALL_TIME_DATA_CAVEAT}`,
+  },
+  "staffTotal.strikeTeamVotes": {
+    description: "Lifetime strike team votes (total_statistics).",
+    rangeLabel: `Lifetime total_statistics. ${ALL_TIME_DATA_CAVEAT}`,
+  },
+  "staffTotal.charactersSent": {
+    description: "Lifetime characters sent (total_statistics).",
+    rangeLabel: `Lifetime total_statistics. ${ALL_TIME_DATA_CAVEAT}`,
+  },
+  "staffTotal.punishmentRequests": {
+    description: "Lifetime punishment requests (total_statistics).",
+    rangeLabel: `Lifetime total_statistics. ${ALL_TIME_DATA_CAVEAT}`,
+  },
   "staffTotal.chart.messages": {
     description:
       "Tracked staff messages per bucket from analytics_staff_messages_daily (bot tracking).",
@@ -532,6 +576,51 @@ const H: Record<string, AnalyticsDataMeta> = {
   },
   "staffTotal.leaderboard.screenshares": {
     description: "Lifetime screenshares (total_statistics).",
+    rangeLabel: `Lifetime total_statistics. ${ALL_TIME_DATA_CAVEAT}`,
+  },
+  "staffTotal.leaderboard.mutes": {
+    description: "Staff ranked by lifetime mutes (total_statistics).",
+    rangeLabel: `Lifetime total_statistics. ${ALL_TIME_DATA_CAVEAT}`,
+  },
+  "staffTotal.leaderboard.tempBans": {
+    description: "Staff ranked by lifetime temp bans (total_statistics).",
+    rangeLabel: `Lifetime total_statistics. ${ALL_TIME_DATA_CAVEAT}`,
+  },
+  "staffTotal.leaderboard.bans": {
+    description: "Staff ranked by lifetime bans (total_statistics).",
+    rangeLabel: `Lifetime total_statistics. ${ALL_TIME_DATA_CAVEAT}`,
+  },
+  "staffTotal.leaderboard.manualBans": {
+    description: "Staff ranked by lifetime manual bans (total_statistics).",
+    rangeLabel: `Lifetime total_statistics. ${ALL_TIME_DATA_CAVEAT}`,
+  },
+  "staffTotal.leaderboard.blacklists": {
+    description: "Staff ranked by lifetime blacklists (total_statistics).",
+    rangeLabel: `Lifetime total_statistics. ${ALL_TIME_DATA_CAVEAT}`,
+  },
+  "staffTotal.leaderboard.revives": {
+    description: "Staff ranked by lifetime revives (total_statistics).",
+    rangeLabel: `Lifetime total_statistics. ${ALL_TIME_DATA_CAVEAT}`,
+  },
+  "staffTotal.leaderboard.appeals": {
+    description: "Staff ranked by lifetime appeals (total_statistics).",
+    rangeLabel: `Lifetime total_statistics. ${ALL_TIME_DATA_CAVEAT}`,
+  },
+  "staffTotal.leaderboard.threadsLocked": {
+    description: "Staff ranked by lifetime threads locked (total_statistics).",
+    rangeLabel: `Lifetime total_statistics. ${ALL_TIME_DATA_CAVEAT}`,
+  },
+  "staffTotal.leaderboard.strikeTeamVotes": {
+    description: "Staff ranked by lifetime strike team votes (total_statistics).",
+    rangeLabel: `Lifetime total_statistics. ${ALL_TIME_DATA_CAVEAT}`,
+  },
+  "staffTotal.leaderboard.charactersSent": {
+    description: "Staff ranked by lifetime characters sent (total_statistics).",
+    rangeLabel: `Lifetime total_statistics. ${ALL_TIME_DATA_CAVEAT}`,
+  },
+  "staffTotal.leaderboard.punishmentRequests": {
+    description:
+      "Staff ranked by lifetime punishment requests (total_statistics).",
     rangeLabel: `Lifetime total_statistics. ${ALL_TIME_DATA_CAVEAT}`,
   },
 
