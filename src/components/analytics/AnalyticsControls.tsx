@@ -84,11 +84,7 @@ export function AnalyticsControls({
         label="Range"
         options={RANGES.map((r) => ({ value: r, label: rangeLabel(r) }))}
         value={range}
-        onChange={(r) => {
-          onRangeChange(r);
-          const nextGroup = parseAnalyticsGroupBy(groupBy, r);
-          if (nextGroup !== groupBy) onGroupByChange(nextGroup);
-        }}
+        onChange={onRangeChange}
       />
       <ToggleGroup
         label="Group by"
