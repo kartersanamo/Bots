@@ -102,16 +102,17 @@ export function AnalyticsPageClient({
     initialGroupBy === groupBy &&
     tab === "overview";
 
-  const [bundle, setBundle] = useState<AnalyticsBundle | null>(() =>
-    serverPrefetched
-      ? {
-          range,
-          groupBy,
-          summary: initialSummary!,
-          ...initialBundle,
-        }
-      : null
-  );
+  const [bundle, setBundle] = useState<AnalyticsBundle | null>(() => {
+    if (!serverPrefetched || !initialSummary || !initialBundle) return null;
+    const { summary: _placeholder, ...bundleTabs } = initialBundle;
+    void _placeholder;
+    return {
+      ...bundleTabs,
+      range,
+      groupBy,
+      summary: initialSummary,
+    };
+  });
   const [summaryReady, setSummaryReady] = useState(serverPrefetched);
   const [tabReady, setTabReady] = useState(serverPrefetched);
   const [refreshing, setRefreshing] = useState(false);
@@ -132,21 +133,39 @@ export function AnalyticsPageClient({
 
   const mergeBundle = useCallback(
     (patch: Partial<AnalyticsBundle> & { range: AnalyticsRange }) => {
+      const {
+        summary: patchSummary,
+        range: patchRange,
+        groupBy: patchGroupBy,
+        ...tabPatch
+      } = patch;
       setBundle((prev) => ({
-        range: patch.range,
-        groupBy: patch.groupBy ?? prev?.groupBy ?? groupBy,
-        summary: patch.summary ?? prev?.summary ?? emptySummary(patch.range),
-        metrics: patch.metrics !== undefined ? patch.metrics : prev?.metrics,
-        games: patch.games !== undefined ? patch.games : prev?.games,
+        range: patchRange,
+        groupBy: patchGroupBy ?? prev?.groupBy ?? groupBy,
+        summary:
+          patchSummary ??
+          prev?.summary ??
+          emptySummary(patchRange),
+        metrics:
+          tabPatch.metrics !== undefined ? tabPatch.metrics : prev?.metrics,
+        games: tabPatch.games !== undefined ? tabPatch.games : prev?.games,
         staffRecent:
-          patch.staffRecent !== undefined ? patch.staffRecent : prev?.staffRecent,
+          tabPatch.staffRecent !== undefined
+            ? tabPatch.staffRecent
+            : prev?.staffRecent,
         staffTotal:
-          patch.staffTotal !== undefined ? patch.staffTotal : prev?.staffTotal,
+          tabPatch.staffTotal !== undefined
+            ? tabPatch.staffTotal
+            : prev?.staffTotal,
         moderation:
-          patch.moderation !== undefined ? patch.moderation : prev?.moderation,
-        audit: patch.audit !== undefined ? patch.audit : prev?.audit,
+          tabPatch.moderation !== undefined
+            ? tabPatch.moderation
+            : prev?.moderation,
+        audit: tabPatch.audit !== undefined ? tabPatch.audit : prev?.audit,
         engagement:
-          patch.engagement !== undefined ? patch.engagement : prev?.engagement,
+          tabPatch.engagement !== undefined
+            ? tabPatch.engagement
+            : prev?.engagement,
       }));
     },
     [groupBy]
@@ -227,7 +246,7 @@ export function AnalyticsPageClient({
     const cachedSummary = readAnalyticsCache<AnalyticsSummary>(summaryCacheKey);
     const cachedTab = readAnalyticsCache<Partial<AnalyticsBundle>>(tabCacheKey);
     if (cachedSummary && cachedTab) {
-      mergeBundle({ range, groupBy, summary: cachedSummary, ...cachedTab });
+      mergeBundle({ range, groupBy, ...cachedTab, summary: cachedSummary });
       setSummaryReady(true);
       setTabReady(true);
       loadedTabsRef.current = loadKey;
@@ -293,7 +312,7 @@ export function AnalyticsPageClient({
     Promise.all([summaryPromise, bundlePromise])
       .then(([summary, patch]) => {
         if (ac.signal.aborted) return;
-        mergeBundle({ range, groupBy, summary, ...patch });
+        mergeBundle({ range, groupBy, ...patch, summary });
         loadedTabsRef.current = loadKey;
         setSummaryReady(true);
         setTabReady(true);

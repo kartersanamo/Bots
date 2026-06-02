@@ -37,7 +37,15 @@ export const GET = handleApiRoute(async (request) => {
     { includeSummary }
   );
 
-  return jsonCached({ configured: true, ...bundle }, 120, {
+  const body = includeSummary
+    ? { configured: true as const, ...bundle }
+    : (() => {
+        const { summary: _s, ...tabsOnly } = bundle;
+        void _s;
+        return { configured: true as const, ...tabsOnly };
+      })();
+
+  return jsonCached(body, 120, {
     staleWhileRevalidate: 300,
     private: true,
   });
