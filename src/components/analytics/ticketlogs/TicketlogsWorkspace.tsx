@@ -20,6 +20,19 @@ function hasTranscriptUrl(t: TicketRow): boolean {
   return Boolean(t.transcript?.trim().startsWith("http"));
 }
 
+function isSensitiveTicketVisibility(privated: string | null | undefined): boolean {
+  const v = String(privated ?? "").trim().toLowerCase();
+  if (!v) return false;
+  return (
+    v === "true" ||
+    v === "1" ||
+    v === "yes" ||
+    v.includes("private") ||
+    v.includes("management") ||
+    v.includes("admin")
+  );
+}
+
 export function TicketlogsWorkspace({ userTier }: TicketlogsWorkspaceProps) {
   const {
     state,
@@ -36,6 +49,7 @@ export function TicketlogsWorkspace({ userTier }: TicketlogsWorkspaceProps) {
   } = useTicketlogsSearch();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const canViewPrivate = can(userTier, "tickets.view_private");
 
   const exportCsv = () => {
     window.open(`/api/tickets?${buildQueryString()}&format=csv`, "_blank");
@@ -62,7 +76,7 @@ export function TicketlogsWorkspace({ userTier }: TicketlogsWorkspaceProps) {
         onChange={setParams}
         onRefresh={refresh}
         loading={loading}
-        canViewPrivate={can(userTier, "tickets.view_private")}
+        canViewPrivate={canViewPrivate}
       />
 
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -106,7 +120,10 @@ export function TicketlogsWorkspace({ userTier }: TicketlogsWorkspaceProps) {
               </tr>
             )}
             {!loading &&
-              tickets.map((t) => (
+              tickets.map((t) => {
+                const masked =
+                  !canViewPrivate && isSensitiveTicketVisibility(t.privated);
+                return (
                 <tr
                   key={t.channelID}
                   onClick={() => setSelectedId(t.channelID)}
@@ -133,10 +150,17 @@ export function TicketlogsWorkspace({ userTier }: TicketlogsWorkspaceProps) {
                     )}
                   </td>
                   <td className="max-w-[200px] truncate px-4 py-3 text-white/80">
-                    {t.reason?.trim() || "—"}
+                    <span className={masked ? "blur-sm select-none" : ""}>
+                      {t.reason?.trim() || "—"}
+                    </span>
                   </td>
                   <td className="px-4 py-3">
-                    {hasTranscriptUrl(t) ? (
+                    {hasTranscriptUrl(t) ? masked ? (
+                      <span className="inline-flex items-center gap-1 text-muted blur-sm select-none">
+                        <FileText className="h-4 w-4" />
+                        View
+                      </span>
+                    ) : (
                       <a
                         href={t.transcript.trim()}
                         target="_blank"
@@ -152,7 +176,8 @@ export function TicketlogsWorkspace({ userTier }: TicketlogsWorkspaceProps) {
                     )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
           </tbody>
         </table>
       </div>

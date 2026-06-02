@@ -53,7 +53,11 @@ function canViewPrivateTickets(tier: PermissionTier): boolean {
   return hasMinimumTier(tier, "admin");
 }
 
-function privatedClause(tier: PermissionTier, privatedFilter?: string): {
+function privatedClause(
+  tier: PermissionTier,
+  status: TicketStatusFilter,
+  privatedFilter?: string
+): {
   sql: string;
   params: string[];
 } {
@@ -66,7 +70,7 @@ function privatedClause(tier: PermissionTier, privatedFilter?: string): {
     }
     return { sql: " AND privated = ?", params: [privatedFilter] };
   }
-  if (!canViewPrivateTickets(tier)) {
+  if (!canViewPrivateTickets(tier) && status !== "closed") {
     return {
       sql: " AND (privated IS NULL OR TRIM(privated) = '')",
       params: [],
@@ -94,7 +98,7 @@ export async function listTickets(
   const status = params.status ?? "open";
 
   const statusSql = statusClause(status);
-  const priv = privatedClause(params.viewerTier, params.privated);
+  const priv = privatedClause(params.viewerTier, status, params.privated);
   const conditions: string[] = [`1=1${statusSql}${priv.sql}`];
   const values: (string | number)[] = [...priv.params];
 
@@ -209,7 +213,7 @@ export async function getTicketStats(
   const hit = statsCache.get(cacheKey);
   if (hit && hit.expires > Date.now()) return hit.data;
 
-  const priv = privatedClause(viewerTier);
+  const priv = privatedClause(viewerTier, "all");
   const privSql = priv.sql;
   const privParams = priv.params;
 
@@ -270,7 +274,7 @@ export async function getDistinctTicketTypes(
   const hit = typesCache.get(cacheKey);
   if (hit && hit.expires > Date.now()) return hit.data;
 
-  const priv = privatedClause(viewerTier);
+  const priv = privatedClause(viewerTier, status);
   const rows = await query<{ type: string }>(
     `SELECT DISTINCT type FROM tickets WHERE 1=1${statusClause(status)}${priv.sql} ORDER BY type`,
     priv.params

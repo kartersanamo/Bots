@@ -32,6 +32,12 @@ export interface GuildChannel {
   type: number;
   parentId: string | null;
   position: number;
+  permissionOverwrites?: {
+    id: string;
+    type: number | string;
+    allow: string;
+    deny: string;
+  }[];
 }
 
 export function isDiscordConfigured(): boolean {
@@ -87,8 +93,36 @@ export async function fetchGuildChannels(): Promise<GuildChannel[]> {
 
   if (!res.ok) return [];
 
-  const channels: GuildChannel[] = await res.json();
-  return channels.sort((a, b) => a.position - b.position);
+  const channels = (await res.json()) as Array<{
+    id: string;
+    name: string;
+    type: number;
+    parent_id?: string | null;
+    position?: number;
+    permission_overwrites?: Array<{
+      id: string;
+      type: number | string;
+      allow: string;
+      deny: string;
+    }>;
+  }>;
+  return channels
+    .map((c): GuildChannel => ({
+      id: String(c.id),
+      name: String(c.name ?? ""),
+      type: Number(c.type ?? 0),
+      parentId: c.parent_id ?? null,
+      position: Number(c.position ?? 0),
+      permissionOverwrites: Array.isArray(c.permission_overwrites)
+        ? c.permission_overwrites.map((o) => ({
+            id: String(o.id),
+            type: o.type,
+            allow: String(o.allow ?? "0"),
+            deny: String(o.deny ?? "0"),
+          }))
+        : [],
+    }))
+    .sort((a, b) => a.position - b.position);
 }
 
 export const CHANNEL_TYPE_LABELS: Record<number, string> = {

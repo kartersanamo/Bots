@@ -774,6 +774,13 @@ export function TicketDetailDrawer({
                               <textarea
                                 value={composer}
                                 onChange={(e) => setComposer(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key !== "Enter" || e.shiftKey) return;
+                                  e.preventDefault();
+                                  if (!sending && composer.trim()) {
+                                    void sendMessage();
+                                  }
+                                }}
                                 placeholder="Reply or run command (e.g. /close resolved)…"
                                 rows={2}
                                 maxLength={2000}

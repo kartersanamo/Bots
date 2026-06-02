@@ -1,5 +1,7 @@
 import { handleApiRoute, requireAction } from "@/lib/api/helpers";
 import { rowsToCsv, csvResponse } from "@/lib/analytics/export";
+import { fetchGuildChannels, isDiscordConfigured } from "@/lib/discord/api";
+import { filterVisibleTicketChannelIds } from "@/lib/discord/channel-visibility";
 import {
   getDistinctTicketTypes,
   getTicketStats,
@@ -107,7 +109,43 @@ export const GET = handleApiRoute(async (request) => {
       : getDistinctTicketTypes(session.tier, status),
   ]);
 
-  const tickets = result?.tickets ?? [];
+  let tickets = result?.tickets ?? [];
+  let total = result?.total ?? 0;
+  let visibleStats = stats;
+  let visibleTypes = types;
+
+  if (status === "open" && tickets.length > 0 && isDiscordConfigured()) {
+    try {
+      const channels = await fetchGuildChannels();
+      const visibleIds = filterVisibleTicketChannelIds(
+        channels,
+        tickets.map((t) => t.channelID),
+        { userId: session.id, roleIds: session.roleIds }
+      );
+      tickets = tickets.filter((t) => visibleIds.has(t.channelID));
+      // Hidden tickets should not appear to the viewer at all in open queue responses.
+      total = tickets.length;
+      if (status === "open") {
+        const byTypeMap = new Map<string, number>();
+        for (const t of tickets) {
+          byTypeMap.set(t.type, (byTypeMap.get(t.type) ?? 0) + 1);
+        }
+        visibleStats = stats
+          ? {
+              ...stats,
+              openCount: total,
+              byType: [...byTypeMap.entries()]
+                .sort((a, b) => b[1] - a[1])
+                .map(([type, count]) => ({ type, count }))
+                .slice(0, 12),
+            }
+          : null;
+        visibleTypes = [...new Set(tickets.map((t) => t.type))].sort();
+      }
+    } catch (err) {
+      console.warn("[tickets] failed to apply channel visibility filter:", err);
+    }
+  }
 
   if (format === "csv") {
     const rows = tickets.map((t: TicketRow) => ({
@@ -144,11 +182,11 @@ export const GET = handleApiRoute(async (request) => {
 
   return Response.json({
     tickets,
-    total: result?.total ?? 0,
+    total,
     page: result?.page ?? page,
     limit: result?.limit ?? limit,
     configured: true,
-    stats,
-    types,
+    stats: visibleStats,
+    types: visibleTypes,
   });
 });
