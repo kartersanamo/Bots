@@ -6,6 +6,7 @@ import { isTicketOpen } from "@/lib/tickets/types";
 import type { TicketEnrichment } from "@/lib/discord/tickets";
 import { formatRelativeTime } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
+import { DiscordUserProfileCard } from "@/components/games/DiscordUserProfileCard";
 import {
   X,
   ExternalLink,
@@ -86,7 +87,11 @@ interface DiscordResolvedMember {
   username: string;
   avatar: string | null;
   roles: string[];
+  nick?: string | null;
+  joinedAt?: string | null;
 }
+
+const USER_MENTION_RE = /<@!?(\d{15,22})>/g;
 
 function openedAtDate(openedAt: string): Date {
   const n = Number(openedAt);
@@ -107,6 +112,113 @@ function roleColorHex(color?: number): string | undefined {
 function roleIconUrl(role: GuildRoleLite): string | null {
   if (!role.icon) return null;
   return `https://cdn.discordapp.com/role-icons/${role.id}/${role.icon}.png?size=64`;
+}
+
+function extractMentionUserIds(content: string): string[] {
+  return Array.from(content.matchAll(USER_MENTION_RE), (m) => m[1]);
+}
+
+function escapeHtml(input: string): string {
+  return input
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function renderDiscordMarkdown(
+  raw: string,
+  memberProfiles: Record<string, DiscordResolvedMember>
+): string {
+  if (!raw.trim()) return "";
+
+  let text = raw
+    .replace(USER_MENTION_RE, (_, id: string) => {
+      const p = memberProfiles[id];
+      const name = p?.displayName || p?.username || id;
+      return `@${name}`;
+    })
+    .replace(/<@&(\d{15,22})>/g, (_m, id: string) => `@role:${id}`)
+    .replace(/<#(\d{15,22})>/g, (_m, id: string) => `#channel:${id}`)
+    .replace(/@everyone/g, "@everyone")
+    .replace(/@here/g, "@here");
+
+  text = escapeHtml(text).replaceAll("\r\n", "\n");
+
+  const blockCodes: string[] = [];
+  text = text.replace(/```([a-zA-Z0-9+\-_.]*)?\n?([\s\S]*?)```/g, (_, lang, body) => {
+    const idx = blockCodes.push(
+      `<pre class="my-2 overflow-x-auto rounded bg-black/30 p-2"><code>${
+        lang ? `<span class="mr-2 text-[10px] uppercase text-muted">${lang}</span>\n` : ""
+      }${body}</code></pre>`
+    );
+    return `@@BLOCK_CODE_${idx - 1}@@`;
+  });
+
+  const inlineCodes: string[] = [];
+  text = text.replace(/`([^`\n]+)`/g, (_, body) => {
+    const idx = inlineCodes.push(
+      `<code class="rounded bg-black/35 px-1 py-0.5 text-[0.95em]">${body}</code>`
+    );
+    return `@@INLINE_CODE_${idx - 1}@@`;
+  });
+
+  text = text
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-accent-light underline">$1</a>')
+    .replace(/&lt;(https?:\/\/[^&\s]+)&gt;/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-accent-light underline">$1</a>')
+    .replace(/\|\|([^|]+)\|\|/g, '<span class="rounded bg-white/10 px-1 text-transparent hover:text-white">$1</span>')
+    .replace(/\*\*\*([^*]+)\*\*\*/g, "<strong><em>$1</em></strong>")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/__([^_]+)__/g, "<u>$1</u>")
+    .replace(/\*([^*\n]+)\*/g, "<em>$1</em>")
+    .replace(/_([^_\n]+)_/g, "<em>$1</em>")
+    .replace(/~~([^~]+)~~/g, "<del>$1</del>");
+
+  const lines = text.split("\n");
+  const formattedLines: string[] = [];
+  for (const line of lines) {
+    if (line.startsWith("&gt; ")) {
+      formattedLines.push(
+        `<blockquote class="my-1 border-l-2 border-border pl-2 text-white/85">${line.slice(5)}</blockquote>`
+      );
+      continue;
+    }
+    if (line.startsWith("&gt;&gt;&gt; ")) {
+      formattedLines.push(
+        `<blockquote class="my-1 border-l-2 border-border pl-2 text-white/85">${line.slice(13)}</blockquote>`
+      );
+      continue;
+    }
+    formattedLines.push(line);
+  }
+  text = formattedLines.join("<br />");
+
+  text = text
+    .replace(/@@INLINE_CODE_(\d+)@@/g, (_, i: string) => inlineCodes[Number(i)] ?? "")
+    .replace(/@@BLOCK_CODE_(\d+)@@/g, (_, i: string) => blockCodes[Number(i)] ?? "");
+
+  return text;
+}
+
+function DiscordMessageContent({
+  content,
+  memberProfiles,
+}: {
+  content: string;
+  memberProfiles: Record<string, DiscordResolvedMember>;
+}) {
+  const html = useMemo(
+    () => renderDiscordMarkdown(content, memberProfiles),
+    [content, memberProfiles]
+  );
+  if (!html) return null;
+  return (
+    <div
+      className="mt-1 break-words text-sm text-white/90"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
 }
 
 function topRoleForMember(
@@ -206,6 +318,9 @@ export function TicketDetailDrawer({
   const [memberProfiles, setMemberProfiles] = useState<
     Record<string, DiscordResolvedMember>
   >({});
+  const [selectedProfileUserId, setSelectedProfileUserId] = useState<string | null>(
+    null
+  );
 
   const roleById = useMemo(
     () => new Map(guildRoles.map((r) => [r.id, r])),
@@ -249,7 +364,14 @@ export function TicketDetailDrawer({
         : [];
       setMessages(nextMessages);
       const authorIds = Array.from(
-        new Set(nextMessages.map((m) => String(m.author?.id || "")).filter(Boolean))
+        new Set(
+          nextMessages
+            .flatMap((m) => [
+              String(m.author?.id || ""),
+              ...extractMentionUserIds(m.content || ""),
+            ])
+            .filter(Boolean)
+        )
       );
       if (authorIds.length) {
         void loadAuthorProfiles(authorIds);
@@ -518,6 +640,7 @@ export function TicketDetailDrawer({
                               {ownerTopRole?.unicode_emoji && (
                                 <span>{ownerTopRole.unicode_emoji}</span>
                               )}
+                              {data.owner.global_name || data.owner.username}
                               {ownerIcon && (
                                 <img
                                   src={ownerIcon}
@@ -525,7 +648,6 @@ export function TicketDetailDrawer({
                                   className="h-4 w-4 rounded"
                                 />
                               )}
-                              {data.owner.global_name || data.owner.username}
                             </p>
                           );
                         })()}
@@ -568,7 +690,7 @@ export function TicketDetailDrawer({
                             No channel messages found.
                           </p>
                         ) : (
-                          <div className="max-h-[380px] space-y-3 overflow-y-auto pr-1">
+                          <div className="max-h-[calc(100vh-220px)] space-y-3 overflow-y-auto pr-1">
                             {messages.map((m) => {
                               const displayName =
                                 m.author.global_name || m.author.username || m.author.id;
@@ -586,13 +708,16 @@ export function TicketDetailDrawer({
                                   />
                                   <div className="min-w-0 flex-1">
                                     <div className="flex items-center gap-2">
-                                      <p
-                                        className="flex items-center gap-1 text-sm font-medium"
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedProfileUserId(m.author.id)}
+                                        className="inline-flex items-center gap-1 rounded px-0.5 text-sm font-medium hover:bg-white/5"
                                         style={{ color: nameColor ?? "#ffffff" }}
                                       >
                                         {topRole?.unicode_emoji && (
                                           <span>{topRole.unicode_emoji}</span>
                                         )}
+                                        {displayName}
                                         {iconUrl && (
                                           <img
                                             src={iconUrl}
@@ -600,8 +725,7 @@ export function TicketDetailDrawer({
                                             className="h-4 w-4 rounded"
                                           />
                                         )}
-                                        {displayName}
-                                      </p>
+                                      </button>
                                       {m.author.bot && (
                                         <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] text-accent-light">
                                           BOT
@@ -611,9 +735,16 @@ export function TicketDetailDrawer({
                                         {formatRelativeTime(new Date(m.timestamp))}
                                       </span>
                                     </div>
-                                    <p className="mt-1 whitespace-pre-wrap break-words text-sm text-white/90">
-                                      {body || (m.embeds?.length ? null : "(attachment/system)")}
-                                    </p>
+                                    {body ? (
+                                      <DiscordMessageContent
+                                        content={body}
+                                        memberProfiles={memberProfiles}
+                                      />
+                                    ) : m.embeds?.length ? null : (
+                                      <p className="mt-1 whitespace-pre-wrap break-words text-sm text-white/90">
+                                        (attachment/system)
+                                      </p>
+                                    )}
                                     {m.embeds?.map((embed, i) => (
                                       <DiscordEmbedCard key={`${m.id}-embed-${i}`} embed={embed} />
                                     ))}
@@ -719,6 +850,25 @@ export function TicketDetailDrawer({
                 </>
               )}
             </div>
+      {selectedProfileUserId && (
+        <DiscordUserProfileCard
+          user={{
+            id: selectedProfileUserId,
+            username:
+              memberProfiles[selectedProfileUserId]?.username ??
+              "unknown",
+            displayName:
+              memberProfiles[selectedProfileUserId]?.displayName ??
+              memberProfiles[selectedProfileUserId]?.username ??
+              selectedProfileUserId,
+            avatar: memberProfiles[selectedProfileUserId]?.avatar ?? null,
+            nick: memberProfiles[selectedProfileUserId]?.nick ?? null,
+            roles: memberProfiles[selectedProfileUserId]?.roles ?? [],
+            joinedAt: memberProfiles[selectedProfileUserId]?.joinedAt ?? null,
+          }}
+          onClose={() => setSelectedProfileUserId(null)}
+        />
+      )}
     </>
   );
 
