@@ -2,6 +2,7 @@ import { handleApiRoute, requireAction } from "@/lib/api/helpers";
 import { rowsToCsv, csvResponse } from "@/lib/analytics/export";
 import { fetchGuildChannels, isDiscordConfigured } from "@/lib/discord/api";
 import { filterVisibleTicketChannelIds } from "@/lib/discord/channel-visibility";
+import { resolveDiscordUsers } from "@/lib/discord/users.server";
 import { env } from "@/lib/env";
 import {
   getDistinctTicketTypes,
@@ -69,6 +70,8 @@ export const GET = handleApiRoute(async (request) => {
     hasTranscript,
     viewerTier: session.tier,
   };
+  const qTrimmed = q?.trim() ?? "";
+  const ownerNameSearch = status === "open" && qTrimmed.length > 0;
 
   if (!isDbConfigured()) {
     if (format === "csv") {
@@ -103,7 +106,7 @@ export const GET = handleApiRoute(async (request) => {
   }
 
   const [result, stats, types] = await Promise.all([
-    listTickets(listParams),
+    listTickets(ownerNameSearch ? { ...listParams, q: undefined } : listParams),
     format === "csv" ? Promise.resolve(null) : getTicketStats(session.tier),
     format === "csv"
       ? Promise.resolve([])
@@ -112,6 +115,34 @@ export const GET = handleApiRoute(async (request) => {
 
   let tickets = result?.tickets ?? [];
   let total = result?.total ?? 0;
+  if (ownerNameSearch && tickets.length > 0) {
+    const users = await resolveDiscordUsers(tickets.map((t) => t.ownerID));
+    const needle = qTrimmed.toLowerCase();
+    const fields = (t: TicketRow) =>
+      [
+        t.channelID,
+        t.ownerID,
+        t.number,
+        t.type,
+        t.name,
+        t.reason,
+        t.closed_by,
+      ]
+        .map((v) => String(v ?? "").toLowerCase())
+        .join("\n");
+    tickets = tickets.filter((t) => {
+      const owner = users[t.ownerID];
+      const ownerDisplay = String(owner?.displayName ?? "").toLowerCase();
+      const ownerUser = String(owner?.username ?? "").toLowerCase();
+      return (
+        fields(t).includes(needle) ||
+        ownerDisplay.includes(needle) ||
+        ownerUser.includes(needle)
+      );
+    });
+    total = tickets.length;
+  }
+
   let visibleStats = stats;
   let visibleTypes = types;
 
