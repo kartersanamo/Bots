@@ -4,6 +4,7 @@ import {
 } from "@/lib/analytics/buckets";
 import { analyticsPrivatedClause } from "@/lib/analytics/privated";
 import {
+  calendarDaysInRange,
   closedAtRangeClause,
   openedAtRangeClause,
   rangeSinceUnix,
@@ -176,12 +177,15 @@ export async function getTicketAnalytics(
 
     const openedPerDay = normalizeTimeSeries(slices.openedPerDay, range, groupBy);
     const closedDaily = normalizeTimeSeries(mapDaily(closedPerDay), range, groupBy);
-    const avgTicketsPerDay =
-      openedPerDay.length > 0
-        ? openedPerDay.reduce((s, d) => s + d.count, 0) / openedPerDay.length
-        : 0;
 
     const openedInRange = Number(countsRow?.openedInRange ?? 0);
+    const daysInRange = await resolveTicketDaysInRange(
+      range,
+      base.sql,
+      base.params
+    );
+    const avgTicketsPerDay =
+      daysInRange > 0 ? openedInRange / daysInRange : 0;
     const closedInRange = Number(countsRow?.closedInRange ?? 0);
     const closeRatePercent =
       openedInRange > 0
@@ -544,6 +548,26 @@ async function queryTimingStats(
     medianClose: percentileFromHistogram(histRows, 0.5),
     p90Close: percentileFromHistogram(histRows, 0.9),
   };
+}
+
+/** Days in range for per-day averages — independent of chart group-by buckets. */
+async function resolveTicketDaysInRange(
+  range: AnalyticsRange,
+  baseSql: string,
+  baseParams: (string | number)[]
+): Promise<number> {
+  const fixed = calendarDaysInRange(range);
+  if (fixed > 0) return fixed;
+
+  const row = await queryOne<{ days: number }>(
+    `SELECT GREATEST(
+       1,
+       CEIL((UNIX_TIMESTAMP() - MIN(CAST(opened_at AS UNSIGNED))) / 86400)
+     ) AS days
+     FROM tickets ${baseSql}`,
+    baseParams
+  );
+  return Number(row?.days ?? 1);
 }
 
 function mapDaily(rows: { date: string | Date; count: number }[]): DailyCount[] {

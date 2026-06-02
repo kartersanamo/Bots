@@ -76,6 +76,24 @@ export function xpTimestampRangeClause(
   };
 }
 
+/** Calendar days in the selected range (fixed windows). `all` returns 0 — use span query. */
+export function calendarDaysInRange(range: AnalyticsRange): number {
+  switch (range) {
+    case "today":
+      return 1;
+    case "7d":
+      return 7;
+    case "30d":
+      return 30;
+    case "90d":
+      return 90;
+    case "365d":
+      return 365;
+    case "all":
+      return 0;
+  }
+}
+
 export function rangeLabel(range: AnalyticsRange): string {
   const labels: Record<AnalyticsRange, string> = {
     today: "Today",

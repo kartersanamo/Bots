@@ -1,6 +1,11 @@
 import { getAuditSummaryInRange } from "@/lib/analytics/audit-data";
 import { analyticsPrivatedClause } from "@/lib/analytics/privated";
-import { closedAtRangeClause, openedAtRangeClause, rangeSinceUnix } from "@/lib/analytics/range";
+import {
+  calendarDaysInRange,
+  closedAtRangeClause,
+  openedAtRangeClause,
+  rangeSinceUnix,
+} from "@/lib/analytics/range";
 import type { AnalyticsRange, AnalyticsSummary } from "@/lib/analytics/types";
 import { fetchGuildBanCount } from "@/lib/discord/api";
 import { getTotalStatisticsTotals } from "@/lib/db/total-statistics";
@@ -41,6 +46,7 @@ export async function getAnalyticsSummaryLight(
     auditSummary,
     xpRow,
     staffTotals,
+    spanDaysRow,
   ] = await Promise.all([
     getTicketStats(tier),
     queryOne<{ count: number }>(
@@ -63,13 +69,25 @@ export async function getAnalyticsSummaryLight(
       tsParams
     ).catch(() => null),
     getTotalStatisticsTotals(),
+    range === "all"
+      ? queryOne<{ days: number }>(
+          `SELECT GREATEST(
+             1,
+             CEIL((UNIX_TIMESTAMP() - MIN(CAST(opened_at AS UNSIGNED))) / 86400)
+           ) AS days
+           FROM tickets ${baseWhere}`,
+          baseParams
+        )
+      : Promise.resolve(null),
   ]);
 
   const openedInRange = Number(openedInRangeRow?.count ?? 0);
   const closedInRange = Number(closedInRangeRow?.count ?? 0);
-  const daysInRange = daysForRange(range);
+  const daysInRange =
+    calendarDaysInRange(range) ||
+    Number(spanDaysRow?.days ?? 1);
   const avgPerDay =
-    daysInRange > 0 ? openedInRange / daysInRange : openedInRange;
+    daysInRange > 0 ? openedInRange / daysInRange : 0;
   const closeRatePercent =
     openedInRange > 0
       ? Math.round((closedInRange / openedInRange) * 1000) / 10
@@ -103,18 +121,6 @@ export async function getAnalyticsSummaryLight(
       fleetRestarts: auditSummary.fleetRestarts,
     },
   };
-}
-
-function daysForRange(range: AnalyticsRange): number {
-  const map: Record<AnalyticsRange, number> = {
-    today: 1,
-    "7d": 7,
-    "30d": 30,
-    "90d": 90,
-    "365d": 365,
-    all: 0,
-  };
-  return map[range];
 }
 
 function emptySummary(range: AnalyticsRange): AnalyticsSummary {
