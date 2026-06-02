@@ -65,7 +65,10 @@ export function EngagementAnalyticsSection({
             value: formatDurationSeconds(kpis.voiceSecondsInRange),
           },
           { label: "Command uses", value: kpis.commandInvocations },
-          { label: "Mod actions", value: kpis.modActions },
+          {
+            label: "Mod actions (dashboard & bots)",
+            value: kpis.modActions,
+          },
           { label: "Games finished", value: kpis.gameSessionsEnded },
         ]}
       />
