@@ -472,6 +472,10 @@ export function TicketDetailDrawer({
   const [showCloseForm, setShowCloseForm] = useState(false);
   const [closeReason, setCloseReason] = useState("");
   const [closeError, setCloseError] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState(false);
+  const [showRenameForm, setShowRenameForm] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
+  const [renameError, setRenameError] = useState<string | null>(null);
   const [messages, setMessages] = useState<TicketMessage[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [composer, setComposer] = useState("");
@@ -498,6 +502,9 @@ export function TicketDetailDrawer({
       setShowCloseForm(false);
       setCloseReason("");
       setCloseError(null);
+      setShowRenameForm(false);
+      setRenameValue("");
+      setRenameError(null);
       return;
     }
     setLoading(true);
@@ -636,6 +643,47 @@ export function TicketDetailDrawer({
     }
   }
 
+  async function submitRenameTicket() {
+    if (!channelId) return;
+    const name = renameValue.trim();
+    if (!name) {
+      setRenameError("Enter a channel name.");
+      return;
+    }
+    if (name.length > 100) {
+      setRenameError("Channel name must be 100 characters or fewer.");
+      return;
+    }
+    setRenameError(null);
+    setRenaming(true);
+    try {
+      const res = await fetch(`/api/tickets/${channelId}/commands`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ command: `/rename ${name}` }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setRenameError(
+          typeof payload.error === "string"
+            ? payload.error
+            : "Failed to rename ticket"
+        );
+        return;
+      }
+      setShowRenameForm(false);
+      setRenameValue("");
+      setSendNotice(
+        typeof payload.detail === "string"
+          ? payload.detail
+          : `Channel renamed to ${name}.`
+      );
+      await loadMessages();
+    } finally {
+      setRenaming(false);
+    }
+  }
+
   async function sendMessage() {
     if (!channelId) return;
     const content = composer.trim();
@@ -743,19 +791,85 @@ export function TicketDetailDrawer({
                       Owner ID
                     </Button>
                     {canWrite && ticketOpen && (
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        onClick={() => {
-                          setCloseError(null);
-                          setShowCloseForm(true);
-                        }}
-                        disabled={closing}
-                      >
-                        Close ticket
-                      </Button>
+                      <>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            setRenameError(null);
+                            setShowCloseForm(false);
+                            setShowRenameForm(true);
+                          }}
+                          disabled={renaming || closing}
+                        >
+                          Rename ticket
+                        </Button>
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          onClick={() => {
+                            setCloseError(null);
+                            setShowRenameForm(false);
+                            setShowCloseForm(true);
+                          }}
+                          disabled={closing || renaming}
+                        >
+                          Close ticket
+                        </Button>
+                      </>
                     )}
                   </div>
+
+                  {showRenameForm && (
+                    <div className="rounded-lg border border-border p-4 space-y-3">
+                      <p className="text-sm font-medium text-white">Rename ticket</p>
+                      <label className="block text-xs text-muted">
+                        New channel name
+                      </label>
+                      <input
+                        type="text"
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        placeholder="e.g. media-app-johndoe"
+                        maxLength={100}
+                        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-white"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !renaming && renameValue.trim()) {
+                            e.preventDefault();
+                            void submitRenameTicket();
+                          }
+                        }}
+                      />
+                      <p className="text-xs text-muted">
+                        Runs <code>/rename</code> on this ticket channel (Discord
+                        naming rules apply).
+                      </p>
+                      {renameError && (
+                        <p className="text-sm text-red-400">{renameError}</p>
+                      )}
+                      <div className="flex gap-2">
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => void submitRenameTicket()}
+                          disabled={renaming}
+                        >
+                          {renaming ? "Renaming…" : "Rename"}
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            setShowRenameForm(false);
+                            setRenameError(null);
+                          }}
+                          disabled={renaming}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
 
                   {showCloseForm && (
                     <div className="rounded-lg border border-border p-4 space-y-3">
