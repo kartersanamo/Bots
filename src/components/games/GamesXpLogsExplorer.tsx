@@ -26,7 +26,8 @@ import {
   RefreshCw,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 type XpLogRow = {
   game_id: number;
@@ -139,6 +140,10 @@ export function GamesXpLogsExplorer({
   userTier: PermissionTier;
   defaultPageSize?: (typeof PAGE_SIZES)[number];
 }) {
+  const searchParams = useSearchParams();
+  const initialUserId = searchParams.get("userId")?.trim() ?? "";
+  const appliedUserIdFromUrl = useRef(false);
+
   const [rows, setRows] = useState<XpLogRow[]>([]);
   const [total, setTotal] = useState(0);
   const [pageCount, setPageCount] = useState(1);
@@ -165,6 +170,15 @@ export function GamesXpLogsExplorer({
       .then((d) => setSources(d.sources || []))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!initialUserId || appliedUserIdFromUrl.current) return;
+    appliedUserIdFromUrl.current = true;
+    const withUser = { ...EMPTY_FILTERS, userId: initialUserId };
+    setDraft(withUser);
+    setApplied(withUser);
+    setPage(1);
+  }, [initialUserId]);
 
   const load = useCallback(async () => {
     setLoading(true);
