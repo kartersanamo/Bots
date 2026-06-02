@@ -1,7 +1,7 @@
 import type { GuildChannel } from "@/lib/discord/api";
 import { env } from "@/lib/env";
 
-const VIEW_CHANNEL_BIT = 1n << 10n;
+const VIEW_CHANNEL_BIT = BigInt(1) << BigInt(10);
 
 interface Overwrite {
   id: string;
@@ -20,7 +20,7 @@ function isMemberOverwrite(type: number | string): boolean {
 
 function hasBit(value: string, bit: bigint): boolean {
   try {
-    return (BigInt(value || "0") & bit) !== 0n;
+    return (BigInt(value || "0") & bit) !== BigInt(0);
   } catch {
     return false;
   }

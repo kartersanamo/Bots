@@ -360,16 +360,78 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
               {type} ({list.length})
             </summary>
             <div className="space-y-2 p-2">
-              {list.map((t) => (
-                <OpenTicketCard
-                  key={t.channelID}
-                  ticket={t}
-                  enrichment={enrichments[t.channelID]}
-                  channelName={channelNames[t.channelID]}
-                  selected={selectedId === t.channelID}
-                  onSelect={() => selectTicket(t)}
-                />
-              ))}
+              {layout === "cards" &&
+                list.map((t) => (
+                  <OpenTicketCard
+                    key={t.channelID}
+                    ticket={t}
+                    enrichment={enrichments[t.channelID]}
+                    channelName={channelNames[t.channelID]}
+                    selected={selectedId === t.channelID}
+                    onSelect={() => selectTicket(t)}
+                  />
+                ))}
+              {layout === "list" &&
+                list.map((t) => (
+                  <button
+                    key={t.channelID}
+                    type="button"
+                    onClick={() => selectTicket(t)}
+                    className={cn(
+                      "flex w-full items-center justify-between rounded-lg border border-border px-4 py-3 text-left hover:bg-surface-hover",
+                      selectedId === t.channelID && "border-accent bg-surface-hover"
+                    )}
+                  >
+                    <span className="font-medium text-white">
+                      {channelNames[t.channelID] || t.channelID} · {t.type}
+                    </span>
+                    <span className="text-xs text-muted">{t.ownerID}</span>
+                  </button>
+                ))}
+              {layout === "detailed" &&
+                list.map((t) => {
+                  const hours = ticketAgeHours(t.opened_at);
+                  const enrichment = enrichments[t.channelID];
+                  return (
+                    <button
+                      key={t.channelID}
+                      type="button"
+                      onClick={() => selectTicket(t)}
+                      className={cn(
+                        "w-full rounded-lg border border-border bg-surface p-4 text-left hover:bg-surface-hover",
+                        selectedId === t.channelID && "border-accent ring-2 ring-accent/30"
+                      )}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base font-semibold text-white">
+                            {channelNames[t.channelID] || t.channelID}
+                          </span>
+                          <span className="rounded-full border border-border px-2 py-0.5 text-xs text-white/90">
+                            {t.type}
+                          </span>
+                          {isPrivateTicket(t.privated) && (
+                            <span className="rounded-full border border-amber-400/40 bg-amber-500/10 px-2 py-0.5 text-xs text-amber-300">
+                              Private
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-xs text-muted">{formatAgeLabel(hours)}</span>
+                      </div>
+                      <div className="mt-2 grid gap-1 text-xs text-muted sm:grid-cols-2">
+                        <span>Channel: {t.channelID}</span>
+                        <span>Owner: {t.ownerID}</span>
+                        <span>Opened: {formatRelativeTime(new Date(Number(t.opened_at) * 1000))}</span>
+                        <span>{enrichment?.awaitingUser ? "Awaiting user reply" : "User replied"}</span>
+                      </div>
+                      {enrichment?.lastOwnerMessage?.content && (
+                        <p className="mt-2 line-clamp-2 text-sm text-white/85">
+                          {enrichment.lastOwnerMessage.content}
+                        </p>
+                      )}
+                    </button>
+                  );
+                })}
             </div>
           </details>
         ))}
