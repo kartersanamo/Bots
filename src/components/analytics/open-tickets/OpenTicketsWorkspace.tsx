@@ -1,6 +1,7 @@
 "use client";
 
 import { OpenTicketCard } from "@/components/analytics/open-tickets/OpenTicketCard";
+import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { TicketStatsBar } from "@/components/tickets/TicketStatsBar";
 import { TicketDetailDrawer } from "@/components/tickets/TicketDetailDrawer";
 import { Button } from "@/components/ui/Button";
@@ -347,7 +348,7 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
             <span className="font-medium text-white">
               #{t.number} · {t.type}
             </span>
-            <span className="text-xs text-muted">{t.ownerID}</span>
+            <DiscordUserChip userId={t.ownerID} compact className="shrink-0" />
           </button>
         ))}
 
@@ -383,7 +384,10 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
               </div>
               <div className="mt-2 grid gap-1 text-xs text-muted sm:grid-cols-2">
                 <span>Channel: {t.channelID}</span>
-                <span>Owner: {t.ownerID}</span>
+                <span className="flex items-center gap-1">
+                  <span className="text-muted">Owner:</span>
+                  <DiscordUserChip userId={t.ownerID} compact />
+                </span>
                 <span>Opened: {formatRelativeTime(new Date(Number(t.opened_at) * 1000))}</span>
                 <span>{enrichment?.awaitingUser ? "Awaiting user reply" : "User replied"}</span>
               </div>
@@ -429,7 +433,7 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
                     <span className="font-medium text-white">
                       {channelNames[t.channelID] || t.channelID} · {t.type}
                     </span>
-                    <span className="text-xs text-muted">{t.ownerID}</span>
+                    <DiscordUserChip userId={t.ownerID} compact className="shrink-0" />
                   </button>
                 ))}
               {layout === "detailed" &&
@@ -464,7 +468,10 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
                       </div>
                       <div className="mt-2 grid gap-1 text-xs text-muted sm:grid-cols-2">
                         <span>Channel: {t.channelID}</span>
-                        <span>Owner: {t.ownerID}</span>
+                        <span className="flex items-center gap-1">
+                          <span className="text-muted">Owner:</span>
+                          <DiscordUserChip userId={t.ownerID} compact />
+                        </span>
                         <span>Opened: {formatRelativeTime(new Date(Number(t.opened_at) * 1000))}</span>
                         <span>{enrichment?.awaitingUser ? "Awaiting user reply" : "User replied"}</span>
                       </div>

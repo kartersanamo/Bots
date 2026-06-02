@@ -1,5 +1,6 @@
 "use client";
 
+import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { StatCard } from "@/components/ui/StatCard";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
@@ -156,11 +157,14 @@ export function DashboardOverview() {
               {tickets.map((t) => (
                 <div
                   key={t.channelID}
-                  className="flex items-center justify-between rounded-md px-2 py-2 hover:bg-surface-hover"
+                  className="flex items-center justify-between gap-2 rounded-md px-2 py-2 hover:bg-surface-hover"
                 >
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm capitalize text-white">{t.type}</p>
-                    <p className="text-xs text-muted">
+                    <div className="mt-1">
+                      <DiscordUserChip userId={t.ownerID} compact />
+                    </div>
+                    <p className="mt-1 text-xs text-muted">
                       {t.opened ? formatRelativeTime(t.opened) : "—"}
                     </p>
                   </div>

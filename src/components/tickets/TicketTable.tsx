@@ -7,7 +7,7 @@ import type { TicketEnrichment } from "@/lib/discord/tickets";
 import { isTicketOpen } from "@/lib/tickets/types";
 import { formatRelativeTime } from "@/lib/utils";
 import { discordChannelUrl } from "@/lib/discord/guild";
-import { Avatar } from "@/components/ui/Avatar";
+import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -89,17 +89,7 @@ export function TicketTable({
                     <span className="line-clamp-2 text-white">{t.type}</span>
                   </td>
                   <td className="py-3 pr-4">
-                    <div className="flex items-center gap-2">
-                      <Avatar
-                        userId={t.ownerID}
-                        avatarHash={null}
-                        size={28}
-                        alt={t.ownerID}
-                      />
-                      <span className="font-mono text-xs text-muted">
-                        {t.ownerID.slice(0, 8)}…
-                      </span>
-                    </div>
+                    <DiscordUserChip userId={t.ownerID} />
                   </td>
                   <td className="py-3 pr-4 text-muted whitespace-nowrap">
                     {formatRelativeTime(openedAtDate(t.opened_at))}

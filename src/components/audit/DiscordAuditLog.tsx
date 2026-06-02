@@ -1,5 +1,6 @@
 "use client";
 
+import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import {
@@ -8,7 +9,6 @@ import {
   formatAuditTarget,
   snowflakeToDate,
   type DiscordAuditEntry,
-  type DiscordAuditUser,
 } from "@/lib/discord/audit";
 import { discordGuildUrl } from "@/lib/discord/guild";
 import { cn } from "@/lib/utils";
@@ -17,18 +17,10 @@ import { useCallback, useEffect, useState } from "react";
 
 export function DiscordAuditLog() {
   const [entries, setEntries] = useState<DiscordAuditEntry[]>([]);
-  const [users, setUsers] = useState<DiscordAuditUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [configured, setConfigured] = useState(true);
-
-  const userMap = Object.fromEntries(
-    users.map((u) => [
-      u.id,
-      u.global_name || u.username,
-    ])
-  );
 
   const load = useCallback(async (before?: string, append = false) => {
     if (before) setLoadingMore(true);
@@ -47,20 +39,13 @@ export function DiscordAuditLog() {
         setError(data.error);
         if (!append) {
           setEntries([]);
-          setUsers([]);
         }
         return;
       }
 
       const nextEntries = (data.entries || []) as DiscordAuditEntry[];
-      const nextUsers = (data.users || []) as DiscordAuditUser[];
 
       setEntries((prev) => (append ? [...prev, ...nextEntries] : nextEntries));
-      setUsers((prev) => {
-        const byId = new Map(prev.map((u) => [u.id, u]));
-        for (const u of nextUsers) byId.set(u.id, u);
-        return [...byId.values()];
-      });
     } catch {
       setError("Could not load Discord audit log");
     } finally {
@@ -131,10 +116,12 @@ export function DiscordAuditLog() {
                 <td className="py-2 pr-4 text-xs text-muted whitespace-nowrap">
                   {snowflakeToDate(e.id).toLocaleString()}
                 </td>
-                <td className="py-2 pr-4 text-white">
-                  {e.user_id
-                    ? userMap[e.user_id] || e.user_id
-                    : "System"}
+                <td className="py-2 pr-4">
+                  {e.user_id ? (
+                    <DiscordUserChip userId={e.user_id} compact />
+                  ) : (
+                    <span className="text-white">System</span>
+                  )}
                 </td>
                 <td className="py-2 pr-4 text-white">
                   {auditActionLabel(e.action_type)}
