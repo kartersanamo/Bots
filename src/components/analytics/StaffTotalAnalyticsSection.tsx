@@ -27,11 +27,6 @@ export function StaffTotalAnalyticsSection({
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-muted">
-        Lifetime leaderboards use{" "}
-        <code className="text-xs">total_statistics</code> (never reset by /wipe).
-        Charts below use tracked staff messages in the selected range and group.
-      </p>
 
       <AnalyticsKpiGrid
         items={[

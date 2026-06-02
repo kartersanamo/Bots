@@ -29,14 +29,13 @@ export function ModerationAnalyticsSection({
             kpis.blacklistsWithExpiry,
             "moderation.blacklistsExpiry",
             { hintSeries: data.blacklistsPerDay }
-          ),
-          kpi("Media entries", kpis.mediaEntries, "moderation.media"),
+          )
         ]}
       />
 
       <div className="grid gap-4">
         <AnalyticsChartCard
-          title="Blacklist expirations by date"
+          title="Ticket blacklists expirations by date"
           dataHint={chartHint("moderation.chart.expiry", data.blacklistsPerDay)}
           exportHeaders={["date", "count"]}
           exportFilename={`blacklists-expiry-${range}.csv`}
@@ -45,10 +44,6 @@ export function ModerationAnalyticsSection({
             count: r.count,
           }))}
         >
-          <p className="mb-2 text-xs text-muted">
-            Buckets by scheduled unblacklist time (whenToUnbl), not necessarily
-            when the entry was created.
-          </p>
           <DailyLineChart data={data.blacklistsPerDay} color="#ef4444" />
         </AnalyticsChartCard>
       </div>

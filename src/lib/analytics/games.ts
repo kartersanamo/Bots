@@ -184,7 +184,7 @@ export async function getGamesAnalytics(
            WHERE ${DAILY_CLAIM_XP_WHERE}${tsClause}) AS claims,
           (SELECT COUNT(DISTINCT user_id) FROM xp_logs
            WHERE ${DAILY_CLAIM_XP_WHERE}${tsClause}) AS usersInRange`,
-        tsParams
+        since != null ? [since, since] : []
       ),
       queryOne<{ users: number; mistakes: number }>(
         `SELECT
