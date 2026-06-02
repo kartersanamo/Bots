@@ -170,6 +170,25 @@ def invalidate_process_cache(bot_id: str | None = None) -> None:
         _STATUS_CACHE.clear()
 
 
+def _resolve_bot_python(root: Path) -> str:
+    """Prefer the bot's project venv over system python3."""
+    for venv_dir in (".venv", "venv"):
+        py = root / venv_dir / "bin" / "python"
+        if py.is_file():
+            return str(py)
+    return "python3"
+
+
+def _bot_log_dir(root: Path) -> Path:
+    for name in ("logs", "Logs"):
+        d = root / name
+        if d.is_dir():
+            return d
+    d = root / "logs"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
 def start_bot(bot_id: str) -> ProcessInfo:
     entry = get_bot(bot_id)
     if not entry:
@@ -190,17 +209,29 @@ def start_bot(bot_id: str) -> ProcessInfo:
 
     root = bot_root(bot_id)
     run_sh = root / "run.sh"
-    if not run_sh.exists():
-        raise FileNotFoundError(f"No run.sh at {run_sh}")
+    script = root / entry.entry_script
+    if not script.is_file() and not run_sh.exists():
+        raise FileNotFoundError(f"No {entry.entry_script} or run.sh under {root}")
 
-    log_dir = root / "logs"
-    if not log_dir.exists():
-        log_dir = root / "Logs"
-    log_dir.mkdir(parents=True, exist_ok=True)
-    log_out = log_dir / "dashboard-start.log"
+    log_out = _bot_log_dir(root) / "dashboard-start.log"
+    python = _resolve_bot_python(root)
+    has_venv = python != "python3"
+    # Tickets run.sh restarts on crash; other bots use venv python when available.
+    use_run_sh = run_sh.is_file() and bot_id == "tickets"
+    if use_run_sh:
+        cmd: list[str] = ["/bin/bash", str(run_sh)]
+    elif has_venv:
+        cmd = [python, entry.entry_script]
+    elif run_sh.is_file():
+        cmd = ["/bin/bash", str(run_sh)]
+    else:
+        cmd = [python, entry.entry_script]
+
     with open(log_out, "a") as logf:
+        logf.write(f"\n--- start {time.strftime('%Y-%m-%d %H:%M:%S')} cmd={cmd!r} ---\n")
+        logf.flush()
         subprocess.Popen(
-            ["/bin/bash", str(run_sh)],
+            cmd,
             cwd=str(root),
             stdout=logf,
             stderr=subprocess.STDOUT,
