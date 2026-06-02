@@ -82,8 +82,8 @@ export function AnalyticsTabPanels({
     if (!bundle.staffTotal) {
       return (
         <p className="text-muted">
-          All-time staff statistics are not available. Run migration{" "}
-          <code className="text-xs">002_total_statistics_and_member_messages.sql</code>.
+          All-time staff statistics are not available. Required database tables are
+          missing.
         </p>
       );
     }
@@ -120,8 +120,8 @@ export function AnalyticsTabPanels({
     if (!bundle.engagement) {
       return (
         <p className="text-muted">
-          Engagement tracking tables are not available yet. Run the analytics
-          migration and restart bots.
+          Engagement tracking tables are not available yet. Apply the required
+          database schema and restart bots.
         </p>
       );
     }

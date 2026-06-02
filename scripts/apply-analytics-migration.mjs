@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Applies docs/migrations/001_analytics_tracking.sql
- * Usage: node scripts/apply-analytics-migration.mjs
+ * Applies a one-off SQL file, then deletes it (ephemeral migrations — not in VCS).
+ * Usage: node scripts/apply-analytics-migration.mjs <path-to.sql>
  */
 import fs from "fs";
 import path from "path";
@@ -32,12 +32,20 @@ function loadEnv() {
 
 loadEnv();
 
-const sqlPath = path.join(
-  root,
-  process.argv[2] || "docs/migrations/001_analytics_tracking.sql"
-);
+const sqlArg = process.argv[2];
+if (!sqlArg) {
+  console.error("Usage: node scripts/apply-analytics-migration.mjs <path-to.sql>");
+  process.exit(1);
+}
+
+const sqlPath = path.isAbsolute(sqlArg) ? sqlArg : path.join(root, sqlArg);
 
 async function main() {
+  if (!fs.existsSync(sqlPath)) {
+    console.error(`SQL file not found: ${sqlPath}`);
+    process.exit(1);
+  }
+
   const host = (process.env.DB_HOST || "").replace(/\r/g, "").trim();
   const user = (process.env.DB_WRITE_USER || process.env.DB_USER || "")
     .replace(/\r/g, "")
@@ -67,7 +75,6 @@ async function main() {
 
   let sql = fs.readFileSync(sqlPath, "utf8");
   sql = sql.replace(/ADD COLUMN IF NOT EXISTS/g, "ADD COLUMN");
-  // Drop full-line comments so semicolon-split chunks are not discarded.
   sql = sql
     .split("\n")
     .filter((line) => !line.trim().startsWith("--"))
@@ -95,6 +102,9 @@ async function main() {
 
   await conn.end();
   console.log(`Migration complete: ${path.basename(sqlPath)}`);
+
+  fs.unlinkSync(sqlPath);
+  console.log(`Deleted ephemeral migration: ${sqlPath}`);
 }
 
 main().catch((e) => {

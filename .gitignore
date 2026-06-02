@@ -47,3 +47,10 @@ next-env.d.ts
 
 # python cache
 *.pyc
+
+# documentation (not maintained in repo)
+/docs/
+
+# ephemeral SQL migrations (create → run → delete; never commit)
+*.sql
+.tmp/

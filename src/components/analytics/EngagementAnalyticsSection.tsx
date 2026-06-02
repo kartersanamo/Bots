@@ -50,12 +50,8 @@ function MigrationNotice({
     <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
       <p className="font-medium">Tracking tables not fully deployed</p>
       <p className="mt-1 text-amber-200/80">
-        Run{" "}
-        <code className="rounded bg-black/30 px-1">
-          node scripts/apply-analytics-migration.mjs
-        </code>{" "}
-        and restart bots so new metrics populate. Missing:{" "}
-        {missing.join(", ")}.
+        Apply the required database schema and restart bots so new metrics
+        populate. Missing: {missing.join(", ")}.
       </p>
     </div>
   );
