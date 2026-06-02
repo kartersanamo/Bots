@@ -85,8 +85,6 @@ export function StaffAnalyticsSection({ data }: StaffAnalyticsSectionProps) {
     .sort((a, b) => staffActivityTotal(b) - staffActivityTotal(a))
     .slice(0, 12);
   const visibleOverview = overviewLimit.slice(overviewRows);
-  const duplicatesLimit = useAnalyticsTableRowLimit(8);
-  const visibleDuplicates = duplicatesLimit.slice(data.duplicateStatisticsUsers);
 
   return (
     <div className="space-y-6">
@@ -127,10 +125,6 @@ export function StaffAnalyticsSection({ data }: StaffAnalyticsSectionProps) {
               data.strikeReportsTotal != null
                 ? formatNumber(data.strikeReportsTotal)
                 : "N/A",
-          },
-          {
-            label: "Duplicate stat rows",
-            value: data.duplicateStatisticsUsers.length,
           },
         ]}
       />
@@ -225,38 +219,6 @@ export function StaffAnalyticsSection({ data }: StaffAnalyticsSectionProps) {
         filename="staff-leaderboard-screenshares.csv"
         highlight="screenshares"
       />
-
-      {data.duplicateStatisticsUsers.length > 0 && (
-        <AnalyticsDataTable
-          title="Duplicate statistics entries"
-          headers={["userId", "count"]}
-          exportFilename="staff-statistics-duplicates.csv"
-          exportRows={data.duplicateStatisticsUsers.map((r) => ({
-            userId: r.userId,
-            count: r.count,
-          }))}
-          tableRowLimit={duplicatesLimit.tableRowLimit}
-        >
-          <AnalyticsTable>
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted">
-                <th className="px-4 py-2">User</th>
-                <th className="px-4 py-2">Rows</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleDuplicates.map((r) => (
-                <tr key={r.userId} className="border-b border-border/50">
-                  <td className="px-4 py-2">
-                    <DiscordUserChip userId={r.userId} />
-                  </td>
-                  <td className="px-4 py-2 text-white">{r.count}</td>
-                </tr>
-              ))}
-            </tbody>
-          </AnalyticsTable>
-        </AnalyticsDataTable>
-      )}
     </div>
   );
 }

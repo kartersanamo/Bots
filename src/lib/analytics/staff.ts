@@ -64,7 +64,7 @@ export async function getStaffAnalytics(): Promise<StaffAnalytics | null> {
     : "statistics";
 
   try {
-    const [leaderboard, duplicates, strikeCount, periodTotalsRow, allTimeTotals] =
+    const [leaderboard, strikeCount, periodTotalsRow, allTimeTotals] =
       await Promise.all([
         query<{
           user_id: string;
@@ -73,12 +73,6 @@ export async function getStaffAnalytics(): Promise<StaffAnalytics | null> {
           warnings: number;
           screenshares: number;
         }>(leaderboardQuery(lbTable)).catch(() => []),
-        query<{ user_ID: string; cnt: number }>(
-          `SELECT user_ID, COUNT(*) AS cnt
-           FROM statistics
-           WHERE ${ACTIVE_STAFF_WHERE_STATISTICS}
-           GROUP BY user_ID HAVING COUNT(*) > 1`
-        ).catch(() => []),
         queryOne<{ total: number }>(
           `SELECT COUNT(*) AS total FROM strike_reports`
         ).catch(() => null),
@@ -117,10 +111,6 @@ export async function getStaffAnalytics(): Promise<StaffAnalytics | null> {
       totals,
       totalsPeriod: periodTotals,
       totalsAllTime: allTimeTotals,
-      duplicateStatisticsUsers: duplicates.map((r) => ({
-        userId: String(r.user_ID),
-        count: Number(r.cnt),
-      })),
       strikeReportsTotal: strikeCount ? Number(strikeCount.total) : null,
     };
   } catch (err) {

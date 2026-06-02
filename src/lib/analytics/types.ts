@@ -182,7 +182,6 @@ export interface StaffAnalytics {
     screenshares: number;
     staffCount: number;
   } | null;
-  duplicateStatisticsUsers: { userId: string; count: number }[];
   strikeReportsTotal: number | null;
 }
 
