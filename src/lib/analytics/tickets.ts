@@ -139,15 +139,15 @@ export async function getTicketAnalytics(
          GROUP BY name ORDER BY count DESC LIMIT 12`,
         closedParams
       ),
-      query<{ name: string; count: number }>(
+      query<{ visibility: string; count: number }>(
         `SELECT
           CASE
             WHEN LOWER(TRIM(privated)) IN ('true', '1', 'yes') THEN 'Private'
             ELSE 'Public'
-          END AS name,
+          END AS visibility,
           COUNT(*) AS count
          FROM tickets ${rangeWhere}
-         GROUP BY name`,
+         GROUP BY visibility`,
         rangeParams
       ),
       queryOne<{ count: number }>(
@@ -200,7 +200,7 @@ export async function getTicketAnalytics(
       byDayOfWeek: fillDayOfWeekBuckets(slices.byDayOfWeek),
       byDayOfWeekClosed: fillDayOfWeekBuckets(closedSlices.byDayOfWeek),
       visibilitySplit: visibility.map((r) => ({
-        name: r.name,
+        name: r.visibility,
         count: Number(r.count),
       })),
       topOpenersInRange: mapOpeners(topInRange),
