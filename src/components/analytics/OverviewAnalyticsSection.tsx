@@ -22,7 +22,7 @@ export function OverviewAnalyticsSection({
   range,
   groupBy,
 }: OverviewAnalyticsSectionProps) {
-  const { summary, metrics, games, staff, audit } = bundle;
+  const { summary, metrics, games, staffTotal, audit } = bundle;
 
   return (
     <div className="space-y-8">
@@ -174,10 +174,10 @@ export function OverviewAnalyticsSection({
             valueKey="xp"
           />
         )}
-        {staff && (
+        {staffTotal && (
           <AnalyticsUserCountTable
-            title="Staff — tickets closed"
-            rows={staff.leaderboard.map((r) => ({
+            title="Staff — tickets closed (all time)"
+            rows={staffTotal.leaderboard.map((r) => ({
               userId: r.userId,
               count: r.ticketsClosed,
             }))}

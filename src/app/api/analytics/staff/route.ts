@@ -1,6 +1,6 @@
 import { handleApiRoute } from "@/lib/api/helpers";
 import { requireAnalytics } from "@/lib/analytics/api";
-import { getStaffAnalytics } from "@/lib/analytics/staff";
+import { getStaffRecentAnalytics } from "@/lib/analytics/staff-recent";
 import { isDbConfigured } from "@/lib/db/pool";
 import {
   ANALYTICS_CACHE_MS,
@@ -18,7 +18,7 @@ export const GET = handleApiRoute(async (request) => {
   const data = await cachedAnalytics(
     "analytics:staff",
     ANALYTICS_CACHE_MS,
-    getStaffAnalytics
+    getStaffRecentAnalytics
   );
 
   return NextResponse.json({ configured: true, data });

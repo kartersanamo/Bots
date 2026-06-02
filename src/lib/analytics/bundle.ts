@@ -4,7 +4,8 @@ import { getGamesAnalytics } from "@/lib/analytics/games";
 import type { AnalyticsGroupBy } from "@/lib/analytics/group-by";
 import { getModerationAnalytics } from "@/lib/analytics/moderation";
 import { getAnalyticsSummaryLight } from "@/lib/analytics/summary-light";
-import { getStaffAnalytics } from "@/lib/analytics/staff";
+import { getStaffRecentAnalytics } from "@/lib/analytics/staff-recent";
+import { getStaffTotalAnalytics } from "@/lib/analytics/staff-total";
 import { getTicketAnalytics } from "@/lib/analytics/tickets";
 import type {
   AnalyticsRange,
@@ -13,7 +14,8 @@ import type {
   EngagementAnalytics,
   GamesAnalytics,
   ModerationAnalytics,
-  StaffAnalytics,
+  StaffRecentAnalytics,
+  StaffTotalAnalytics,
   TicketAnalytics,
 } from "@/lib/analytics/types";
 import type { PermissionTier } from "@/lib/permissions";
@@ -21,7 +23,8 @@ import type { PermissionTier } from "@/lib/permissions";
 export type AnalyticsTab =
   | "metrics"
   | "games"
-  | "staff"
+  | "staff-recent"
+  | "staff-total"
   | "moderation"
   | "audit"
   | "engagement";
@@ -32,7 +35,8 @@ export interface AnalyticsBundle {
   summary: AnalyticsSummary;
   metrics?: TicketAnalytics | null;
   games?: GamesAnalytics | null;
-  staff?: StaffAnalytics | null;
+  staffRecent?: StaffRecentAnalytics | null;
+  staffTotal?: StaffTotalAnalytics | null;
   moderation?: ModerationAnalytics | null;
   audit?: AuditAnalytics | null;
   engagement?: EngagementAnalytics | null;
@@ -54,7 +58,8 @@ export async function getAnalyticsBundle(
   const loaders: Record<AnalyticsTab, () => Promise<unknown>> = {
     metrics: () => getTicketAnalytics(tier, range, groupBy),
     games: () => getGamesAnalytics(range, groupBy),
-    staff: () => getStaffAnalytics(),
+    "staff-recent": () => getStaffRecentAnalytics(),
+    "staff-total": () => getStaffTotalAnalytics(range, groupBy),
     moderation: () => getModerationAnalytics(range, groupBy),
     audit: () => getAuditAnalytics(range, groupBy),
     engagement: () => getEngagementAnalytics(range, groupBy),
@@ -100,8 +105,11 @@ export async function getAnalyticsBundle(
       case "games":
         bundle.games = data as GamesAnalytics | null;
         break;
-      case "staff":
-        bundle.staff = data as StaffAnalytics | null;
+      case "staff-recent":
+        bundle.staffRecent = data as StaffRecentAnalytics | null;
+        break;
+      case "staff-total":
+        bundle.staffTotal = data as StaffTotalAnalytics | null;
         break;
       case "moderation":
         bundle.moderation = data as ModerationAnalytics | null;

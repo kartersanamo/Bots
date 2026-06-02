@@ -13,7 +13,8 @@ import { jsonCached } from "@/lib/http/json-cache";
 const VALID_TABS = new Set<AnalyticsTab>([
   "metrics",
   "games",
-  "staff",
+  "staff-recent",
+  "staff-total",
   "moderation",
   "audit",
   "engagement",

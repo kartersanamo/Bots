@@ -5,7 +5,8 @@ import { EngagementAnalyticsSection } from "@/components/analytics/EngagementAna
 import { GamesAnalyticsSection } from "@/components/analytics/GamesAnalyticsSection";
 import { ModerationAnalyticsSection } from "@/components/analytics/ModerationAnalyticsSection";
 import { OverviewAnalyticsSection } from "@/components/analytics/OverviewAnalyticsSection";
-import { StaffAnalyticsSection } from "@/components/analytics/StaffAnalyticsSection";
+import { StaffRecentAnalyticsSection } from "@/components/analytics/StaffRecentAnalyticsSection";
+import { StaffTotalAnalyticsSection } from "@/components/analytics/StaffTotalAnalyticsSection";
 import { TicketsAnalytics } from "@/components/analytics/TicketsAnalytics";
 import type { AnalyticsBundle } from "@/lib/analytics/bundle";
 import type { AnalyticsGroupBy } from "@/lib/analytics/group-by";
@@ -15,7 +16,8 @@ export type AnalyticsUiTab =
   | "overview"
   | "metrics"
   | "games"
-  | "staff"
+  | "staff-recent"
+  | "staff-total"
   | "moderation"
   | "audit"
   | "engagement";
@@ -69,11 +71,29 @@ export function AnalyticsTabPanels({
     );
   }
 
-  if (tab === "staff") {
-    if (!bundle.staff) {
+  if (tab === "staff-recent") {
+    if (!bundle.staffRecent) {
       return <p className="text-muted">No staff statistics available.</p>;
     }
-    return <StaffAnalyticsSection data={bundle.staff} />;
+    return <StaffRecentAnalyticsSection data={bundle.staffRecent} />;
+  }
+
+  if (tab === "staff-total") {
+    if (!bundle.staffTotal) {
+      return (
+        <p className="text-muted">
+          All-time staff statistics are not available. Run migration{" "}
+          <code className="text-xs">002_total_statistics_and_member_messages.sql</code>.
+        </p>
+      );
+    }
+    return (
+      <StaffTotalAnalyticsSection
+        data={bundle.staffTotal}
+        range={range}
+        groupBy={groupBy}
+      />
+    );
   }
 
   if (tab === "moderation") {

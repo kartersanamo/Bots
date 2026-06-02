@@ -154,35 +154,36 @@ export interface StaffLeaderboardRow {
   screenshares: number;
 }
 
-export interface StaffAnalytics {
+export interface StaffTotals {
+  ticketsClosed: number;
+  messages: number;
+  warnings: number;
+  screenshares: number;
+  staffCount: number;
+}
+
+export interface StaffLeaderboards {
   leaderboard: StaffLeaderboardRow[];
   topByMessages: StaffLeaderboardRow[];
   topByWarnings: StaffLeaderboardRow[];
   topByScreenshares: StaffLeaderboardRow[];
-  totals: {
-    ticketsClosed: number;
-    messages: number;
-    warnings: number;
-    screenshares: number;
-    staffCount: number;
-  };
-  /** Current bi-weekly period (`statistics`, reset by /wipe). */
-  totalsPeriod: {
-    ticketsClosed: number;
-    messages: number;
-    warnings: number;
-    screenshares: number;
-    staffCount: number;
-  };
-  /** All-time (`total_statistics`, never wiped). Null if migration not applied. */
-  totalsAllTime: {
-    ticketsClosed: number;
-    messages: number;
-    warnings: number;
-    screenshares: number;
-    staffCount: number;
-  } | null;
+}
+
+/** Current period (`statistics`, reset by /wipe). */
+export interface StaffRecentAnalytics extends StaffLeaderboards {
+  totals: StaffTotals;
+  /** Unix seconds of last /wipe, if recorded. */
+  lastWipedAt: number | null;
   strikeReportsTotal: number | null;
+}
+
+/** Lifetime (`total_statistics`) + tracked messages in selected range. */
+export interface StaffTotalAnalytics extends StaffLeaderboards {
+  range: AnalyticsRange;
+  groupBy: AnalyticsGroupBy;
+  totals: StaffTotals;
+  messagesPerDay: DailyCount[];
+  topStaffByMessagesInRange: UserCountRow[];
 }
 
 export interface ModerationAnalytics {

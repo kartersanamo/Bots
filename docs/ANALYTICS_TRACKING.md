@@ -47,6 +47,7 @@ Open **Analytics → Engagement** for charts. Dashboard moderation actions (`/ap
 
 ## All-time vs period staff stats
 
-- **`statistics`** — reset by MinecadiaStaff `/wipe` (bi-weekly leaderboard period).
-- **`total_statistics`** — incremented in parallel on every stat change; never wiped. Dashboard “all time” KPIs and leaderboards use this table.
+- **`statistics`** — reset by MinecadiaStaff `/wipe` (bi-weekly leaderboard period). Dashboard **Staff (Recent)** tab.
+- **`total_statistics`** — incremented in parallel on every stat change; never wiped. Dashboard **Staff (Total)** tab.
+- **`staff_statistics_wipes`** — `/wipe` inserts a row with `wiped_at` (unix). Apply `docs/migrations/004_staff_statistics_wipes.sql` for last-wipe date on Staff (Recent).
 - Backfill: migration `002` seeds `total_statistics` from current `statistics` using `GREATEST()` so re-runs are safe.

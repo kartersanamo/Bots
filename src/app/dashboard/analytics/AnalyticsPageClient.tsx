@@ -24,7 +24,8 @@ type TabId =
   | "overview"
   | "metrics"
   | "games"
-  | "staff"
+  | "staff-recent"
+  | "staff-total"
   | "moderation"
   | "audit"
   | "engagement";
@@ -34,14 +35,19 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "engagement", label: "Engagement" },
   { id: "metrics", label: "Ticket metrics" },
   { id: "games", label: "Games" },
-  { id: "staff", label: "Staff" },
+  { id: "staff-recent", label: "Staff (Recent)" },
+  { id: "staff-total", label: "Staff (Total)" },
   { id: "moderation", label: "Moderation" },
   { id: "audit", label: "Dashboard audit" },
 ];
 
 function tabsForUiTab(uiTab: TabId): AnalyticsTab[] {
-  if (uiTab === "overview") return ["metrics", "games", "staff", "audit"];
+  if (uiTab === "overview") return ["metrics", "games", "staff-total", "audit"];
   return [uiTab];
+}
+
+function tabUsesRangeControls(uiTab: TabId): boolean {
+  return uiTab !== "staff-recent";
 }
 
 interface AnalyticsPageClientProps {
@@ -60,14 +66,19 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
       router.replace("/dashboard/tickets");
     } else if (tabParam === "ticketlogs") {
       router.replace("/dashboard/ticketlogs");
+    } else if (tabParam === "staff") {
+      const p = new URLSearchParams(searchParams.toString());
+      p.set("tab", "staff-recent");
+      router.replace(`/dashboard/analytics?${p.toString()}`);
     }
-  }, [tabParam, router]);
+  }, [tabParam, router, searchParams]);
 
   const tab: TabId =
     tabParam === "overview" ||
     tabParam === "metrics" ||
     tabParam === "games" ||
-    tabParam === "staff" ||
+    tabParam === "staff-recent" ||
+    tabParam === "staff-total" ||
     tabParam === "moderation" ||
     tabParam === "audit" ||
     tabParam === "engagement"
@@ -85,7 +96,10 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
   const loadedTabsRef = useRef<string>("");
 
   const summaryCacheKey = `summary:${range}`;
-  const tabCacheKey = `tab:${range}:${groupBy}:${tab}`;
+  const tabCacheKey =
+    tab === "staff-recent"
+      ? "tab:staff-recent"
+      : `tab:${range}:${groupBy}:${tab}`;
 
   const mergeBundle = useCallback(
     (patch: Partial<AnalyticsBundle> & { range: AnalyticsRange }) => {
@@ -95,7 +109,10 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
         summary: patch.summary ?? prev?.summary ?? emptySummary(patch.range),
         metrics: patch.metrics !== undefined ? patch.metrics : prev?.metrics,
         games: patch.games !== undefined ? patch.games : prev?.games,
-        staff: patch.staff !== undefined ? patch.staff : prev?.staff,
+        staffRecent:
+          patch.staffRecent !== undefined ? patch.staffRecent : prev?.staffRecent,
+        staffTotal:
+          patch.staffTotal !== undefined ? patch.staffTotal : prev?.staffTotal,
         moderation:
           patch.moderation !== undefined ? patch.moderation : prev?.moderation,
         audit: patch.audit !== undefined ? patch.audit : prev?.audit,
@@ -213,7 +230,8 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
     if (!summaryReady) return;
 
     const apiTabs = tabsForUiTab(tab);
-    const loadKey = `${range}:${groupBy}:${tab}`;
+    const loadKey =
+      tab === "staff-recent" ? "staff-recent" : `${range}:${groupBy}:${tab}`;
     if (loadedTabsRef.current === loadKey) {
       setTabReady(true);
       return;
@@ -278,12 +296,19 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
     <GamesDiscordUsersProvider>
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <AnalyticsControls
-            range={range}
-            groupBy={groupBy}
-            onRangeChange={setRange}
-            onGroupByChange={setGroupBy}
-          />
+          {tabUsesRangeControls(tab) ? (
+            <AnalyticsControls
+              range={range}
+              groupBy={groupBy}
+              onRangeChange={setRange}
+              onGroupByChange={setGroupBy}
+            />
+          ) : (
+            <p className="text-sm text-muted">
+              This tab shows the current manager period only — range and group
+              controls do not apply.
+            </p>
+          )}
           <p className="text-xs text-muted sm:pt-8">
             Private tickets{" "}
             {can(userTier, "tickets.view_private") ? "included" : "excluded"}
