@@ -58,7 +58,7 @@ export interface GamesOverview {
 
 export const ALL_TIME_LEADERBOARD_TYPES = [
   { id: "all_time_xp", label: "Total XP" },
-  { id: "all_time_level", label: "Highest level" },
+  { id: "all_time_level", label: "All Time Level" },
   { id: "trivia_wins", label: "Trivia wins" },
   { id: "math_quiz_wins", label: "Math quiz wins" },
   { id: "flag_guesser_wins", label: "Flag guesser wins" },
@@ -80,7 +80,6 @@ export type AllTimeLeaderboardType =
 /** Extra leaderboards shown on analytics (monthly / misc tables). */
 export const EXTRA_GAMES_LEADERBOARD_TYPES = [
   { id: "monthly_level", label: "Monthly level" },
-  { id: "monthly_xp", label: "Monthly XP" },
   { id: "achievements_earned", label: "Achievements earned" },
   { id: "daily_streak", label: "Daily reward streak" },
   { id: "counting_counts", label: "Counting — numbers posted" },
@@ -115,8 +114,8 @@ export const GAMES_LEADERBOARD_CATALOG: GamesLeaderboardCatalogItem[] = [
     id: "all_time_level",
     label: "All Time Level",
     description:
-      "Ranked by lifetime XP; level is derived from total XP (same as the bot leaderboard).",
-    valueLabel: "XP",
+      "Global level: sum of each player's monthly level at every /wipe-levels (not current month until wiped).",
+    valueLabel: "Global level",
     period: "all_time",
   },
   {
@@ -125,13 +124,6 @@ export const GAMES_LEADERBOARD_CATALOG: GamesLeaderboardCatalogItem[] = [
     description:
       "Current monthly leveling leaderboard (resets when staff run /wipe-levels).",
     valueLabel: "Level",
-    period: "monthly",
-  },
-  {
-    id: "monthly_xp",
-    label: "Monthly XP",
-    description: "XP in the current monthly period from the leveling table.",
-    valueLabel: "XP",
     period: "monthly",
   },
   {

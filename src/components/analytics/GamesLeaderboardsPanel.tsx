@@ -27,9 +27,6 @@ function formatEntryValue(
   if (def.id === "monthly_level" && entry.extra) {
     return `Lv ${base} (${entry.extra})`;
   }
-  if (def.id === "all_time_level" && entry.extra === "xp") {
-    return `${base} XP`;
-  }
   return base;
 }
 

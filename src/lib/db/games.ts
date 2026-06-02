@@ -108,17 +108,21 @@ export async function getAllTimeLeaderboard(
   }
 
   if (type === "all_time_level") {
-    const rows = await query<{ user_id: string; total_xp: number }>(
-      `SELECT user_id, SUM(xp) AS total_xp FROM xp_logs
-       GROUP BY user_id ORDER BY total_xp DESC LIMIT ?`,
-      [limit]
-    );
-    return rows.map((r, i) => ({
-      userId: String(r.user_id),
-      value: Number(r.total_xp),
-      rank: i + 1,
-      extra: "xp",
-    }));
+    try {
+      const rows = await query<{ user_id: string; value: number }>(
+        `SELECT user_id, global_level AS value FROM leveling_global
+         WHERE global_level > 0
+         ORDER BY global_level DESC LIMIT ?`,
+        [limit]
+      );
+      return rows.map((r, i) => ({
+        userId: String(r.user_id),
+        value: Number(r.value),
+        rank: i + 1,
+      }));
+    } catch {
+      return [];
+    }
   }
 
   if (type === "2048_best_score") {
@@ -196,20 +200,6 @@ export async function getGamesLeaderboard(
       value: Number(r.level),
       rank: i + 1,
       extra: `${Number(r.xp)} xp`,
-    }));
-  }
-
-  if (type === "monthly_xp") {
-    const rows = await query<{ user_id: string; value: number }>(
-      `SELECT user_id, CAST(xp AS UNSIGNED) AS value FROM leveling
-       WHERE CAST(xp AS UNSIGNED) > 0
-       ORDER BY value DESC LIMIT ?`,
-      [limit]
-    );
-    return rows.map((r, i) => ({
-      userId: String(r.user_id),
-      value: Number(r.value),
-      rank: i + 1,
     }));
   }
 
