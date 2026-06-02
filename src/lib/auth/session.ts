@@ -1,5 +1,7 @@
 import "server-only";
 
+import "@/lib/env-server";
+
 import {
   SESSION_COOKIE,
   getSessionMaxAge,
@@ -41,7 +43,7 @@ export interface SessionIdentity {
   avatar: string | null;
 }
 
-export function encodeSession(identity: SessionIdentity): string {
+export function encodeSession(identity: SessionIdentity): string | null {
   const now = Math.floor(Date.now() / 1000);
   const payload: SessionCookiePayload = {
     id: identity.id,

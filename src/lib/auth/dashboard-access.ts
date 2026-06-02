@@ -1,4 +1,3 @@
-import { env } from "@/lib/env";
 import { PERMISSION_ONLY_ROLE_NAME } from "@/lib/discord/guild-roles";
 import type { SessionUser } from "@/lib/auth/session";
 
@@ -14,7 +13,9 @@ export function hasDashboardGuildAccess(
   roleIds: string[],
   guildRoles: GuildRoleNameLookup[]
 ): boolean {
-  const ownerId = env("OWNER_DISCORD_ID");
+  const raw = process.env.OWNER_DISCORD_ID;
+  const ownerId =
+    raw != null ? raw.replace(/\r/g, "").trim() : "";
   if (ownerId && userId === ownerId) return true;
 
   const roleById = new Map(guildRoles.map((r) => [r.id, r.name]));

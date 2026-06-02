@@ -24,21 +24,3 @@ export function envBool(key: string): boolean {
   const value = env(key).toLowerCase();
   return value === "1" || value === "true" || value === "yes";
 }
-
-let productionValidated = false;
-
-/** Fail fast in production when critical secrets are missing or weak. */
-export function validateProductionEnv(): void {
-  if (productionValidated) return;
-  if (process.env.NODE_ENV !== "production") return;
-  productionValidated = true;
-
-  const secret = env("SESSION_SECRET");
-  if (secret.length < 32) {
-    throw new Error(
-      "SESSION_SECRET must be set to at least 32 characters in production"
-    );
-  }
-}
-
-validateProductionEnv();

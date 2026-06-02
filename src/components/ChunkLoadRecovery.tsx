@@ -12,6 +12,26 @@ export function ChunkLoadRecovery() {
   const [showBanner, setShowBanner] = useState(false);
 
   useEffect(() => {
+    const onRejection = (event: PromiseRejectionEvent) => {
+      const msg =
+        event.reason instanceof Error
+          ? event.reason.message
+          : String(event.reason ?? "");
+      if (
+        msg.includes("SESSION_SECRET") ||
+        msg.includes("server-only") ||
+        msg.includes("Missing required environment")
+      ) {
+        event.preventDefault();
+        setShowBanner(true);
+      }
+    };
+
+    window.addEventListener("unhandledrejection", onRejection);
+    return () => window.removeEventListener("unhandledrejection", onRejection);
+  }, []);
+
+  useEffect(() => {
     const onError = (event: Event) => {
       const el = event.target;
       if (!(el instanceof HTMLScriptElement)) return;
@@ -41,9 +61,10 @@ export function ChunkLoadRecovery() {
       role="alert"
       className="fixed bottom-4 left-4 right-4 z-[100] mx-auto max-w-md rounded-lg border border-amber-500/40 bg-zinc-900 px-4 py-3 text-sm text-amber-100 shadow-lg lg:left-auto"
     >
-      <p className="font-medium">Page assets failed to load</p>
+      <p className="font-medium">Something went wrong loading the dashboard</p>
       <p className="mt-1 text-xs text-zinc-400">
-        Often fixed by a hard refresh or purging Cloudflare cache after a deploy.
+        Try a hard refresh. If this keeps happening after a deploy, ask an admin
+        to check server logs and restart the dashboard process.
       </p>
       <button
         type="button"

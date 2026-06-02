@@ -6,8 +6,22 @@ interface LoginPageProps {
   searchParams: Promise<{ error?: string; redirect?: string }>;
 }
 
+function loginErrorMessage(code: string | undefined): string | null {
+  switch (code) {
+    case "auth_failed":
+      return "Sign-in failed. Try again.";
+    case "rate_limited":
+      return "Too many sign-in attempts. Wait a minute and try again.";
+    case "server_config":
+      return "The dashboard could not start a session. Contact an administrator (server SESSION_SECRET).";
+    default:
+      return code ? "Sign-in failed. Try again." : null;
+  }
+}
+
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const { error } = await searchParams;
+  const errorMessage = loginErrorMessage(error);
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -19,10 +33,10 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         <h1 className="text-xl font-semibold text-white">Sign in</h1>
         <p className="mt-2 text-sm text-muted">Staff Discord account required.</p>
 
-        {error && (
+        {errorMessage && (
           <div className="mt-4 flex items-center justify-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
             <AlertCircle className="h-4 w-4 shrink-0" />
-            Sign-in failed. Try again.
+            {errorMessage}
           </div>
         )}
 

@@ -1,3 +1,5 @@
+import "server-only";
+
 import { createHmac, timingSafeEqual } from "crypto";
 import { env } from "@/lib/env";
 
@@ -12,13 +14,11 @@ export interface SessionCookiePayload {
   sv?: number;
 }
 
-function sessionSecret(): string {
+function sessionSecret(): string | null {
   const secret = env("SESSION_SECRET");
   if (secret.length >= 32) return secret;
   if (process.env.NODE_ENV === "production") {
-    throw new Error(
-      "SESSION_SECRET must be set to at least 32 characters in production"
-    );
+    return null;
   }
   return "dev-insecure-session-secret-min-32-chars!!";
 }
@@ -30,15 +30,18 @@ export function sessionVersion(): number {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1;
 }
 
-function signPayload(encodedPayload: string): string {
-  return createHmac("sha256", sessionSecret())
+function signPayload(encodedPayload: string): string | null {
+  const secret = sessionSecret();
+  if (!secret) return null;
+  return createHmac("sha256", secret)
     .update(encodedPayload)
     .digest("base64url");
 }
 
-export function encodeSignedSession(payload: SessionCookiePayload): string {
+export function encodeSignedSession(payload: SessionCookiePayload): string | null {
   const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
   const sig = signPayload(encoded);
+  if (!sig) return null;
   return `${encoded}.${sig}`;
 }
 
@@ -51,6 +54,7 @@ export function decodeSignedSession(raw: string): SessionCookiePayload | null {
   if (!encoded || !sig) return null;
 
   const expected = signPayload(encoded);
+  if (!expected) return null;
   try {
     const a = Buffer.from(sig, "base64url");
     const b = Buffer.from(expected, "base64url");

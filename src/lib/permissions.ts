@@ -1,5 +1,3 @@
-import { env } from "@/lib/env";
-
 export type PermissionTier =
   | "owner"
   | "manager"
@@ -121,11 +119,17 @@ const TIER_FOR_GROUP: Record<string, PermissionTier> = {
   Owner: "owner",
 };
 
+function ownerDiscordId(): string {
+  const raw = process.env.OWNER_DISCORD_ID;
+  if (raw == null) return "";
+  return raw.replace(/\r/g, "").trim();
+}
+
 export function resolvePermissionTier(
   userId: string,
   roleIds: string[]
 ): PermissionTier {
-  const ownerId = env("OWNER_DISCORD_ID");
+  const ownerId = ownerDiscordId();
   if (ownerId && userId === ownerId) return "owner";
 
   let highest: PermissionTier = "none";

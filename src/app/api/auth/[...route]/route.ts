@@ -156,6 +156,20 @@ export async function GET(
       invalidateSessionAuthCache(sessionUser.id);
       await resolveSessionAuthorization(sessionUser.id, { force: true });
 
+      const token = encodeSession({
+        id: sessionUser.id,
+        username: sessionUser.username,
+        globalName: sessionUser.globalName,
+        avatar: sessionUser.avatar,
+      });
+      if (!token) {
+        return clearState(
+          NextResponse.redirect(
+            new URL("/login?error=server_config", getRedirectBaseUrl(request))
+          )
+        );
+      }
+
       const response = clearState(
         NextResponse.redirect(
           new URL("/dashboard", getRedirectBaseUrl(request))
@@ -163,12 +177,7 @@ export async function GET(
       );
       response.cookies.set(
         getSessionCookieName(),
-        encodeSession({
-          id: sessionUser.id,
-          username: sessionUser.username,
-          globalName: sessionUser.globalName,
-          avatar: sessionUser.avatar,
-        }),
+        token,
         getSessionCookieOptions()
       );
       return response;
