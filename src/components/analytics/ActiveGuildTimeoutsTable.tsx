@@ -8,10 +8,10 @@ import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { useResolveDiscordUsers } from "@/components/games/GamesDiscordUsersProvider";
 import { useAnalyticsTableRowLimit } from "@/components/analytics/table-row-limit";
 import { Button } from "@/components/ui/Button";
-import type { GuildBanRow } from "@/lib/discord/guild-bans";
+import type { GuildTimeoutRow } from "@/lib/discord/guild-timeouts";
 import { useCallback, useEffect, useState } from "react";
 
-interface BansApiResponse {
+interface TimeoutsApiResponse {
   configured: boolean;
   canRevoke: boolean;
   viewer: {
@@ -19,27 +19,53 @@ interface BansApiResponse {
     username: string;
     globalName: string | null;
   };
-  bans: GuildBanRow[];
+  timeouts: GuildTimeoutRow[];
   fetchedAt?: number;
   error?: string;
 }
 
-export function ActiveGuildBansTable() {
-  const [data, setData] = useState<BansApiResponse | null>(null);
+function formatTimeoutEnd(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+function formatTimeRemaining(untilMs: number): string {
+  const seconds = Math.max(0, Math.floor((untilMs - Date.now()) / 1000));
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 48) return `${hours}h ${minutes % 60}m`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ${hours % 24}h`;
+}
+
+export function ActiveGuildTimeoutsTable() {
+  const [data, setData] = useState<TimeoutsApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [revokeTarget, setRevokeTarget] = useState<GuildBanRow | null>(null);
+  const [revokeTarget, setRevokeTarget] = useState<GuildTimeoutRow | null>(null);
   const [revokeReason, setRevokeReason] = useState("");
   const [confirmAuth, setConfirmAuth] = useState(false);
   const [revoking, setRevoking] = useState(false);
   const [revokeError, setRevokeError] = useState<string | null>(null);
   const { slice, tableRowLimit } = useAnalyticsTableRowLimit(25);
-  useResolveDiscordUsers(data?.bans?.map((b) => b.userId) ?? []);
+  const userIds = [
+    ...(data?.timeouts?.map((t) => t.userId) ?? []),
+    ...(data?.timeouts
+      ?.map((t) => t.moderatedBy)
+      .filter((id): id is string => !!id) ?? []),
+  ];
+  useResolveDiscordUsers(userIds);
 
-  const loadBans = useCallback(async () => {
+  const loadTimeouts = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/discord/bans");
-      const json = (await res.json()) as BansApiResponse;
+      const res = await fetch("/api/discord/timeouts");
+      const json = (await res.json()) as TimeoutsApiResponse;
       setData(json);
     } catch {
       setData(null);
@@ -49,8 +75,8 @@ export function ActiveGuildBansTable() {
   }, []);
 
   useEffect(() => {
-    void loadBans();
-  }, [loadBans]);
+    void loadTimeouts();
+  }, [loadTimeouts]);
 
   async function submitRevoke() {
     if (!revokeTarget || !data?.canRevoke) return;
@@ -66,7 +92,7 @@ export function ActiveGuildBansTable() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "unban",
+          action: "untimeout",
           userId: revokeTarget.userId,
           reason: revokeReason.trim(),
         }),
@@ -74,15 +100,18 @@ export function ActiveGuildBansTable() {
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
         throw new Error(
-          (body as { error?: string }).error ?? `Unban failed (${res.status})`
+          (body as { error?: string }).error ??
+            `Remove timeout failed (${res.status})`
         );
       }
       setRevokeTarget(null);
       setRevokeReason("");
       setConfirmAuth(false);
-      await loadBans();
+      await loadTimeouts();
     } catch (e) {
-      setRevokeError(e instanceof Error ? e.message : "Unban failed");
+      setRevokeError(
+        e instanceof Error ? e.message : "Remove timeout failed"
+      );
     } finally {
       setRevoking(false);
     }
@@ -95,7 +124,7 @@ export function ActiveGuildBansTable() {
   if (loading) {
     return (
       <div className="rounded-lg border border-border bg-surface px-4 py-8 text-center text-sm text-muted">
-        Loading active bans from Discord…
+        Loading active timeouts from Discord…
       </div>
     );
   }
@@ -108,40 +137,47 @@ export function ActiveGuildBansTable() {
     );
   }
 
-  const bans = data.bans ?? [];
-  const visible = slice(bans);
+  const timeouts = data.timeouts ?? [];
+  const visible = slice(timeouts);
 
   return (
     <>
       <AnalyticsDataTable
-        title="Active guild bans"
-        dataHint="moderation.table.bans"
+        title="Active timeouts"
+        dataHint="moderation.table.timeouts"
         headers={[
           "userId",
           "username",
           "displayName",
+          "timeoutUntil",
+          "timeRemaining",
           "reason",
+          "moderatedBy",
         ]}
-        exportFilename="active-guild-bans.csv"
-        exportRows={bans.map((b) => ({
-          userId: b.userId,
-          username: b.username,
-          displayName: b.displayName,
-          reason: b.reason ?? "",
+        exportFilename="active-guild-timeouts.csv"
+        exportRows={timeouts.map((t) => ({
+          userId: t.userId,
+          username: t.username,
+          displayName: t.displayName,
+          timeoutUntil: t.timeoutUntil,
+          timeRemaining: formatTimeRemaining(t.timeoutUntilMs),
+          reason: t.reason ?? "",
+          moderatedBy: t.moderatedBy ?? "",
         }))}
         tableRowLimit={tableRowLimit}
       >
         <p className="px-4 pt-3 text-xs text-muted">
-          Live list from Discord (guild ban list).{" "}
+          Members currently timed out in the guild (from member list + audit log
+          reasons).{" "}
           {data.canRevoke
-            ? "Revoke uses the dashboard bot on your behalf; your account is recorded in the audit log."
-            : "You can view bans; revoking requires Admin or higher."}
+            ? "Remove timeout uses the dashboard bot on your behalf; your account is recorded in the audit log."
+            : "You can view timeouts; removing them requires Admin or higher."}
           {data.error ? (
             <span className="mt-1 block text-amber-300">{data.error}</span>
           ) : null}
         </p>
-        {bans.length === 0 ? (
-          <p className="px-4 py-6 text-sm text-muted">No active bans.</p>
+        {timeouts.length === 0 ? (
+          <p className="px-4 py-6 text-sm text-muted">No active timeouts.</p>
         ) : (
           <div className="overflow-x-auto">
             <AnalyticsTable>
@@ -149,28 +185,44 @@ export function ActiveGuildBansTable() {
                 <tr className="border-b border-border text-left text-xs text-muted">
                   <th className="px-4 py-2">Member</th>
                   <th className="px-4 py-2">User ID</th>
-                  <th className="px-4 py-2">Ban reason</th>
+                  <th className="px-4 py-2">Ends</th>
+                  <th className="px-4 py-2">Remaining</th>
+                  <th className="px-4 py-2">Reason</th>
+                  <th className="px-4 py-2">Moderator</th>
                   {data.canRevoke && (
                     <th className="px-4 py-2 text-right">Actions</th>
                   )}
                 </tr>
               </thead>
               <tbody>
-                {visible.map((ban) => (
+                {visible.map((row) => (
                   <tr
-                    key={ban.userId}
+                    key={row.userId}
                     className="border-b border-border/50 last:border-0"
                   >
                     <td className="px-4 py-2 whitespace-nowrap">
-                      <DiscordUserChip userId={ban.userId} />
-                      <p className="mt-0.5 text-xs text-muted">@{ban.username}</p>
+                      <DiscordUserChip userId={row.userId} />
+                      <p className="mt-0.5 text-xs text-muted">@{row.username}</p>
                     </td>
                     <td className="px-4 py-2 font-mono text-xs text-muted whitespace-nowrap">
-                      {ban.userId}
+                      {row.userId}
                     </td>
-                    <td className="max-w-md px-4 py-2 text-sm text-slate-300">
-                      {ban.reason ?? (
-                        <span className="text-muted italic">No reason set</span>
+                    <td className="px-4 py-2 text-sm text-slate-300 whitespace-nowrap">
+                      {formatTimeoutEnd(row.timeoutUntil)}
+                    </td>
+                    <td className="px-4 py-2 text-sm text-amber-200/90 whitespace-nowrap">
+                      {formatTimeRemaining(row.timeoutUntilMs)}
+                    </td>
+                    <td className="max-w-xs px-4 py-2 text-sm text-slate-300">
+                      {row.reason ?? (
+                        <span className="text-muted italic">No reason in audit log</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      {row.moderatedBy ? (
+                        <DiscordUserChip userId={row.moderatedBy} compact />
+                      ) : (
+                        <span className="text-muted">—</span>
                       )}
                     </td>
                     {data.canRevoke && (
@@ -178,15 +230,15 @@ export function ActiveGuildBansTable() {
                         <Button
                           type="button"
                           size="sm"
-                          variant="danger"
+                          variant="secondary"
                           onClick={() => {
-                            setRevokeTarget(ban);
+                            setRevokeTarget(row);
                             setRevokeReason("");
                             setConfirmAuth(false);
                             setRevokeError(null);
                           }}
                         >
-                          Revoke ban
+                          Remove timeout
                         </Button>
                       </td>
                     )}
@@ -203,39 +255,42 @@ export function ActiveGuildBansTable() {
           className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4"
           role="dialog"
           aria-modal="true"
-          aria-labelledby="revoke-ban-title"
+          aria-labelledby="remove-timeout-title"
         >
           <div className="w-full max-w-md rounded-lg border border-border bg-surface p-5 shadow-xl">
             <h3
-              id="revoke-ban-title"
+              id="remove-timeout-title"
               className="text-lg font-semibold text-white"
             >
-              Revoke ban
+              Remove timeout
             </h3>
             <p className="mt-1 text-sm text-muted">
               {revokeTarget.displayName}{" "}
               <span className="font-mono text-xs">({revokeTarget.userId})</span>
             </p>
+            <p className="mt-2 text-xs text-muted">
+              Ends {formatTimeoutEnd(revokeTarget.timeoutUntil)} (
+              {formatTimeRemaining(revokeTarget.timeoutUntilMs)} left)
+            </p>
             {revokeTarget.reason && (
               <p className="mt-2 rounded-md bg-black/20 px-3 py-2 text-sm text-slate-300">
-                Current reason: {revokeTarget.reason}
+                Timeout reason: {revokeTarget.reason}
               </p>
             )}
 
             <div className="mt-4 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100/90">
-              Discord does not allow user accounts to remove guild bans directly.
-              The bot will unban this member and attach your dashboard identity to
-              the Discord audit reason and dashboard audit log.
+              Discord requires the bot to clear timeouts. Your dashboard account
+              is recorded when you authorize this action.
             </div>
 
             <label className="mt-4 block text-xs font-medium text-muted">
-              Revoke reason (required)
+              Note (required)
               <textarea
                 value={revokeReason}
                 onChange={(e) => setRevokeReason(e.target.value)}
                 rows={3}
                 className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-white"
-                placeholder="Why is this ban being removed?"
+                placeholder="Why is this timeout being removed early?"
               />
             </label>
 
@@ -248,7 +303,7 @@ export function ActiveGuildBansTable() {
               />
               <span>
                 I, <strong className="text-white">{viewerName}</strong>, authorize
-                the dashboard bot to revoke this ban on my behalf.
+                the dashboard bot to remove this timeout on my behalf.
               </span>
             </label>
 
@@ -268,12 +323,12 @@ export function ActiveGuildBansTable() {
               </Button>
               <Button
                 type="button"
-                variant="danger"
+                variant="primary"
                 size="sm"
                 disabled={revoking}
                 onClick={() => void submitRevoke()}
               >
-                {revoking ? "Revoking…" : "Revoke ban"}
+                {revoking ? "Removing…" : "Remove timeout"}
               </Button>
             </div>
           </div>

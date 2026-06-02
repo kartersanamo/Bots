@@ -6,6 +6,7 @@ import { AnalyticsKpiGrid } from "@/components/analytics/AnalyticsKpiGrid";
 import { AnalyticsUserCountTable } from "@/components/analytics/AnalyticsUserCountTable";
 import { DailyLineChart, NamedBarChart } from "@/components/analytics/charts";
 import { ActiveGuildBansTable } from "@/components/analytics/ActiveGuildBansTable";
+import { ActiveGuildTimeoutsTable } from "@/components/analytics/ActiveGuildTimeoutsTable";
 import type { AnalyticsRange, ModerationAnalytics } from "@/lib/analytics/types";
 
 interface ModerationAnalyticsSectionProps {
@@ -24,6 +25,11 @@ export function ModerationAnalyticsSection({
       <AnalyticsKpiGrid
         items={[
           kpi("Active bans", kpis.activeBans, "moderation.activeBans"),
+          kpi(
+            "Active timeouts",
+            kpis.activeTimeouts,
+            "moderation.activeTimeouts"
+          ),
           kpi("Blacklist entries", kpis.totalBlacklists, "moderation.blacklists"),
           kpi(
             "Blacklists with expiry",
@@ -35,6 +41,8 @@ export function ModerationAnalyticsSection({
       />
 
       <ActiveGuildBansTable />
+
+      <ActiveGuildTimeoutsTable />
 
       <div className="grid gap-4">
         <AnalyticsChartCard

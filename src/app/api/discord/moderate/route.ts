@@ -25,7 +25,7 @@ export const POST = handleApiRoute(async (request) => {
   }
 
   const session =
-    action === "unban"
+    action === "unban" || action === "untimeout"
       ? await (async () => {
           const s = await requireSession();
           if (!can(s.tier, "bans.write")) throw new Error("Forbidden");
@@ -50,8 +50,19 @@ export const POST = handleApiRoute(async (request) => {
       switch (action) {
         case "timeout":
           return timeoutMember(gid, userId, durationSeconds || 3600, reason);
-        case "untimeout":
-          return removeTimeout(gid, userId);
+        case "untimeout": {
+          await removeTimeout(gid, userId);
+          const note =
+            typeof reason === "string" && reason.trim()
+              ? reason.trim()
+              : `Removed via dashboard by ${session.globalName || session.username}`;
+          return {
+            untimedOut: true,
+            performedByBot: true,
+            authorizedBy: session.id,
+            note,
+          };
+        }
         case "kick":
           return kickMember(gid, userId, reason);
         case "ban":

@@ -92,7 +92,7 @@ export async function getAnalyticsBundle(
           xpInRange: 0,
           xpEventsInRange: 0,
         },
-        moderation: { activeBans: 0, blacklists: 0 },
+        moderation: { activeBans: 0, activeTimeouts: 0, blacklists: 0 },
         staff: { totalMessages: 0, totalTicketsClosed: 0 },
         audit: { actionsInRange: 0, fleetRestarts: 0 },
       } satisfies AnalyticsSummary),

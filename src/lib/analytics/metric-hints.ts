@@ -476,6 +476,12 @@ const H: Record<string, AnalyticsDataMeta> = {
     description: "Staff ranked by punishment requests this period (statistics).",
     rangeApplies: false,
   },
+  "moderation.table.timeouts": {
+    description:
+      "Members currently timed out, with end time and reason from audit log when available. Remove timeout runs through the bot with your dashboard account in the audit log.",
+    rangeLabel: "Live Discord member timeouts.",
+    rangeApplies: false,
+  },
 
   // —— Staff total ——
   "staffTotal.activeStaff": {
@@ -532,6 +538,11 @@ const H: Record<string, AnalyticsDataMeta> = {
   // —— Moderation ——
   "moderation.activeBans": {
     description: "Current Discord guild ban count (API).",
+    rangeLabel: "Live API snapshot.",
+  },
+  "moderation.activeTimeouts": {
+    description:
+      "Members with communication_disabled_until still in the future (guild member list).",
     rangeLabel: "Live API snapshot.",
   },
   "moderation.table.bans": {

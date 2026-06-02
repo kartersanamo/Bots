@@ -8,6 +8,7 @@ import {
 } from "@/lib/analytics/range";
 import type { AnalyticsRange, AnalyticsSummary } from "@/lib/analytics/types";
 import { fetchGuildBanCount } from "@/lib/discord/api";
+import { fetchGuildTimeoutCount } from "@/lib/discord/guild-timeouts";
 import { getTotalStatisticsTotals } from "@/lib/db/total-statistics";
 import { getGamesOverview } from "@/lib/db/games";
 import { getTicketStats } from "@/lib/db/tickets";
@@ -43,6 +44,7 @@ export async function getAnalyticsSummaryLight(
     games,
     mod,
     discordBanCount,
+    discordTimeoutCount,
     auditSummary,
     xpRow,
     staffTotals,
@@ -62,6 +64,7 @@ export async function getAnalyticsSummaryLight(
       `SELECT COUNT(*) AS totalBlacklists FROM blacklists`
     ).catch(() => null),
     fetchGuildBanCount().catch(() => null),
+    fetchGuildTimeoutCount().catch(() => null),
     getAuditSummaryInRange(range),
     queryOne<{ total: number; events: number }>(
       `SELECT COALESCE(SUM(xp), 0) AS total, COUNT(*) AS events
@@ -110,6 +113,7 @@ export async function getAnalyticsSummaryLight(
     },
     moderation: {
       activeBans: discordBanCount ?? 0,
+      activeTimeouts: discordTimeoutCount ?? 0,
       blacklists: Number(mod?.totalBlacklists ?? 0),
     },
     staff: {
@@ -141,6 +145,7 @@ function emptySummary(range: AnalyticsRange): AnalyticsSummary {
     },
     moderation: {
       activeBans: 0,
+      activeTimeouts: 0,
       blacklists: 0,
     },
     staff: { totalMessages: 0, totalTicketsClosed: 0 },

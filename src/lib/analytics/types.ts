@@ -187,6 +187,7 @@ export interface ModerationAnalytics {
   groupBy: AnalyticsGroupBy;
   kpis: {
     activeBans: number;
+    activeTimeouts: number;
     totalBlacklists: number;
     mediaEntries: number;
     blacklistsWithExpiry: number;
@@ -269,6 +270,7 @@ export interface AnalyticsSummary {
   };
   moderation: {
     activeBans: number;
+    activeTimeouts: number;
     blacklists: number;
   };
   staff: {
