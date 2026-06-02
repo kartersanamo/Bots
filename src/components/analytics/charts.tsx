@@ -126,6 +126,12 @@ export function NamedBarChart({
             border: "1px solid #334155",
             borderRadius: 8,
           }}
+          labelFormatter={(_label, payload) => {
+            const row = payload?.[0]?.payload as NamedCount | undefined;
+            if (row?.detail) return row.detail;
+            return String(_label);
+          }}
+          formatter={(value) => [`${value} actions`, "Count"]}
         />
         <Bar dataKey="count" fill={color} radius={[4, 4, 0, 0]} isAnimationActive={false} />
       </BarChart>

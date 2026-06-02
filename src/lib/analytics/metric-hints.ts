@@ -596,7 +596,8 @@ const H: Record<string, AnalyticsDataMeta> = {
     description: "Most common audit action types in range.",
   },
   "audit.chart.resources": {
-    description: "Most targeted resources in audit log entries in range.",
+    description:
+      "Counts how often each audit log target appears — the channel, user, bot, or file the action was performed on. Long numeric IDs are resolved to ticket numbers, channel names, or member names when possible.",
   },
   "audit.table.actors": {
     description: "Dashboard users with the most audit actions in range.",

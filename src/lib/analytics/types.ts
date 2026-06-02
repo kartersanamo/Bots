@@ -20,6 +20,13 @@ export interface DailyCount {
 export interface NamedCount {
   name: string;
   count: number;
+  /** Optional tooltip / export detail */
+  detail?: string;
+}
+
+export interface EnrichedAuditTargetCount extends NamedCount {
+  raw: string;
+  category: string;
 }
 
 export interface UserCountRow {
@@ -202,7 +209,7 @@ export interface AuditAnalytics {
   actionsPerDay: DailyCount[];
   topActors: { actorId: string; count: number }[];
   topActions: NamedCount[];
-  topTargets: NamedCount[];
+  topTargets: EnrichedAuditTargetCount[];
   byHour: NamedCount[];
   fleetRestarts: number;
   totalInRange: number;

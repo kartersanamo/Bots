@@ -11,6 +11,7 @@ import {
   buildTimeBucketSpec,
   normalizeTimeSeries,
 } from "@/lib/analytics/time-buckets";
+import { enrichAuditTargets } from "@/lib/analytics/audit-target-enrichment";
 import type { AnalyticsRange, AuditAnalytics, DailyCount, NamedCount } from "@/lib/analytics/types";
 
 const AUDIT_FILE = path.join(process.cwd(), "data", "audit", "audit.jsonl");
@@ -82,10 +83,12 @@ export async function getAuditAnalytics(
     .slice(0, 15)
     .map(([name, count]) => ({ name, count }));
 
-  const topTargets: NamedCount[] = [...agg.byTarget.entries()]
+  const topTargetsRaw: NamedCount[] = [...agg.byTarget.entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, 12)
     .map(([name, count]) => ({ name, count }));
+
+  const topTargets = await enrichAuditTargets(topTargetsRaw);
 
   const successRatePercent =
     agg.total > 0

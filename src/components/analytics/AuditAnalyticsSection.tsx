@@ -126,23 +126,24 @@ export function AuditAnalyticsSection({
 
         {data.topTargets.length > 0 && (
           <AnalyticsChartCard
-            title="Most targeted resources"
+            title="Most acted-on targets"
             dataHint={chartHint("audit.chart.resources", data.actionsPerDay)}
-            exportHeaders={["target", "count"]}
+            exportHeaders={["label", "category", "actions", "rawTarget", "detail"]}
             exportFilename={`audit-targets-${range}.csv`}
             exportRows={data.topTargets.map((r) => ({
-              target: r.name,
-              count: r.count,
+              label: r.name,
+              category: r.category,
+              actions: r.count,
+              rawTarget: r.raw,
+              detail: r.detail,
             }))}
           >
-            <NamedBarChart
-              data={data.topTargets.map((r) => ({
-                name:
-                  r.name.length > 18 ? `${r.name.slice(0, 16)}…` : r.name,
-                count: r.count,
-              }))}
-              color="#475569"
-            />
+            <p className="mb-3 px-1 text-xs text-muted">
+              Each bar is what staff clicked or changed in the dashboard audit log:
+              ticket channels, Discord users, bots, game sessions, or config files.
+              Hover a bar for the full ID or path.
+            </p>
+            <NamedBarChart data={data.topTargets} color="#475569" />
           </AnalyticsChartCard>
         )}
       </div>
