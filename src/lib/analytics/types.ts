@@ -202,43 +202,19 @@ export interface AuditAnalytics {
 export interface EngagementAnalytics {
   range: AnalyticsRange;
   groupBy: AnalyticsGroupBy;
-  tablesReady: Record<string, boolean>;
-  kpis: {
-    staffMessagesInRange: number;
-    ticketStaffMessages: number;
-    ticketOwnerMessages: number;
-    memberJoins: number;
-    memberLeaves: number;
-    voiceSecondsInRange: number;
-    commandInvocations: number;
-    modActions: number;
-    gameSessionsEnded: number;
-    memberMessagesInRange: number;
+  tablesReady: {
+    memberMessages: boolean;
+    ticketMessages: boolean;
   };
+  kpis: {
+    /** All guild messages from users in the staff roster (`statistics`). */
+    totalStaffMessagesInRange: number;
+    /** Staff messages in channels with an active ticket. */
+    staffMessagesInRange: number;
+  };
+  totalStaffMessagesPerDay: DailyCount[];
+  topStaffByTotalMessages: UserCountRow[];
   staffMessagesPerDay: DailyCount[];
-  topStaffByMessages: UserCountRow[];
-  ticketStaffMessagesPerDay: DailyCount[];
-  ticketOwnerMessagesPerDay: DailyCount[];
-  memberJoinsPerDay: DailyCount[];
-  memberLeavesPerDay: DailyCount[];
-  voiceSecondsPerDay: DailyCount[];
-  topVoiceUsers: UserCountRow[];
-  commandsPerDay: DailyCount[];
-  topCommands: NamedCount[];
-  modActionsPerDay: DailyCount[];
-  modActionsByType: NamedCount[];
-  topModActors: UserCountRow[];
-  gameOutcomesPerDay: DailyCount[];
-  gameOutcomesByType: NamedCount[];
-  serverSnapshots: {
-    date: string;
-    members: number;
-    online: number;
-    boostTier: number;
-  }[];
-  blacklistsCreatedPerDay: DailyCount[];
-  memberMessagesPerDay: DailyCount[];
-  topMembersByMessages: UserCountRow[];
 }
 
 export interface AnalyticsSummary {
