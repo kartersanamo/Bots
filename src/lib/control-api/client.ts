@@ -1,3 +1,4 @@
+import { formatErrorDetail } from "@/lib/api/error-message";
 import { env } from "@/lib/env";
 import { fetchWithTimeout } from "@/lib/fetch-timeout";
 
@@ -55,7 +56,7 @@ export async function controlFetch<T>(
   if (!res.ok) {
     const detail =
       typeof data === "object" && data && "detail" in data
-        ? String((data as { detail: unknown }).detail)
+        ? formatErrorDetail((data as { detail: unknown }).detail)
         : res.statusText;
     throw new ControlApiError(detail, res.status, data);
   }

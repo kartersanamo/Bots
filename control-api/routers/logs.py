@@ -13,7 +13,7 @@ router = APIRouter(prefix="/bots", tags=["logs"], dependencies=[Depends(verify_c
 @router.get("/{bot_id}/logs")
 def tail_bot_logs(
     bot_id: str,
-    lines: int = Query(100, ge=1, le=2000),
+    lines: int = Query(100, ge=1, le=5000),
     search: Optional[str] = None,
     file: Optional[str] = None,
     source: Literal["auto", "console", "file"] = Query("auto"),

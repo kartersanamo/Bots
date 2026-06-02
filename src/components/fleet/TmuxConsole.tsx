@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { responseErrorMessage } from "@/lib/api/error-message";
 import { cn } from "@/lib/utils";
 import { Maximize2, Minimize2, RefreshCw, Search } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -27,14 +28,14 @@ export function TmuxConsole({ botId }: TmuxConsoleProps) {
     setFetchError(null);
     try {
       const params = new URLSearchParams({
-        lines: "5000",
+        lines: "2000",
         source: "console",
       });
       if (search) params.set("search", search);
       const res = await fetch(`/api/bots/${botId}/logs?${params}`);
       const data = await res.json();
       if (!res.ok) {
-        setFetchError(data.error || "Failed to load console");
+        setFetchError(responseErrorMessage(data, "Failed to load console"));
         setLines([]);
         return;
       }

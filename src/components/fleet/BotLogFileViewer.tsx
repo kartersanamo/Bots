@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { responseErrorMessage } from "@/lib/api/error-message";
 import { cn } from "@/lib/utils";
 import { Maximize2, Minimize2, RefreshCw, Search } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -33,7 +34,7 @@ export function BotLogFileViewer({ botId }: BotLogFileViewerProps) {
       const res = await fetch(`/api/bots/${botId}/logs?${params}`);
       const data = await res.json();
       if (!res.ok) {
-        setFetchError(data.error || "Failed to load logs");
+        setFetchError(responseErrorMessage(data, "Failed to load logs"));
         setLines([]);
         return;
       }
