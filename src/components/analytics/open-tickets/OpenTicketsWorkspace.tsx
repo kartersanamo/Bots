@@ -16,6 +16,8 @@ import {
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
+  ArrowUpCircle,
+  ArrowDownCircle,
   RefreshCw,
   Search,
 } from "lucide-react";
@@ -262,6 +264,16 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
     setSelectedId(t.channelID);
     setShowTicketView(true);
   };
+
+  const selectedIndex = useMemo(
+    () => visibleTickets.findIndex((t) => t.channelID === selectedId),
+    [visibleTickets, selectedId]
+  );
+  const prevTicket = selectedIndex > 0 ? visibleTickets[selectedIndex - 1] : null;
+  const nextTicket =
+    selectedIndex >= 0 && selectedIndex < visibleTickets.length - 1
+      ? visibleTickets[selectedIndex + 1]
+      : null;
 
   const queue = (
     <div className="space-y-3">
@@ -593,16 +605,36 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
         </div>
       </div>
 
-      {showTicketView && selectedId ? (
+      {showTicketView && selectedId && (
         <div className="space-y-3">
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => setShowTicketView(false)}
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to queue
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setShowTicketView(false)}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to queue
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={!prevTicket}
+              onClick={() => prevTicket && selectTicket(prevTicket)}
+            >
+              <ArrowUpCircle className="h-4 w-4" />
+              Previous
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={!nextTicket}
+              onClick={() => nextTicket && selectTicket(nextTicket)}
+            >
+              <ArrowDownCircle className="h-4 w-4" />
+              Next
+            </Button>
+          </div>
           <div className="min-h-[calc(100vh-250px)]">
             <TicketDetailDrawer
               embedded
@@ -617,36 +649,36 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
             />
           </div>
         </div>
-      ) : (
-        <div className="max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
-          {queue}
-          {pageCount > 1 && (
-            <div className="mt-4 flex items-center justify-between">
-              <p className="text-xs text-muted">
-                Page {state.page} / {pageCount}
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={state.page <= 1}
-                  onClick={() => setParams({ page: state.page - 1 })}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={state.page >= pageCount}
-                  onClick={() => setParams({ page: state.page + 1 })}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
       )}
+
+      <div className="max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
+        {queue}
+        {pageCount > 1 && (
+          <div className="mt-4 flex items-center justify-between">
+            <p className="text-xs text-muted">
+              Page {state.page} / {pageCount}
+            </p>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={state.page <= 1}
+                onClick={() => setParams({ page: state.page - 1 })}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={state.page >= pageCount}
+                onClick={() => setParams({ page: state.page + 1 })}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
