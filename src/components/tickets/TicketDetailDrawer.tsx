@@ -244,7 +244,9 @@ export function TicketDetailDrawer({
         );
         return;
       }
-      const nextMessages = Array.isArray(payload.messages) ? payload.messages : [];
+      const nextMessages: TicketMessage[] = Array.isArray(payload.messages)
+        ? (payload.messages as TicketMessage[])
+        : [];
       setMessages(nextMessages);
       const authorIds = Array.from(
         new Set(nextMessages.map((m) => String(m.author?.id || "")).filter(Boolean))
