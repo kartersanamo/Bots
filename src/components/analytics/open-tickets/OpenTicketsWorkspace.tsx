@@ -11,6 +11,7 @@ import type { TicketRow } from "@/lib/tickets/types";
 import { can, type PermissionTier } from "@/lib/permissions";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { formatAgeLabel, ticketAgeHours } from "@/lib/tickets/age";
+import { useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   ChevronLeft,
@@ -125,6 +126,8 @@ function matchesView(
 }
 
 export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
+  const searchParams = useSearchParams();
+  const openChannelId = searchParams.get("openChannelId") || "";
   const {
     state,
     setParams,
@@ -147,6 +150,7 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
   const [showTicketView, setShowTicketView] = useState(false);
   const [channelNames, setChannelNames] = useState<Record<string, string>>({});
   const searchRef = useRef<HTMLInputElement>(null);
+  const autoOpenConsumedRef = useRef(false);
 
   const enrichEnabled = discordPreviews && tickets.length > 0;
   const { enrichments, loading: enrichLoading, refresh: refreshEnrich } =
@@ -190,6 +194,15 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
       tickets.filter((t) => matchesView(viewMode, t, enrichments[t.channelID])),
     [tickets, viewMode, enrichments]
   );
+
+  useEffect(() => {
+    if (!openChannelId || autoOpenConsumedRef.current) return;
+    const exists = visibleTickets.find((t) => t.channelID === openChannelId);
+    if (!exists) return;
+    autoOpenConsumedRef.current = true;
+    setSelectedId(openChannelId);
+    setShowTicketView(true);
+  }, [openChannelId, visibleTickets]);
 
   useEffect(() => {
     if (visibleTickets.length && !selectedId) {

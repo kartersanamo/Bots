@@ -133,8 +133,8 @@ export function TicketLiveNotifications() {
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <a
-            href={`/dashboard/tickets?number=${encodeURIComponent(
-              banner.ticketNumber
+            href={`/dashboard/tickets?openChannelId=${encodeURIComponent(
+              banner.channelId
             )}`}
             className="rounded bg-accent px-2.5 py-1.5 text-xs font-medium text-black hover:opacity-90"
           >
