@@ -1,41 +1,32 @@
 import { ACTIVE_STAFF_USER_IDS_SUBQUERY } from "@/lib/analytics/staff-roster";
+import {
+  STAFF_STAT_FIELDS,
+  type StaffStatKey,
+} from "@/lib/analytics/staff-stat-fields";
+import type { StaffTotals } from "@/lib/analytics/types";
 import { query, queryOne, isDbConfigured } from "@/lib/db/pool";
-
-export interface TotalStatisticsTotals {
-  ticketsClosed: number;
-  messages: number;
-  warnings: number;
-  screenshares: number;
-  staffCount: number;
-}
 
 const TOTALS_SQL = `
   SELECT
-    COALESCE(SUM(tickets_closed), 0) AS tickets,
-    COALESCE(SUM(messages_sent), 0) AS messages,
-    COALESCE(SUM(warnings), 0) AS warnings,
-    COALESCE(SUM(screenshares), 0) AS screenshares,
+    ${STAFF_STAT_FIELDS.map(
+      (f) => `COALESCE(SUM(${f.column}), 0) AS ${f.key}`
+    ).join(",\n    ")},
     COUNT(*) AS staff
   FROM total_statistics
   WHERE user_ID IN (${ACTIVE_STAFF_USER_IDS_SUBQUERY})`;
 
-export async function getTotalStatisticsTotals(): Promise<TotalStatisticsTotals | null> {
+export async function getTotalStatisticsTotals(): Promise<StaffTotals | null> {
   if (!isDbConfigured()) return null;
-  const row = await queryOne<{
-    tickets: number;
-    messages: number;
-    warnings: number;
-    screenshares: number;
-    staff: number;
-  }>(TOTALS_SQL).catch(() => null);
+  const row = await queryOne<Record<string, unknown>>(TOTALS_SQL).catch(
+    () => null
+  );
   if (!row) return null;
-  return {
-    ticketsClosed: Number(row.tickets ?? 0),
-    messages: Number(row.messages ?? 0),
-    warnings: Number(row.warnings ?? 0),
-    screenshares: Number(row.screenshares ?? 0),
-    staffCount: Number(row.staff ?? 0),
-  };
+
+  const totals = { staffCount: Number(row.staff ?? 0) } as StaffTotals;
+  for (const f of STAFF_STAT_FIELDS) {
+    totals[f.key] = Number(row[f.key] ?? 0);
+  }
+  return totals;
 }
 
 export async function totalStatisticsTableExists(): Promise<boolean> {
@@ -46,3 +37,5 @@ export async function totalStatisticsTableExists(): Promise<boolean> {
   ).catch(() => null);
   return Number(row?.n ?? 0) > 0;
 }
+
+export type { StaffStatKey };

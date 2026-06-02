@@ -363,13 +363,52 @@ const H: Record<string, AnalyticsDataMeta> = {
     description: "Sum of warnings in the current statistics period.",
     rangeApplies: false,
   },
+  "staffRecent.mutes": {
+    description: "Sum of mutes in the current statistics period.",
+    rangeApplies: false,
+  },
+  "staffRecent.tempBans": {
+    description: "Sum of temp_bans in the current statistics period.",
+    rangeApplies: false,
+  },
+  "staffRecent.bans": {
+    description: "Sum of bans in the current statistics period.",
+    rangeApplies: false,
+  },
   "staffRecent.screenshares": {
     description: "Sum of screenshares in the current statistics period.",
     rangeApplies: false,
   },
-  "staffRecent.strikes": {
-    description: "Total rows in strike_reports (not reset by /wipe).",
-    rangeLabel: `All-time strike_reports. ${ALL_TIME_DATA_CAVEAT}`,
+  "staffRecent.manualBans": {
+    description: "Sum of manual_bans in the current statistics period.",
+    rangeApplies: false,
+  },
+  "staffRecent.blacklists": {
+    description: "Sum of blacklists in the current statistics period.",
+    rangeApplies: false,
+  },
+  "staffRecent.revives": {
+    description: "Sum of revives in the current statistics period.",
+    rangeApplies: false,
+  },
+  "staffRecent.appeals": {
+    description: "Sum of appeals in the current statistics period.",
+    rangeApplies: false,
+  },
+  "staffRecent.threadsLocked": {
+    description: "Sum of threads_locked in the current statistics period.",
+    rangeApplies: false,
+  },
+  "staffRecent.strikeTeamVotes": {
+    description: "Sum of strike_team_votes in the current statistics period.",
+    rangeApplies: false,
+  },
+  "staffRecent.charactersSent": {
+    description: "Sum of characters_sent in the current statistics period.",
+    rangeApplies: false,
+  },
+  "staffRecent.punishmentRequests": {
+    description: "Sum of punishment_requests in the current statistics period.",
     rangeApplies: false,
   },
   "staffRecent.table.overview": {
@@ -389,8 +428,52 @@ const H: Record<string, AnalyticsDataMeta> = {
     description: "Staff ranked by warnings this period (statistics).",
     rangeApplies: false,
   },
+  "staffRecent.leaderboard.mutes": {
+    description: "Staff ranked by mutes this period (statistics).",
+    rangeApplies: false,
+  },
+  "staffRecent.leaderboard.tempBans": {
+    description: "Staff ranked by temp bans this period (statistics).",
+    rangeApplies: false,
+  },
+  "staffRecent.leaderboard.bans": {
+    description: "Staff ranked by bans this period (statistics).",
+    rangeApplies: false,
+  },
   "staffRecent.leaderboard.screenshares": {
     description: "Staff ranked by screenshares this period (statistics).",
+    rangeApplies: false,
+  },
+  "staffRecent.leaderboard.manualBans": {
+    description: "Staff ranked by manual bans this period (statistics).",
+    rangeApplies: false,
+  },
+  "staffRecent.leaderboard.blacklists": {
+    description: "Staff ranked by blacklists this period (statistics).",
+    rangeApplies: false,
+  },
+  "staffRecent.leaderboard.revives": {
+    description: "Staff ranked by revives this period (statistics).",
+    rangeApplies: false,
+  },
+  "staffRecent.leaderboard.appeals": {
+    description: "Staff ranked by appeals this period (statistics).",
+    rangeApplies: false,
+  },
+  "staffRecent.leaderboard.threadsLocked": {
+    description: "Staff ranked by threads locked this period (statistics).",
+    rangeApplies: false,
+  },
+  "staffRecent.leaderboard.strikeTeamVotes": {
+    description: "Staff ranked by strike team votes this period (statistics).",
+    rangeApplies: false,
+  },
+  "staffRecent.leaderboard.charactersSent": {
+    description: "Staff ranked by characters sent this period (statistics).",
+    rangeApplies: false,
+  },
+  "staffRecent.leaderboard.punishmentRequests": {
+    description: "Staff ranked by punishment requests this period (statistics).",
     rangeApplies: false,
   },
 

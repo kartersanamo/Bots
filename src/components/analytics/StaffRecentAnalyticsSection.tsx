@@ -6,6 +6,7 @@ import {
   StaffLeaderboardPanels,
   StaffOverviewTable,
 } from "@/components/analytics/StaffLeaderboardPanels";
+import { STAFF_STAT_FIELDS } from "@/lib/analytics/staff-stat-fields";
 import type { StaffRecentAnalytics } from "@/lib/analytics/types";
 import { formatNumber } from "@/lib/utils";
 
@@ -36,7 +37,7 @@ export function StaffRecentAnalyticsSection({
         <p className="mt-2 text-sm leading-relaxed text-amber-100/90">
           These numbers come from the current{" "}
           <code className="rounded bg-black/20 px-1 text-xs">statistics</code>{" "}
-          period. A manager runs <strong>/wipe</strong>  on MinecadiaStaff about
+          period. A manager runs <strong>/wipe</strong> on MinecadiaStaff about
           every two weeks, which clears everyone&apos;s period counters to zero.
           Do not use this tab for long-term or historical reporting — use{" "}
           <strong>Staff (Total)</strong> instead.
@@ -47,51 +48,37 @@ export function StaffRecentAnalyticsSection({
       </div>
 
       <AnalyticsKpiGrid
+        className="sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
         items={[
-          kpi("Active staff (period)", totals.staffCount, "staffRecent.activeStaff"),
           kpi(
-            "Tickets closed (this period)",
-            formatNumber(totals.ticketsClosed),
-            "staffRecent.tickets"
+            "Active staff (period)",
+            totals.staffCount,
+            "staffRecent.activeStaff"
           ),
-          kpi(
-            "Messages (this period)",
-            formatNumber(totals.messages),
-            "staffRecent.messages"
-          ),
-          kpi(
-            "Warnings (this period)",
-            formatNumber(totals.warnings),
-            "staffRecent.warnings"
-          ),
-          kpi(
-            "Screenshares (this period)",
-            formatNumber(totals.screenshares),
-            "staffRecent.screenshares"
-          ),
-          kpi(
-            "Strike reports (total)",
-            data.strikeReportsTotal != null
-              ? formatNumber(data.strikeReportsTotal)
-              : "N/A",
-            "staffRecent.strikes",
-            { subtitle: "All-time table; not reset by /wipe" }
+          ...STAFF_STAT_FIELDS.map((f) =>
+            kpi(
+              `${f.label} (this period)`,
+              formatNumber(totals[f.key]),
+              `staffRecent.${f.hintId}`
+            )
           ),
         ]}
       />
 
       <StaffOverviewTable
         title="Current period by staff"
-        description="Counts since the last /wipe from the statistics table. Departed staff (all zeros in statistics) are excluded."
-        rows={data.leaderboard}
+        description="All tracked counters since the last /wipe. Departed staff (every counter zero) are excluded."
+        rows={data.staffRows}
         exportFilename="staff-recent-overview.csv"
         dataHint="staffRecent.table.overview"
+        variant="full"
       />
 
       <StaffLeaderboardPanels
         data={data}
         filePrefix="staff-recent"
         hintScope="staffRecent"
+        showAllStats
       />
     </div>
   );

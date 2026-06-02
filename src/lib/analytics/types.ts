@@ -1,4 +1,5 @@
 import type { AnalyticsGroupBy } from "@/lib/analytics/group-by";
+import type { StaffStatKey, StaffStatsRow } from "@/lib/analytics/staff-stat-fields";
 import type { GamesLeaderboardType, LeaderboardEntry } from "@/lib/games/types";
 
 export type AnalyticsRange =
@@ -149,24 +150,17 @@ export interface GamesAnalytics {
   leaderboards: Record<GamesLeaderboardType, LeaderboardEntry[]>;
 }
 
-export interface StaffLeaderboardRow {
-  userId: string;
-  ticketsClosed: number;
-  messages: number;
-  warnings: number;
-  screenshares: number;
-}
+export type StaffLeaderboardRow = StaffStatsRow;
 
-export interface StaffTotals {
-  ticketsClosed: number;
-  messages: number;
-  warnings: number;
-  screenshares: number;
+export type StaffTotals = {
   staffCount: number;
-}
+} & Record<StaffStatKey, number>;
 
 export interface StaffLeaderboards {
+  /** All active staff rows from the query (up to fetch limit). */
+  staffRows: StaffLeaderboardRow[];
   leaderboard: StaffLeaderboardRow[];
+  topsByStat: Record<StaffStatKey, StaffLeaderboardRow[]>;
   topByMessages: StaffLeaderboardRow[];
   topByWarnings: StaffLeaderboardRow[];
   topByScreenshares: StaffLeaderboardRow[];
@@ -177,7 +171,6 @@ export interface StaffRecentAnalytics extends StaffLeaderboards {
   totals: StaffTotals;
   /** Unix seconds of last /wipe, if recorded. */
   lastWipedAt: number | null;
-  strikeReportsTotal: number | null;
 }
 
 /** Lifetime (`total_statistics`) + tracked messages in selected range. */

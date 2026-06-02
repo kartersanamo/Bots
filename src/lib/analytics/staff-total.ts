@@ -14,6 +14,7 @@ import type {
   AnalyticsRange,
   DailyCount,
   StaffTotalAnalytics,
+  StaffTotals,
 } from "@/lib/analytics/types";
 import { getTotalStatisticsTotals, totalStatisticsTableExists } from "@/lib/db/total-statistics";
 import { query, isDbConfigured } from "@/lib/db/pool";
@@ -68,13 +69,26 @@ export async function getStaffTotalAnalytics(
         ).catch(() => []),
       ]);
 
-    const totals = allTimeTotals ?? {
-      ticketsClosed: 0,
-      messages: 0,
-      warnings: 0,
-      screenshares: 0,
-      staffCount: 0,
-    };
+    const totals =
+      allTimeTotals ??
+      ({
+        staffCount: 0,
+        ticketsClosed: 0,
+        messages: 0,
+        warnings: 0,
+        mutes: 0,
+        tempBans: 0,
+        bans: 0,
+        screenshares: 0,
+        manualBans: 0,
+        blacklists: 0,
+        revives: 0,
+        appeals: 0,
+        threadsLocked: 0,
+        strikeTeamVotes: 0,
+        charactersSent: 0,
+        punishmentRequests: 0,
+      } satisfies StaffTotals);
 
     return {
       range,
