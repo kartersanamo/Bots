@@ -207,7 +207,7 @@ export function OverviewAnalyticsSection({
         )}
         {staffTotal && (
           <AnalyticsUserCountTable
-            title="Staff — tickets closed (all time)"
+            title="Staff — tickets closed (recent)"
             dataHint={chartHint(
               "overview.table.staffTickets",
               metrics?.closedPerDay
