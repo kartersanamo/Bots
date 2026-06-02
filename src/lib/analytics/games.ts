@@ -32,7 +32,9 @@ export async function getGamesAnalytics(
   const sessionBucket = bucketKeySqlFromUnix("refreshed_at", bucketSpec);
   const dailyClaimBucket = bucketKeySqlFromUnix("timestamp", bucketSpec);
   const earnedBucket = bucketKeySqlFromUnix("earned_at", bucketSpec);
-  const skipNewPlayers = range === "all" || range === "365d";
+  const newPlayerHaving =
+    since != null ? " HAVING first_ts >= ?" : "";
+  const newPlayerParams = since != null ? [since] : [];
 
   const sessionClause =
     since != null ? " AND CAST(refreshed_at AS UNSIGNED) >= ?" : "";
@@ -94,17 +96,17 @@ export async function getGamesAnalytics(
          GROUP BY name ORDER BY count DESC LIMIT 12`,
         tsParams
       ),
-      skipNewPlayers
-        ? Promise.resolve([] as { date: string; count: number }[])
-        : query<{ date: string; count: number }>(
-            `SELECT ${bucketKeySqlFromUnix("first_ts", bucketSpec)} AS date, COUNT(*) AS count FROM (
-              SELECT user_id, MIN(CAST(timestamp AS UNSIGNED)) AS first_ts
-              FROM xp_logs WHERE CAST(timestamp AS UNSIGNED) > 0${tsClause}
-              GROUP BY user_id
-            ) firsts
-            GROUP BY date ORDER BY date`,
-            tsParams
-          ),
+      query<{ date: string; count: number }>(
+        `SELECT ${bucketKeySqlFromUnix("first_ts", bucketSpec)} AS date, COUNT(*) AS count
+         FROM (
+           SELECT user_id, MIN(CAST(timestamp AS UNSIGNED)) AS first_ts
+           FROM xp_logs
+           WHERE CAST(timestamp AS UNSIGNED) > 0
+           GROUP BY user_id${newPlayerHaving}
+         ) firsts
+         GROUP BY date ORDER BY date`,
+        newPlayerParams
+      ),
       query<{ user_id: string; total: number }>(
         `SELECT user_id, SUM(xp) AS total FROM xp_logs
          WHERE CAST(timestamp AS UNSIGNED) > 0${tsClause}
