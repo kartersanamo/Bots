@@ -272,14 +272,18 @@ export function TicketsAnalytics({
       <div className="grid gap-4 lg:grid-cols-2">
         {data.visibilitySplit.length > 0 && (
           <AnalyticsChartCard
-            title="Public vs private tickets opened"
-            exportHeaders={["visibility", "count"]}
-            exportFilename={`tickets-visibility-${range}.csv`}
+            title="Tickets by privacy (opened in range)"
+            exportHeaders={["privacy", "count"]}
+            exportFilename={`tickets-privacy-${range}.csv`}
             exportRows={data.visibilitySplit.map((r) => ({
-              visibility: r.name,
+              privacy: r.name,
               count: r.count,
             }))}
           >
+            <p className="mb-2 text-xs text-muted">
+              From the ticket <code className="rounded bg-black/30 px-1">privated</code>{" "}
+              column: Admin-only, Management-only, or normal (unprivated) channels.
+            </p>
             <NamedBarChart data={data.visibilitySplit} color="#c084fc" />
           </AnalyticsChartCard>
         )}

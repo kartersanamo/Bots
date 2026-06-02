@@ -41,6 +41,21 @@ export function formatNumber(n: number): string {
   return new Intl.NumberFormat("en-US").format(n);
 }
 
+/** Percent from a ratio with extra precision when the value is small (e.g. 22/5667). */
+export function formatPercentRatio(
+  numerator: number,
+  denominator: number
+): string {
+  if (!Number.isFinite(denominator) || denominator <= 0) return "—";
+  if (!Number.isFinite(numerator) || numerator < 0) return "—";
+  const pct = (numerator / denominator) * 100;
+  if (pct === 0) return numerator > 0 ? "<0.0001%" : "0%";
+  if (pct < 0.01) return `${pct.toFixed(4)}%`;
+  if (pct < 1) return `${pct.toFixed(2)}%`;
+  if (pct < 10) return `${pct.toFixed(1)}%`;
+  return `${Math.round(pct * 10) / 10}%`;
+}
+
 export function formatRelativeTime(date: Date | string): string {
   const d = typeof date === "string" ? new Date(date) : date;
   const now = new Date();

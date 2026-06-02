@@ -34,6 +34,20 @@ import type { PermissionTier } from "@/lib/permissions";
 
 const EXCLUDED_OPENER_IDS = ["837793755838939157", "220576008372355072"];
 
+const PRIVATED_BUCKETS = ["Admin", "Management", "Unprivated"] as const;
+
+function fillPrivatedSplit(
+  rows: { visibility: string; count: number }[]
+): NamedCount[] {
+  const byName = new Map(
+    rows.map((r) => [r.visibility, Number(r.count)])
+  );
+  return PRIVATED_BUCKETS.map((name) => ({
+    name,
+    count: byName.get(name) ?? 0,
+  }));
+}
+
 const VALID_CLOSED =
   "TRIM(closed_at) != '' AND closed_at IS NOT NULL AND closed_at NOT IN ('0', '00000000')";
 
@@ -142,12 +156,14 @@ export async function getTicketAnalytics(
       query<{ visibility: string; count: number }>(
         `SELECT
           CASE
-            WHEN LOWER(TRIM(privated)) IN ('true', '1', 'yes') THEN 'Private'
-            ELSE 'Public'
+            WHEN LOWER(TRIM(privated)) = 'admin' THEN 'Admin'
+            WHEN LOWER(TRIM(privated)) = 'management' THEN 'Management'
+            ELSE 'Unprivated'
           END AS visibility,
           COUNT(*) AS count
          FROM tickets ${rangeWhere}
-         GROUP BY visibility`,
+         GROUP BY visibility
+         ORDER BY FIELD(visibility, 'Admin', 'Management', 'Unprivated')`,
         rangeParams
       ),
       queryOne<{ count: number }>(
@@ -199,10 +215,7 @@ export async function getTicketAnalytics(
       byHourClosed: fillHourOfDayBuckets(closedSlices.byHour),
       byDayOfWeek: fillDayOfWeekBuckets(slices.byDayOfWeek),
       byDayOfWeekClosed: fillDayOfWeekBuckets(closedSlices.byDayOfWeek),
-      visibilitySplit: visibility.map((r) => ({
-        name: r.visibility,
-        count: Number(r.count),
-      })),
+      visibilitySplit: fillPrivatedSplit(visibility),
       topOpenersInRange: mapOpeners(topInRange),
       topOpenersAllTime: mapOpeners(topAllTime),
       topClosersInRange: topClosers.map(

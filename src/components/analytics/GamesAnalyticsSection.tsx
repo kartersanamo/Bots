@@ -13,7 +13,7 @@ import { DiscordUserChip } from "@/components/games/DiscordUserChip";
 import { chartTitleWithPeriod } from "@/lib/analytics/chart-period";
 import type { AnalyticsGroupBy } from "@/lib/analytics/group-by";
 import type { AnalyticsRange, GamesAnalytics } from "@/lib/analytics/types";
-import { formatNumber } from "@/lib/utils";
+import { formatNumber, formatPercentRatio } from "@/lib/utils";
 
 interface GamesAnalyticsSectionProps {
   data: GamesAnalytics;
@@ -29,10 +29,6 @@ export function GamesAnalyticsSection({
   const topStreaksLimit = useAnalyticsTableRowLimit(8);
 
   const { kpis } = data;
-  const retentionPct =
-    kpis.everPlayed > 0
-      ? Math.round((kpis.activePlayers / kpis.everPlayed) * 100)
-      : 0;
 
   return (
     <div className="space-y-6">
@@ -42,7 +38,11 @@ export function GamesAnalyticsSection({
           { label: "Ever played", value: kpis.everPlayed },
           {
             label: "Retention (active / ever)",
-            value: `${retentionPct}%`,
+            value: formatPercentRatio(kpis.activePlayers, kpis.everPlayed),
+            hint:
+              kpis.everPlayed > 0
+                ? `${formatNumber(kpis.activePlayers)} / ${formatNumber(kpis.everPlayed)}`
+                : undefined,
           },
           { label: "Open game sessions", value: kpis.openSessions },
           {
