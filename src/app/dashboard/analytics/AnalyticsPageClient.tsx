@@ -317,7 +317,7 @@ export function AnalyticsPageClient({ userTier }: AnalyticsPageClientProps) {
                     ? `${summary.tickets.closeRatePercent}%`
                     : "—",
               },
-              { label: "Active players", value: summary.games.activePlayers },
+              { label: "Active users", value: summary.games.activePlayers },
               {
                 label: "XP in range",
                 value: formatNumber(summary.games.xpInRange),

@@ -35,7 +35,7 @@ export function GamesAnalyticsSection({
     <div className="space-y-6">
       <AnalyticsKpiGrid
         items={[
-          { label: "Active players", value: kpis.activePlayers },
+          { label: "Active users", value: kpis.activePlayers },
           { label: "Ever played", value: kpis.everPlayed },
           {
             label: "Retention (active / ever)",

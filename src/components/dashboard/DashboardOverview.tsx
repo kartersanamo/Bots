@@ -221,7 +221,7 @@ export function DashboardOverview() {
 
       <div className="grid gap-3 sm:grid-cols-2">
         <StatCard
-          label="Blacklists"
+          label="Ticket blacklists"
           value={stats?.totalBlacklists ?? "—"}
           icon={Ban}
           loading={loading}
