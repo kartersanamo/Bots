@@ -46,7 +46,9 @@ export function OpenTicketCard({
     >
       <div className="flex items-start justify-between gap-2">
         <div>
-          <span className="text-lg font-semibold text-white">#{ticket.number}</span>
+          <span className="text-lg font-semibold text-white">
+            {ticket.name?.trim() || `#${ticket.number}`}
+          </span>
           <Badge className="ml-2">{ticket.type}</Badge>
         </div>
         <span className="shrink-0 text-xs font-medium text-muted">
