@@ -24,6 +24,11 @@ interface OpenTicketsWorkspaceProps {
   userTier: PermissionTier;
 }
 
+interface GuildChannelLite {
+  id: string;
+  name: string;
+}
+
 type TicketLayout = "cards" | "list" | "detailed";
 
 type TicketViewMode =
@@ -140,11 +145,36 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
   const [discordPreviews, setDiscordPreviews] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showTicketView, setShowTicketView] = useState(false);
+  const [channelNames, setChannelNames] = useState<Record<string, string>>({});
   const searchRef = useRef<HTMLInputElement>(null);
 
   const enrichEnabled = discordPreviews && tickets.length > 0;
   const { enrichments, loading: enrichLoading, refresh: refreshEnrich } =
     useTicketEnrichment(tickets, enrichEnabled);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/server/info?channels=all")
+      .then((r) => r.json())
+      .then((payload) => {
+        if (cancelled || !Array.isArray(payload?.channels)) return;
+        const next = (payload.channels as GuildChannelLite[]).reduce<
+          Record<string, string>
+        >((acc, c) => {
+          const id = String(c.id ?? "");
+          const name = String(c.name ?? "").trim();
+          if (id && name) acc[id] = name;
+          return acc;
+        }, {});
+        setChannelNames(next);
+      })
+      .catch(() => {
+        /* ignore channel name lookup failures */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!autoRefresh) return;
@@ -244,6 +274,7 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
             key={t.channelID}
             ticket={t}
             enrichment={enrichments[t.channelID]}
+            channelName={channelNames[t.channelID]}
             selected={selectedId === t.channelID}
             onSelect={() => selectTicket(t)}
           />
@@ -327,6 +358,7 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
                   key={t.channelID}
                   ticket={t}
                   enrichment={enrichments[t.channelID]}
+                  channelName={channelNames[t.channelID]}
                   selected={selectedId === t.channelID}
                   onSelect={() => selectTicket(t)}
                 />

@@ -17,6 +17,7 @@ import { motion } from "framer-motion";
 interface OpenTicketCardProps {
   ticket: TicketRow;
   enrichment?: TicketEnrichment;
+  channelName?: string;
   selected: boolean;
   onSelect: () => void;
 }
@@ -24,6 +25,7 @@ interface OpenTicketCardProps {
 export function OpenTicketCard({
   ticket,
   enrichment,
+  channelName,
   selected,
   onSelect,
 }: OpenTicketCardProps) {
@@ -47,7 +49,7 @@ export function OpenTicketCard({
       <div className="flex items-start justify-between gap-2">
         <div>
           <span className="text-lg font-semibold text-white">
-            {ticket.name?.trim() || `#${ticket.number}`}
+            {channelName || ticket.channelID}
           </span>
           <Badge className="ml-2">{ticket.type}</Badge>
         </div>

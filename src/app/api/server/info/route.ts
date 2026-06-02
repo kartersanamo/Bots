@@ -15,6 +15,7 @@ export async function GET(request: Request) {
     await requireSession();
     const url = new URL(request.url);
     const includeAllRoles = url.searchParams.get("roles") === "all";
+    const includeAllChannels = url.searchParams.get("channels") === "all";
 
     if (!isDiscordConfigured()) {
       return NextResponse.json({
@@ -40,7 +41,7 @@ export async function GET(request: Request) {
       configured: true,
       guild,
       roles: includeAllRoles ? roles : roles.slice(0, 50),
-      channels: channels.slice(0, 100),
+      channels: includeAllChannels ? channels : channels.slice(0, 100),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error";
