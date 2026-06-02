@@ -22,15 +22,35 @@ const CHAT_WIN_SOURCES: Record<string, string> = {
   emoji_quiz_wins: "Emoji Quiz",
 };
 
-const DM_WIN_TABLES: Record<string, { table: string; wonCol: string }> = {
-  tictactoe_wins: { table: "users_tictactoe", wonCol: "won" },
-  wordle_wins: { table: "users_wordle", wonCol: "won" },
-  connect_four_wins: { table: "users_connectfour", wonCol: "status" },
-  memory_wins: { table: "users_memory", wonCol: "won" },
-  "2048_wins": { table: "users_2048", wonCol: "status" },
-  minesweeper_wins: { table: "users_minesweeper", wonCol: "won" },
-  hangman_wins: { table: "users_hangman", wonCol: "won" },
+const DM_WIN_TABLES: Record<
+  string,
+  { table: string; wonCol: string; winValues: string[] }
+> = {
+  tictactoe_wins: { table: "users_tictactoe", wonCol: "won", winValues: ["Won"] },
+  wordle_wins: { table: "users_wordle", wonCol: "won", winValues: ["Won"] },
+  connect_four_wins: {
+    table: "users_connectfour",
+    wonCol: "status",
+    winValues: ["Won"],
+  },
+  memory_wins: { table: "users_memory", wonCol: "won", winValues: ["Won"] },
+  "2048_wins": {
+    table: "users_2048",
+    wonCol: "status",
+    winValues: ["Won", "Cashed Out"],
+  },
+  minesweeper_wins: {
+    table: "users_minesweeper",
+    wonCol: "won",
+    winValues: ["Won"],
+  },
+  hangman_wins: { table: "users_hangman", wonCol: "won", winValues: ["Won"] },
 };
+
+function dmWinWhereClause(dm: { wonCol: string; winValues: string[] }): string {
+  const placeholders = dm.winValues.map(() => "?").join(", ");
+  return `${dm.wonCol} IN (${placeholders})`;
+}
 
 export async function getGamesOverview(): Promise<GamesOverview | null> {
   if (!isDbConfigured()) return null;
@@ -154,14 +174,10 @@ export async function getAllTimeLeaderboard(
 
   const dm = DM_WIN_TABLES[type];
   if (dm) {
-    const wonFilter =
-      dm.wonCol === "status"
-        ? "status = 'Won'"
-        : `${dm.wonCol} = 1`;
     const rows = await query<{ user_id: string; value: number }>(
       `SELECT user_id, COUNT(*) AS value FROM ${dm.table}
-       WHERE ${wonFilter} GROUP BY user_id ORDER BY value DESC LIMIT ?`,
-      [limit]
+       WHERE ${dmWinWhereClause(dm)} GROUP BY user_id ORDER BY value DESC LIMIT ?`,
+      [...dm.winValues, limit]
     );
     return rows.map((r, i) => ({
       userId: String(r.user_id),
