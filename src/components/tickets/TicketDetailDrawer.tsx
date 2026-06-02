@@ -212,6 +212,11 @@ function renderDiscordMarkdown(
   memberProfiles: Record<string, DiscordResolvedMember>
 ): string {
   if (!raw.trim()) return "";
+  const token = {
+    mention: (i: number) => `[[[MENTION${i}]]]`,
+    block: (i: number) => `[[[BLOCK${i}]]]`,
+    inline: (i: number) => `[[[INLINE${i}]]]`,
+  };
 
   const mentionLinks: string[] = [];
   let text = raw
@@ -222,7 +227,7 @@ function renderDiscordMarkdown(
         name
       )}</button>`;
       const idx = mentionLinks.push(html);
-      return `@@USER_MENTION_${idx - 1}@@`;
+      return token.mention(idx - 1);
     })
     .replace(/<@&(\d{15,22})>/g, (_m, id: string) => `@role:${id}`)
     .replace(/<#(\d{15,22})>/g, (_m, id: string) => `#channel:${id}`)
@@ -249,7 +254,7 @@ function renderDiscordMarkdown(
         lang ? `<span class="mr-2 text-[10px] uppercase text-muted">${lang}</span>\n` : ""
       }${body}</code></pre>`
     );
-    return `@@BLOCK_CODE_${idx - 1}@@`;
+    return token.block(idx - 1);
   });
 
   const inlineCodes: string[] = [];
@@ -257,7 +262,7 @@ function renderDiscordMarkdown(
     const idx = inlineCodes.push(
       `<code class="rounded bg-black/35 px-1 py-0.5 text-[0.95em]">${body}</code>`
     );
-    return `@@INLINE_CODE_${idx - 1}@@`;
+    return token.inline(idx - 1);
   });
 
   text = text
@@ -291,9 +296,9 @@ function renderDiscordMarkdown(
   text = formattedLines.join("<br />");
 
   text = text
-    .replace(/@@INLINE_CODE_(\d+)@@/g, (_, i: string) => inlineCodes[Number(i)] ?? "")
-    .replace(/@@BLOCK_CODE_(\d+)@@/g, (_, i: string) => blockCodes[Number(i)] ?? "")
-    .replace(/@@USER_MENTION_(\d+)@@/g, (_, i: string) => mentionLinks[Number(i)] ?? "");
+    .replace(/\[\[\[INLINE(\d+)\]\]\]/g, (_, i: string) => inlineCodes[Number(i)] ?? "")
+    .replace(/\[\[\[BLOCK(\d+)\]\]\]/g, (_, i: string) => blockCodes[Number(i)] ?? "")
+    .replace(/\[\[\[MENTION(\d+)\]\]\]/g, (_, i: string) => mentionLinks[Number(i)] ?? "");
 
   return text;
 }
