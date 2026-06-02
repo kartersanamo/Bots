@@ -1,5 +1,6 @@
 "use client";
 
+import { dashboardFetch } from "@/lib/api/dashboard-fetch";
 import { Button } from "@/components/ui/Button";
 import type { TicketRow } from "@/lib/tickets/types";
 import { isTicketOpen } from "@/lib/tickets/types";
@@ -251,10 +252,13 @@ function renderDiscordMarkdown(
 
   const blockCodes: string[] = [];
   text = text.replace(/```([a-zA-Z0-9+\-_.]*)?\n?([\s\S]*?)```/g, (_, lang, body) => {
+    const langLabel = lang ? escapeHtml(String(lang)) : "";
     const idx = blockCodes.push(
       `<pre class="my-2 overflow-x-auto rounded bg-black/30 p-2"><code>${
-        lang ? `<span class="mr-2 text-[10px] uppercase text-muted">${lang}</span>\n` : ""
-      }${body}</code></pre>`
+        langLabel
+          ? `<span class="mr-2 text-[10px] uppercase text-muted">${langLabel}</span>\n`
+          : ""
+      }${escapeHtml(String(body))}</code></pre>`
     );
     return token.block(idx - 1);
   });
@@ -262,7 +266,9 @@ function renderDiscordMarkdown(
   const inlineCodes: string[] = [];
   text = text.replace(/`([^`\n]+)`/g, (_, body) => {
     const idx = inlineCodes.push(
-      `<code class="rounded bg-black/35 px-1 py-0.5 text-[0.95em]">${body}</code>`
+      `<code class="rounded bg-black/35 px-1 py-0.5 text-[0.95em]">${escapeHtml(
+        String(body)
+      )}</code>`
     );
     return token.inline(idx - 1);
   });
@@ -498,7 +504,7 @@ export function TicketDetailDrawer({
       return;
     }
     setLoading(true);
-    fetch(`/api/tickets/${channelId}`)
+    dashboardFetch(`/api/tickets/${channelId}`)
       .then((r) => r.json())
       .then((d) => {
         if (d.ticket) setData(d as DetailData);
@@ -511,7 +517,7 @@ export function TicketDetailDrawer({
     if (!channelId) return;
     setMessagesLoading(true);
     try {
-      const res = await fetch(`/api/tickets/${channelId}/messages?limit=80`);
+      const res = await dashboardFetch(`/api/tickets/${channelId}/messages?limit=80`);
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
         setSendError(
@@ -553,7 +559,7 @@ export function TicketDetailDrawer({
   }
 
   async function loadGuildRoles() {
-    const res = await fetch("/api/server/info?roles=all");
+    const res = await dashboardFetch("/api/server/info?roles=all");
     const payload = await res.json().catch(() => ({}));
     if (!res.ok || !Array.isArray(payload.roles)) return;
     setGuildRoles(
@@ -571,7 +577,7 @@ export function TicketDetailDrawer({
   async function loadAuthorProfiles(userIds: string[]) {
     const ids = userIds.filter((id) => !memberProfiles[id]);
     if (!ids.length) return;
-    const res = await fetch(
+    const res = await dashboardFetch(
       `/api/discord/users?ids=${encodeURIComponent(ids.join(","))}`
     );
     const payload = await res.json().catch(() => ({}));
@@ -611,7 +617,7 @@ export function TicketDetailDrawer({
     setCloseError(null);
     setClosing(true);
     try {
-      const res = await fetch(`/api/tickets/${channelId}/close`, {
+      const res = await dashboardFetch(`/api/tickets/${channelId}/close`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reason }),
@@ -647,7 +653,7 @@ export function TicketDetailDrawer({
     setRenameError(null);
     setRenaming(true);
     try {
-      const res = await fetch(`/api/tickets/${channelId}/commands`, {
+      const res = await dashboardFetch(`/api/tickets/${channelId}/commands`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ command: `/rename ${name}` }),
@@ -687,7 +693,7 @@ export function TicketDetailDrawer({
         ? `/api/tickets/${channelId}/commands`
         : `/api/tickets/${channelId}/messages`;
       const payload = isCommand ? { command: content } : { content };
-      const res = await fetch(url, {
+      const res = await dashboardFetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

@@ -1,5 +1,7 @@
 "use client";
 
+import { dashboardFetch } from "@/lib/api/dashboard-fetch";
+
 import {
   AnalyticsDataTable,
   AnalyticsTable,
@@ -38,7 +40,7 @@ export function ActiveGuildBansTable() {
   const loadBans = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/discord/bans");
+      const res = await dashboardFetch("/api/discord/bans");
       const json = (await res.json()) as BansApiResponse;
       setData(json);
     } catch {
@@ -62,7 +64,7 @@ export function ActiveGuildBansTable() {
     setRevoking(true);
     setRevokeError(null);
     try {
-      const res = await fetch("/api/discord/moderate", {
+      const res = await dashboardFetch("/api/discord/moderate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

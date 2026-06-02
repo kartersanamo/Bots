@@ -18,10 +18,7 @@ export const GET = handleApiRoute(async (request) => {
   }
 
   if (!isDiscordBotConfigured()) {
-    return Response.json({
-      users: {},
-      error: "DISCORD_BOT_TOKEN is not set on the server",
-    });
+    return Response.json({ users: {}, error: "Discord bot not configured" });
   }
 
   const users = await resolveDiscordUsers(ids);

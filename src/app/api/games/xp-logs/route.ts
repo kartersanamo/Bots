@@ -1,4 +1,5 @@
 import { handleApiRoute, requireAction } from "@/lib/api/helpers";
+import { checkRateLimit } from "@/lib/api/rate-limit";
 import { listXpLogs, listXpLogSources } from "@/lib/db/games";
 import { isDbConfigured } from "@/lib/db/pool";
 import {
@@ -35,7 +36,7 @@ function parseListOpts(url: URL, forExport: boolean): ListXpLogsOptions {
 }
 
 export const GET = handleApiRoute(async (request) => {
-  await requireAction("games.read");
+  const session = await requireAction("games.read");
   const url = new URL(request.url);
 
   if (!isDbConfigured()) {
@@ -48,6 +49,21 @@ export const GET = handleApiRoute(async (request) => {
   }
 
   const forExport = url.searchParams.get("export") === "1";
+  if (forExport) {
+    const limited = checkRateLimit(`games:xp-export:${session.id}`, {
+      windowMs: 60_000,
+      max: 5,
+    });
+    if (!limited.ok) {
+      return Response.json(
+        { error: "Too many requests" },
+        {
+          status: 429,
+          headers: { "Retry-After": String(limited.retryAfterSec ?? 60) },
+        }
+      );
+    }
+  }
   const opts = parseListOpts(url, forExport);
   const result = await listXpLogs({
     ...opts,

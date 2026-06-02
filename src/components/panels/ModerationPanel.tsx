@@ -1,5 +1,7 @@
 "use client";
 
+import { dashboardFetch } from "@/lib/api/dashboard-fetch";
+
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useState } from "react";
@@ -11,7 +13,7 @@ export function ModerationPanel() {
   const [msg, setMsg] = useState<string | null>(null);
 
   async function act(action: string) {
-    const res = await fetch("/api/discord/moderate", {
+    const res = await dashboardFetch("/api/discord/moderate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

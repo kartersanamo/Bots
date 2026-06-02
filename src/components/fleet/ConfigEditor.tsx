@@ -1,5 +1,7 @@
 "use client";
 
+import { dashboardFetch } from "@/lib/api/dashboard-fetch";
+
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { getBotById } from "@/lib/bots/registry";
@@ -34,7 +36,7 @@ export function ConfigEditor({ botId, canEdit, initialPath }: ConfigEditorProps)
     if (!selectedPath) return;
     setLoading(true);
     setError(null);
-    fetch(`/api/bots/${botId}/config?path=${encodeURIComponent(selectedPath)}`)
+    dashboardFetch(`/api/bots/${botId}/config?path=${encodeURIComponent(selectedPath)}`)
       .then((r) => r.json())
       .then((data) => {
         if (data.error) throw new Error(data.error);
@@ -58,7 +60,7 @@ export function ConfigEditor({ botId, canEdit, initialPath }: ConfigEditorProps)
       setError("Invalid JSON");
       return;
     }
-    const res = await fetch(
+    const res = await dashboardFetch(
       `/api/bots/${botId}/config?path=${encodeURIComponent(selectedPath)}`,
       {
         method: "PUT",

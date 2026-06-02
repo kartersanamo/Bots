@@ -1,5 +1,7 @@
 "use client";
 
+import { dashboardFetch } from "@/lib/api/dashboard-fetch";
+
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { DiscordUserChip } from "@/components/games/DiscordUserChip";
@@ -29,7 +31,7 @@ export function GamesUserDrawer({
   const [msg, setMsg] = useState<string | null>(null);
 
   const load = useCallback(() => {
-    fetch(`/api/games/users/${userId}`)
+    dashboardFetch(`/api/games/users/${userId}`)
       .then((r) => r.json())
       .then((d) => {
         setProfile(d.profile);
@@ -45,7 +47,7 @@ export function GamesUserDrawer({
   }, [load]);
 
   async function save() {
-    const res = await fetch(`/api/games/users/${userId}`, {
+    const res = await dashboardFetch(`/api/games/users/${userId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ xp: Number(xp), level: Number(level) }),
@@ -55,7 +57,7 @@ export function GamesUserDrawer({
   }
 
   async function add() {
-    const res = await fetch(`/api/games/users/${userId}`, {
+    const res = await dashboardFetch(`/api/games/users/${userId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ addXp: Number(addXp), log: true }),

@@ -1,5 +1,7 @@
 "use client";
 
+import { dashboardFetch } from "@/lib/api/dashboard-fetch";
+
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useState } from "react";
@@ -18,7 +20,7 @@ export function GamesWipeSection() {
     setLoading(true);
     setResult(null);
     try {
-      const res = await fetch("/api/games/wipe", {
+      const res = await dashboardFetch("/api/games/wipe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ month, confirm: "WIPE_LEVELS" }),

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import List, Literal, Optional, Tuple
 
 from bot_registry import bot_root, get_bot, systemd_unit
+from services import tmux_console as tcx
 
 ProcessStatus = Literal["online", "offline", "starting", "degraded", "unknown"]
 
@@ -189,6 +190,27 @@ def _bot_log_dir(root: Path) -> Path:
     return d
 
 
+def _kill_bot_processes(bot_id: str) -> None:
+    """Stop detached/orphan processes started outside tmux."""
+    entry = get_bot(bot_id)
+    if not entry:
+        return
+    root = bot_root(bot_id)
+    pids = _find_pids_by_bot_dir(root, entry.entry_script)
+    for pid in pids:
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+    if pids:
+        time.sleep(0.8)
+        for pid in pids:
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+
+
 def start_bot(bot_id: str) -> ProcessInfo:
     entry = get_bot(bot_id)
     if not entry:
@@ -203,28 +225,30 @@ def start_bot(bot_id: str) -> ProcessInfo:
         invalidate_process_cache(bot_id)
         return get_process_info(bot_id)
 
-    info = get_process_info(bot_id)
-    if info.status == "online":
-        return info
-
     root = bot_root(bot_id)
     run_sh = root / "run.sh"
     script = root / entry.entry_script
     if not script.is_file() and not run_sh.exists():
         raise FileNotFoundError(f"No {entry.entry_script} or run.sh under {root}")
 
+    if tcx.uses_tmux(bot_id):
+        if not run_sh.is_file():
+            raise FileNotFoundError(f"No run.sh under {root}")
+        _kill_bot_processes(bot_id)
+        tcx.start_run_sh(bot_id)
+        time.sleep(2)
+        invalidate_process_cache(bot_id)
+        return get_process_info(bot_id)
+
+    info = get_process_info(bot_id)
+    if info.status == "online":
+        return info
+
     log_out = _bot_log_dir(root) / "dashboard-start.log"
-    python = _resolve_bot_python(root)
-    has_venv = python != "python3"
-    # Tickets run.sh restarts on crash; other bots use venv python when available.
-    use_run_sh = run_sh.is_file() and bot_id == "tickets"
-    if use_run_sh:
+    if run_sh.is_file():
         cmd: list[str] = ["/bin/bash", str(run_sh)]
-    elif has_venv:
-        cmd = [python, entry.entry_script]
-    elif run_sh.is_file():
-        cmd = ["/bin/bash", str(run_sh)]
     else:
+        python = _resolve_bot_python(root)
         cmd = [python, entry.entry_script]
 
     with open(log_out, "a") as logf:

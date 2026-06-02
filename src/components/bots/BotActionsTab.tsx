@@ -1,5 +1,7 @@
 "use client";
 
+import { dashboardFetch } from "@/lib/api/dashboard-fetch";
+
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import type { BotDefinition } from "@/lib/bots/registry";
@@ -39,7 +41,7 @@ export function BotActionsTab({ bot }: BotActionsTabProps) {
     }
     setLoading(true);
     try {
-      const res = await fetch(`/api/tickets/${channelId.trim()}/close`, {
+      const res = await dashboardFetch(`/api/tickets/${channelId.trim()}/close`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reason: closeReason.trim() }),
@@ -59,7 +61,7 @@ export function BotActionsTab({ bot }: BotActionsTabProps) {
     if (!userId.trim()) return;
     setLoading(true);
     try {
-      const res = await fetch("/api/discord/moderate", {
+      const res = await dashboardFetch("/api/discord/moderate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -82,7 +84,7 @@ export function BotActionsTab({ bot }: BotActionsTabProps) {
     if (!userId.trim()) return;
     setLoading(true);
     try {
-      const res = await fetch("/api/staff/stats", {
+      const res = await dashboardFetch("/api/staff/stats", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

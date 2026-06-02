@@ -1,5 +1,7 @@
 "use client";
 
+import { dashboardFetch } from "@/lib/api/dashboard-fetch";
+
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -45,7 +47,7 @@ export function FleetControl({ canRestart, canRestartAll }: { canRestart: boolea
 
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch("/api/bots");
+      const res = await dashboardFetch("/api/bots");
       if (!res.ok) return;
       const data = await res.json();
       setBots(
@@ -71,7 +73,7 @@ export function FleetControl({ canRestart, canRestartAll }: { canRestart: boolea
   async function runAction(botId: string, action: "start" | "stop" | "restart") {
     setActionLoading(`${botId}-${action}`);
     try {
-      await fetch(`/api/bots/${botId}/${action}`, { method: "POST" });
+      await dashboardFetch(`/api/bots/${botId}/${action}`, { method: "POST" });
       await refresh();
     } finally {
       setActionLoading(null);
@@ -84,7 +86,7 @@ export function FleetControl({ canRestart, canRestartAll }: { canRestart: boolea
     if (typed !== "RESTART_ALL") return;
     setActionLoading("all");
     try {
-      await fetch("/api/fleet/restart-all", {
+      await dashboardFetch("/api/fleet/restart-all", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ confirm: "RESTART_ALL" }),

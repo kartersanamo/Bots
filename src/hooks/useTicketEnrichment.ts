@@ -1,5 +1,7 @@
 "use client";
 
+import { dashboardFetch } from "@/lib/api/dashboard-fetch";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { TicketEnrichment } from "@/lib/discord/tickets";
 import type { TicketRow } from "@/lib/tickets/types";
@@ -40,7 +42,7 @@ export function useTicketEnrichment(tickets: TicketRow[], enabled: boolean) {
         const owners: Record<string, string> = {};
         for (const t of current) owners[t.channelID] = t.ownerID;
 
-        const res = await fetch("/api/tickets/enrich", {
+        const res = await dashboardFetch("/api/tickets/enrich", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ channelIds, owners }),

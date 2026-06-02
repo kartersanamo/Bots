@@ -18,6 +18,7 @@ class BotEntry:
     entry_script: str  # main.py or bot.py
     log_dirs: tuple[str, ...]
     config_roots: tuple[str, ...]  # relative dirs for config search
+    tmux_window: Optional[str] = None  # window name in TMUX_SESSION
 
 
 BOT_ENTRIES: dict[str, BotEntry] = {
@@ -27,6 +28,7 @@ BOT_ENTRIES: dict[str, BotEntry] = {
         "bot.py",
         ("logs",),
         ("assets/Configs",),
+        "Games",
     ),
     "tickets": BotEntry(
         "tickets",
@@ -34,6 +36,7 @@ BOT_ENTRIES: dict[str, BotEntry] = {
         "main.py",
         ("Logs",),
         ("Assets",),
+        "Tickets",
     ),
     "management": BotEntry(
         "management",
@@ -41,6 +44,7 @@ BOT_ENTRIES: dict[str, BotEntry] = {
         "main.py",
         ("Logs",),
         ("Assets",),
+        "Management",
     ),
     "utilities": BotEntry(
         "utilities",
@@ -48,6 +52,7 @@ BOT_ENTRIES: dict[str, BotEntry] = {
         "main.py",
         ("Logs",),
         ("Assets",),
+        "Utilities",
     ),
     "staff": BotEntry(
         "staff",
@@ -55,6 +60,7 @@ BOT_ENTRIES: dict[str, BotEntry] = {
         "main.py",
         ("Logs",),
         ("Assets",),
+        "Staff",
     ),
     "leader": BotEntry(
         "leader",
@@ -62,6 +68,7 @@ BOT_ENTRIES: dict[str, BotEntry] = {
         "main.py",
         ("Logs",),
         ("Assets", "Cogs"),
+        "Leader",
     ),
 }
 

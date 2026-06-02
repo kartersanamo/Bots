@@ -5,8 +5,9 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from typing import Optional
 
 # Load env from Websites/Bots/.env when present
 _env_path = Path(__file__).resolve().parent.parent / ".env"
@@ -36,7 +37,10 @@ app.include_router(dms.router)
 
 
 @app.get("/health")
-def health():
+def health(x_control_key: Optional[str] = Header(default=None)):
+    secret = os.environ.get("CONTROL_API_SECRET", "")
+    if secret and (not x_control_key or x_control_key != secret):
+        raise HTTPException(status_code=401, detail="Invalid control key")
     return {"ok": True, "service": "bots-control-api"}
 
 

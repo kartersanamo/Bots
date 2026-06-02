@@ -1,3 +1,4 @@
+import { envBool } from "@/lib/env";
 import { mkdir, appendFile, open, stat } from "fs/promises";
 import { createReadStream } from "fs";
 import { createInterface } from "readline";
@@ -84,9 +85,12 @@ export async function getRecentAudit(limit = 100): Promise<AuditEntry[]> {
 }
 
 export function getClientIp(request: Request): string | undefined {
-  return (
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    request.headers.get("x-real-ip") ||
-    undefined
-  );
+  if (envBool("TRUST_PROXY")) {
+    return (
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      request.headers.get("x-real-ip") ||
+      undefined
+    );
+  }
+  return undefined;
 }

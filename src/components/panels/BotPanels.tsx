@@ -1,5 +1,6 @@
 "use client";
 
+import { dashboardFetch } from "@/lib/api/dashboard-fetch";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useState } from "react";
@@ -17,13 +18,13 @@ export function BotPanels({ botId }: BotPanelsProps) {
 
   async function closeTicket() {
     if (!channelId) return;
-    const res = await fetch(`/api/tickets/${channelId}/close`, { method: "POST" });
+    const res = await dashboardFetch(`/api/tickets/${channelId}/close`, { method: "POST" });
     setMessage(res.ok ? "Ticket closed in DB" : "Failed");
   }
 
   async function setLeveling() {
     if (!userId) return;
-    const res = await fetch(`/api/leveling/${userId}`, {
+    const res = await dashboardFetch(`/api/leveling/${userId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ xp: Number(xp), level: Number(level) }),
@@ -33,7 +34,7 @@ export function BotPanels({ botId }: BotPanelsProps) {
 
   async function timeoutUser() {
     if (!userId) return;
-    const res = await fetch("/api/discord/moderate", {
+    const res = await dashboardFetch("/api/discord/moderate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

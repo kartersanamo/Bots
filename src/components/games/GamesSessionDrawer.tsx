@@ -1,5 +1,7 @@
 "use client";
 
+import { dashboardFetch } from "@/lib/api/dashboard-fetch";
+
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -65,7 +67,7 @@ export function GamesSessionDrawer({
 
   const load = useCallback(() => {
     setLoading(true);
-    fetch(`/api/games/sessions/${gameId}`)
+    dashboardFetch(`/api/games/sessions/${gameId}`)
       .then((r) => r.json())
       .then((d) => {
         if (d.error) throw new Error(d.error);
@@ -94,7 +96,7 @@ export function GamesSessionDrawer({
 
   async function chatAction(action: string) {
     setMsg(null);
-    const res = await fetch(`/api/games/sessions/${gameId}/actions`, {
+    const res = await dashboardFetch(`/api/games/sessions/${gameId}/actions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action }),
@@ -116,7 +118,7 @@ export function GamesSessionDrawer({
       else if (/^\d+$/.test(v)) updates[k] = Number(v);
       else updates[k] = v;
     }
-    const res = await fetch(
+    const res = await dashboardFetch(
       `/api/games/sessions/${gameId}/entries/${userId}`,
       {
         method: "PATCH",
@@ -137,7 +139,7 @@ export function GamesSessionDrawer({
 
   async function removeEntry(userId: string) {
     if (!confirm(`Remove ${userId} from this session?`)) return;
-    const res = await fetch(
+    const res = await dashboardFetch(
       `/api/games/sessions/${gameId}/entries/${userId}`,
       { method: "DELETE" }
     );

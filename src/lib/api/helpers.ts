@@ -1,10 +1,20 @@
-import { NextResponse } from "next/server";
-import { requireSession, type SessionUser } from "@/lib/auth/session";
+import { invalidateSessionAuthCache } from "@/lib/auth/session-authorization";
+import { getSession, requireSession, type SessionUser } from "@/lib/auth/session";
+import { logAudit, getClientIp } from "@/lib/audit";
 import {
   can,
   type PermissionAction,
 } from "@/lib/permissions";
-import { logAudit, getClientIp } from "@/lib/audit";
+import { NextResponse } from "next/server";
+
+const SENSITIVE_ACTIONS = new Set<PermissionAction>([
+  "fleet.restart",
+  "fleet.restart_all",
+  "config.edit",
+  "games.wipe",
+  "discord.moderate",
+  "bans.write",
+]);
 
 export function apiError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
@@ -13,7 +23,13 @@ export function apiError(message: string, status: number) {
 export async function requireAction(
   action: PermissionAction
 ): Promise<SessionUser> {
-  const session = await requireSession();
+  let session = await requireSession();
+  if (SENSITIVE_ACTIONS.has(action)) {
+    invalidateSessionAuthCache(session.id);
+    const fresh = await getSession();
+    if (!fresh) throw new Error("Unauthorized");
+    session = fresh;
+  }
   if (!can(session.tier, action)) {
     throw new Error("Forbidden");
   }

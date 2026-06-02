@@ -1,5 +1,7 @@
 "use client";
 
+import { dashboardFetch } from "@/lib/api/dashboard-fetch";
+
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -27,7 +29,7 @@ export function GamesControlSection() {
   const [triviaCh, setTriviaCh] = useState("");
 
   function loadStatus() {
-    fetch("/api/games/control/status")
+    dashboardFetch("/api/games/control/status")
       .then((r) => r.json())
       .then((d) => setStatus(d.status));
   }
@@ -38,7 +40,7 @@ export function GamesControlSection() {
 
   async function post(path: string, body?: object) {
     setMsg(null);
-    const res = await fetch(path, {
+    const res = await dashboardFetch(path, {
       method: "POST",
       headers: body ? { "Content-Type": "application/json" } : undefined,
       body: body ? JSON.stringify(body) : undefined,

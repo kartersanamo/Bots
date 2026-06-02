@@ -1,5 +1,7 @@
 "use client";
 
+import { dashboardFetch } from "@/lib/api/dashboard-fetch";
+
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Send } from "lucide-react";
@@ -31,14 +33,14 @@ export function DmInbox({ botId, canSend }: DmInboxProps) {
   const [error, setError] = useState<string | null>(null);
 
   const loadChannels = useCallback(async () => {
-    const res = await fetch(`/api/bots/${botId}/dms`);
+    const res = await dashboardFetch(`/api/bots/${botId}/dms`);
     const data = await res.json();
     if (data.error) setError(data.error);
     else setChannels(data.channels || []);
   }, [botId]);
 
   const loadMessages = useCallback(async (channelId: string) => {
-    const res = await fetch(`/api/bots/${botId}/dms/${channelId}/messages`);
+    const res = await dashboardFetch(`/api/bots/${botId}/dms/${channelId}/messages`);
     const data = await res.json();
     setMessages((data.messages || []).reverse());
   }, [botId]);
@@ -53,7 +55,7 @@ export function DmInbox({ botId, canSend }: DmInboxProps) {
 
   async function sendReply() {
     if (!selected || !reply.trim()) return;
-    const res = await fetch(`/api/bots/${botId}/dms/${selected}/messages`, {
+    const res = await dashboardFetch(`/api/bots/${botId}/dms/${selected}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content: reply }),

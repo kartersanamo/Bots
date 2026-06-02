@@ -27,10 +27,6 @@ export function hasDashboardGuildAccess(
   return false;
 }
 
-/** Session may predate `dashboardAccess`; fall back to tier for legacy cookies. */
 export function hasDashboardAccess(session: SessionUser): boolean {
-  if (typeof session.dashboardAccess === "boolean") {
-    return session.dashboardAccess;
-  }
-  return session.tier !== "none";
+  return session.dashboardAccess === true;
 }

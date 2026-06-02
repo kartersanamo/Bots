@@ -1,5 +1,7 @@
 "use client";
 
+import { dashboardFetch } from "@/lib/api/dashboard-fetch";
+
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { DiscordUserChip } from "@/components/games/DiscordUserChip";
@@ -22,7 +24,7 @@ export function GamesCountingSection({ userTier }: { userTier: PermissionTier })
   useMergeDiscordUsersFromApi(apiUsers);
 
   function load() {
-    fetch("/api/games/counting")
+    dashboardFetch("/api/games/counting")
       .then((r) => r.json())
       .then((d) => {
         setServer(d.server);
@@ -37,7 +39,7 @@ export function GamesCountingSection({ userTier }: { userTier: PermissionTier })
 
   async function reset() {
     if (!confirm("Reset counting channel stats for all users?")) return;
-    const res = await fetch("/api/games/counting/reset", { method: "POST" });
+    const res = await dashboardFetch("/api/games/counting/reset", { method: "POST" });
     setMsg(res.ok ? "Reset complete" : "Failed");
     load();
   }

@@ -1,5 +1,7 @@
 "use client";
 
+import { dashboardFetch } from "@/lib/api/dashboard-fetch";
+
 import { useCallback, useEffect, useState } from "react";
 
 export type BotProcessStatus =
@@ -39,7 +41,7 @@ export function useBotFleet(pollMs = 30_000) {
   const refresh = useCallback(async () => {
     if (!isPageVisible()) return;
     try {
-      const res = await fetch("/api/bots", { cache: "no-store" });
+      const res = await dashboardFetch("/api/bots", { cache: "no-store" });
       if (!res.ok) {
         setControlApiOk(false);
         return;
@@ -89,7 +91,7 @@ export function useBotFleet(pollMs = 30_000) {
     async (botId: string, action: "start" | "stop" | "restart") => {
       setActionLoading(`${botId}-${action}`);
       try {
-        await fetch(`/api/bots/${botId}/${action}`, { method: "POST" });
+        await dashboardFetch(`/api/bots/${botId}/${action}`, { method: "POST" });
         await refresh();
       } finally {
         setActionLoading(null);
@@ -101,7 +103,7 @@ export function useBotFleet(pollMs = 30_000) {
   const restartAll = useCallback(async () => {
     setActionLoading("all");
     try {
-      await fetch("/api/fleet/restart-all", {
+      await dashboardFetch("/api/fleet/restart-all", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ confirm: "RESTART_ALL" }),

@@ -18,13 +18,20 @@ function baseUrl(): string {
 }
 
 function secret(): string {
-  const s = env("TICKETS_BOT_API_SECRET") || env("CONTROL_API_SECRET");
-  if (!s) throw new Error("TICKETS_BOT_API_SECRET not configured");
-  return s;
+  const dedicated = env("TICKETS_BOT_API_SECRET");
+  if (dedicated) return dedicated;
+  if (process.env.NODE_ENV !== "production") {
+    const fallback = env("CONTROL_API_SECRET");
+    if (fallback) return fallback;
+  }
+  throw new Error("TICKETS_BOT_API_SECRET not configured");
 }
 
 export function isTicketsBotApiConfigured(): boolean {
-  return !!(env("TICKETS_BOT_API_SECRET") || env("CONTROL_API_SECRET"));
+  if (env("TICKETS_BOT_API_SECRET")) return true;
+  return (
+    process.env.NODE_ENV !== "production" && !!env("CONTROL_API_SECRET")
+  );
 }
 
 export async function closeTicketViaBot(params: {

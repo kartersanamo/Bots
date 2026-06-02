@@ -19,13 +19,20 @@ function baseUrl(): string {
 }
 
 function secret(): string {
-  const s = env("GAMES_BOT_API_SECRET") || env("CONTROL_API_SECRET");
-  if (!s) throw new Error("GAMES_BOT_API_SECRET not configured");
-  return s;
+  const dedicated = env("GAMES_BOT_API_SECRET");
+  if (dedicated) return dedicated;
+  if (process.env.NODE_ENV !== "production") {
+    const fallback = env("CONTROL_API_SECRET");
+    if (fallback) return fallback;
+  }
+  throw new Error("GAMES_BOT_API_SECRET not configured");
 }
 
 export function isGamesBotApiConfigured(): boolean {
-  return !!(env("GAMES_BOT_API_SECRET") || env("CONTROL_API_SECRET"));
+  if (env("GAMES_BOT_API_SECRET")) return true;
+  return (
+    process.env.NODE_ENV !== "production" && !!env("CONTROL_API_SECRET")
+  );
 }
 
 async function gamesFetch<T>(

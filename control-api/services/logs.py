@@ -47,8 +47,12 @@ def tail_logs(
     chunk = all_lines[-lines:] if lines > 0 else all_lines
 
     if search:
-        pattern = re.compile(search, re.IGNORECASE)
-        chunk = [ln for ln in chunk if pattern.search(ln)]
+        safe = search[:200]
+        try:
+            pattern = re.compile(safe, re.IGNORECASE)
+            chunk = [ln for ln in chunk if pattern.search(ln)]
+        except re.error:
+            chunk = [ln for ln in chunk if safe.lower() in ln.lower()]
 
     return {
         "lines": chunk,

@@ -1,5 +1,7 @@
 "use client";
 
+import { dashboardFetch } from "@/lib/api/dashboard-fetch";
+
 import {
   AnalyticsDataTable,
   AnalyticsTable,
@@ -64,7 +66,7 @@ export function ActiveGuildTimeoutsTable() {
   const loadTimeouts = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/discord/timeouts");
+      const res = await dashboardFetch("/api/discord/timeouts");
       const json = (await res.json()) as TimeoutsApiResponse;
       setData(json);
     } catch {
@@ -88,7 +90,7 @@ export function ActiveGuildTimeoutsTable() {
     setRevoking(true);
     setRevokeError(null);
     try {
-      const res = await fetch("/api/discord/moderate", {
+      const res = await dashboardFetch("/api/discord/moderate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

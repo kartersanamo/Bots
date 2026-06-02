@@ -1,14 +1,24 @@
 import { handleApiRoute, requireAction } from "@/lib/api/helpers";
+import { checkRateLimit } from "@/lib/api/rate-limit";
+import { timingSafeSecretEqual } from "@/lib/api/secrets";
+import { getClientIp } from "@/lib/audit";
 import { env } from "@/lib/env";
 import {
   listTicketLiveEvents,
   publishTicketCreatedEvent,
 } from "@/lib/tickets/live-events";
 
+function ticketsBotSecret(): string {
+  return env("TICKETS_BOT_API_SECRET");
+}
+
 function validBotKey(request: Request): boolean {
-  const expected = env("TICKETS_BOT_API_SECRET") || env("CONTROL_API_SECRET");
+  const expected = ticketsBotSecret();
   if (!expected) return false;
-  return request.headers.get("X-Tickets-Key") === expected;
+  return timingSafeSecretEqual(
+    request.headers.get("X-Tickets-Key"),
+    expected
+  );
 }
 
 export const GET = handleApiRoute(async (request) => {
@@ -21,6 +31,21 @@ export const GET = handleApiRoute(async (request) => {
 });
 
 export const POST = handleApiRoute(async (request) => {
+  const ip = getClientIp(request) ?? "unknown";
+  const limited = checkRateLimit(`tickets:live:${ip}`, {
+    windowMs: 60_000,
+    max: 60,
+  });
+  if (!limited.ok) {
+    return Response.json(
+      { error: "Too many requests" },
+      {
+        status: 429,
+        headers: { "Retry-After": String(limited.retryAfterSec ?? 60) },
+      }
+    );
+  }
+
   if (!validBotKey(request)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }

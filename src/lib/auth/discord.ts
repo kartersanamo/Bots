@@ -7,12 +7,13 @@ import { resolvePermissionTier } from "@/lib/permissions";
 
 const DISCORD_API = "https://discord.com/api/v10";
 
-export function getDiscordAuthUrl(): string {
+export function getDiscordAuthUrl(state: string): string {
   const params = new URLSearchParams({
     client_id: envRequired("DISCORD_CLIENT_ID"),
     redirect_uri: envRequired("DISCORD_REDIRECT_URI"),
     response_type: "code",
     scope: "identify guilds guilds.members.read",
+    state,
   });
   return `https://discord.com/api/oauth2/authorize?${params}`;
 }
