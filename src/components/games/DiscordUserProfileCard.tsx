@@ -28,8 +28,8 @@ function formatDiscordTimestamp(iso: string | null): string {
 function discordAccountCreatedAt(userId: string): string {
   try {
     const snowflake = BigInt(userId);
-    const discordEpoch = 1420070400000n;
-    const ms = Number((snowflake >> 22n) + discordEpoch);
+    const discordEpoch = BigInt("1420070400000");
+    const ms = Number((snowflake >> BigInt(22)) + discordEpoch);
     return new Date(ms).toLocaleString();
   } catch {
     return "Unknown";
