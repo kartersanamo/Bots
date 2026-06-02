@@ -213,11 +213,16 @@ function renderDiscordMarkdown(
 ): string {
   if (!raw.trim()) return "";
 
+  const mentionLinks: string[] = [];
   let text = raw
     .replace(USER_MENTION_RE, (_, id: string) => {
       const p = memberProfiles[id];
       const name = p?.displayName || p?.username || id;
-      return `@${name}`;
+      const html = `<button type="button" data-user-id="${id}" class="rounded bg-accent/25 px-1 text-accent-light hover:underline">@${escapeHtml(
+        name
+      )}</button>`;
+      const idx = mentionLinks.push(html);
+      return `@@USER_MENTION_${idx - 1}@@`;
     })
     .replace(/<@&(\d{15,22})>/g, (_m, id: string) => `@role:${id}`)
     .replace(/<#(\d{15,22})>/g, (_m, id: string) => `#channel:${id}`)
@@ -287,7 +292,8 @@ function renderDiscordMarkdown(
 
   text = text
     .replace(/@@INLINE_CODE_(\d+)@@/g, (_, i: string) => inlineCodes[Number(i)] ?? "")
-    .replace(/@@BLOCK_CODE_(\d+)@@/g, (_, i: string) => blockCodes[Number(i)] ?? "");
+    .replace(/@@BLOCK_CODE_(\d+)@@/g, (_, i: string) => blockCodes[Number(i)] ?? "")
+    .replace(/@@USER_MENTION_(\d+)@@/g, (_, i: string) => mentionLinks[Number(i)] ?? "");
 
   return text;
 }
@@ -295,9 +301,11 @@ function renderDiscordMarkdown(
 function DiscordMessageContent({
   content,
   memberProfiles,
+  onUserMentionClick,
 }: {
   content: string;
   memberProfiles: Record<string, DiscordResolvedMember>;
+  onUserMentionClick: (userId: string) => void;
 }) {
   const html = useMemo(
     () => renderDiscordMarkdown(content, memberProfiles),
@@ -308,6 +316,15 @@ function DiscordMessageContent({
     <div
       className="mt-1 break-words text-sm text-white/90"
       dangerouslySetInnerHTML={{ __html: html }}
+      onClick={(e) => {
+        const target = e.target as HTMLElement | null;
+        const el = target?.closest?.("[data-user-id]") as HTMLElement | null;
+        const userId = el?.getAttribute("data-user-id");
+        if (userId) {
+          e.preventDefault();
+          onUserMentionClick(userId);
+        }
+      }}
     />
   );
 }
@@ -327,9 +344,11 @@ function topRoleForMember(
 function DiscordEmbedCard({
   embed,
   memberProfiles,
+  onUserMentionClick,
 }: {
   embed: DiscordEmbed;
   memberProfiles: Record<string, DiscordResolvedMember>;
+  onUserMentionClick: (userId: string) => void;
 }) {
   const descriptionHtml = embed.description
     ? renderDiscordMarkdown(embed.description, memberProfiles)
@@ -357,6 +376,15 @@ function DiscordEmbedCard({
         <div
           className="mt-1 break-words text-sm text-white/90"
           dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+          onClick={(e) => {
+            const target = e.target as HTMLElement | null;
+            const el = target?.closest?.("[data-user-id]") as HTMLElement | null;
+            const userId = el?.getAttribute("data-user-id");
+            if (userId) {
+              e.preventDefault();
+              onUserMentionClick(userId);
+            }
+          }}
         />
       )}
       {embed.fields && embed.fields.length > 0 && (
@@ -376,6 +404,15 @@ function DiscordEmbedCard({
                   className="break-words text-xs text-white/85"
                   dangerouslySetInnerHTML={{
                     __html: renderDiscordMarkdown(f.value, memberProfiles),
+                  }}
+                  onClick={(e) => {
+                    const target = e.target as HTMLElement | null;
+                    const el = target?.closest?.("[data-user-id]") as HTMLElement | null;
+                    const userId = el?.getAttribute("data-user-id");
+                    if (userId) {
+                      e.preventDefault();
+                      onUserMentionClick(userId);
+                    }
                   }}
                 />
               )}
@@ -398,11 +435,20 @@ function DiscordEmbedCard({
         />
       )}
       {(embed.footer?.text || embed.timestamp) && (
-        <p className="mt-2 text-[11px] text-muted">
-          {[embed.footer?.text, embed.timestamp ? formatRelativeTime(new Date(embed.timestamp)) : null]
-            .filter(Boolean)
-            .join(" • ")}
-        </p>
+        <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted">
+          {embed.footer?.icon_url && (
+            <img
+              src={embed.footer.icon_url}
+              alt="Footer icon"
+              className="h-3.5 w-3.5 rounded"
+            />
+          )}
+          <p>
+            {[embed.footer?.text, embed.timestamp ? formatRelativeTime(new Date(embed.timestamp)) : null]
+              .filter(Boolean)
+              .join(" • ")}
+          </p>
+        </div>
       )}
     </div>
   );
@@ -869,6 +915,7 @@ export function TicketDetailDrawer({
                                       <DiscordMessageContent
                                         content={body}
                                         memberProfiles={memberProfiles}
+                                        onUserMentionClick={(id) => setSelectedProfileUserId(id)}
                                       />
                                     ) : m.embeds?.length ? null : (
                                       <p className="mt-1 whitespace-pre-wrap break-words text-sm text-white/90">
@@ -880,6 +927,9 @@ export function TicketDetailDrawer({
                                         key={`${m.id}-embed-${i}`}
                                         embed={embed}
                                         memberProfiles={memberProfiles}
+                                        onUserMentionClick={(id) =>
+                                          setSelectedProfileUserId(id)
+                                        }
                                       />
                                     ))}
                                   </div>
