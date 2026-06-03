@@ -3,22 +3,24 @@
 import { dashboardFetch } from "@/lib/api/dashboard-fetch";
 import { formatErrorDetail } from "@/lib/api/error-message";
 
+import { DiscordChatFeed } from "@/components/discord/DiscordChatFeed";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Send } from "lucide-react";
+import { Avatar } from "@/components/ui/Avatar";
+import { useDiscordChatEnrichment } from "@/hooks/useDiscordChatEnrichment";
+import type { DiscordChatMessage } from "@/lib/discord/chat-types";
+import { MessageSquare, RefreshCw, Send } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 interface DmChannel {
   id: string;
-  recipients?: { id: string; username: string; global_name?: string }[];
+  recipients?: {
+    id: string;
+    username: string;
+    global_name?: string;
+    avatar?: string | null;
+  }[];
   last_message_id?: string;
-}
-
-interface DmMessage {
-  id: string;
-  content: string;
-  author: { id: string; username: string; bot?: boolean };
-  timestamp: string;
 }
 
 interface DmInboxProps {
@@ -29,10 +31,16 @@ interface DmInboxProps {
 export function DmInbox({ botId, canSend }: DmInboxProps) {
   const [channels, setChannels] = useState<DmChannel[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
-  const [messages, setMessages] = useState<DmMessage[]>([]);
+  const [messages, setMessages] = useState<DiscordChatMessage[]>([]);
+  const [messageLimit, setMessageLimit] = useState(50);
+  const [canLoadOlder, setCanLoadOlder] = useState(false);
+  const [messagesLoading, setMessagesLoading] = useState(false);
   const [reply, setReply] = useState("");
+  const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const enrichment = useDiscordChatEnrichment(messages);
 
   const loadChannels = useCallback(async () => {
     setLoading(true);
@@ -57,39 +65,70 @@ export function DmInbox({ botId, canSend }: DmInboxProps) {
     }
   }, [botId]);
 
-  const loadMessages = useCallback(async (channelId: string) => {
-    const res = await dashboardFetch(`/api/bots/${botId}/dms/${channelId}/messages`);
-    const data = await res.json();
-    if (!res.ok) {
-      setError(formatErrorDetail(data.error ?? data.detail) || "Failed to load messages");
-      return;
-    }
-    setMessages((data.messages || []).reverse());
-  }, [botId]);
+  const loadMessages = useCallback(
+    async (channelId: string, limitOverride?: number) => {
+      const limit = limitOverride ?? messageLimit;
+      setMessagesLoading(true);
+      try {
+        const res = await dashboardFetch(
+          `/api/bots/${botId}/dms/${channelId}/messages?limit=${limit}`
+        );
+        const data = await res.json();
+        if (!res.ok) {
+          setError(
+            formatErrorDetail(data.error ?? data.detail) || "Failed to load messages"
+          );
+          return;
+        }
+        const next: DiscordChatMessage[] = Array.isArray(data.messages)
+          ? (data.messages as DiscordChatMessage[])
+          : [];
+        setMessages(next);
+        setCanLoadOlder(next.length >= limit && limit < 100);
+      } finally {
+        setMessagesLoading(false);
+      }
+    },
+    [botId, messageLimit]
+  );
 
   useEffect(() => {
     loadChannels();
   }, [loadChannels]);
 
   useEffect(() => {
-    if (selected) loadMessages(selected);
+    if (selected) {
+      setMessageLimit(50);
+      setCanLoadOlder(false);
+      void loadMessages(selected, 50);
+    } else {
+      setMessages([]);
+    }
   }, [selected, loadMessages]);
 
   async function sendReply() {
     if (!selected || !reply.trim()) return;
-    const res = await dashboardFetch(`/api/bots/${botId}/dms/${selected}/messages`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: reply }),
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      setError(formatErrorDetail(data.error ?? data.detail) || "Send failed");
-      return;
+    setSending(true);
+    try {
+      const res = await dashboardFetch(
+        `/api/bots/${botId}/dms/${selected}/messages`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: reply }),
+        }
+      );
+      if (!res.ok) {
+        const data = await res.json();
+        setError(formatErrorDetail(data.error ?? data.detail) || "Send failed");
+        return;
+      }
+      setReply("");
+      await loadMessages(selected);
+      loadChannels();
+    } finally {
+      setSending(false);
     }
-    setReply("");
-    loadMessages(selected);
-    loadChannels();
   }
 
   function label(ch: DmChannel) {
@@ -97,11 +136,14 @@ export function DmInbox({ botId, canSend }: DmInboxProps) {
     return r?.global_name || r?.username || ch.id;
   }
 
+  const selectedChannel = channels.find((c) => c.id === selected);
+  const recipient = selectedChannel?.recipients?.[0];
+
   return (
     <div className="grid gap-4 lg:grid-cols-3">
       <Card className="lg:col-span-1 max-h-[70vh] overflow-auto">
         <h3 className="mb-3 text-sm font-medium text-muted">DM Channels</h3>
-        {error && <p className="text-xs text-red-400 mb-2">{error}</p>}
+        {error && <p className="mb-2 text-xs text-red-400">{error}</p>}
         {loading && (
           <p className="text-xs text-muted">Loading conversations…</p>
         )}
@@ -111,64 +153,121 @@ export function DmInbox({ botId, canSend }: DmInboxProps) {
               <button
                 type="button"
                 onClick={() => setSelected(ch.id)}
-                className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
                   selected === ch.id
                     ? "bg-accent/20 text-white"
                     : "text-muted hover:bg-surface-hover"
                 }`}
               >
-                {label(ch)}
+                {ch.recipients?.[0] && (
+                  <Avatar
+                    userId={ch.recipients[0].id}
+                    avatarHash={ch.recipients[0].avatar ?? null}
+                    size={24}
+                  />
+                )}
+                <span className="truncate">{label(ch)}</span>
               </button>
             </li>
           ))}
           {!loading && !channels.length && !error && (
             <p className="text-xs text-muted">
               No DM conversations found yet. Discord does not expose a bot&apos;s DM
-              list via API — conversations appear here after players message the bot
-              (and are remembered when you open them).
+              list via API — conversations appear here after players message the bot.
             </p>
           )}
         </ul>
       </Card>
-      <Card className="lg:col-span-2 flex flex-col max-h-[70vh]">
+
+      <div className="lg:col-span-2 flex min-h-0 flex-col">
         {selected ? (
-          <>
-            <div className="flex-1 overflow-auto space-y-2 mb-4">
-              {messages.map((m) => (
-                <div
-                  key={m.id}
-                  className={`rounded-lg px-3 py-2 text-sm ${
-                    m.author.bot
-                      ? "ml-8 bg-accent/10 text-white"
-                      : "mr-8 bg-surface-hover text-muted"
-                  }`}
-                >
-                  <span className="text-xs font-medium text-accent-light">
-                    {m.author.username}
+          <section className="flex min-h-0 flex-1 flex-col">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h3 className="flex items-center gap-2 text-sm font-semibold text-accent-light">
+                <MessageSquare className="h-4 w-4" />
+                {recipient ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Avatar
+                      userId={recipient.id}
+                      avatarHash={recipient.avatar ?? null}
+                      size={24}
+                    />
+                    {label(selectedChannel!)}
                   </span>
-                  <p className="mt-1 whitespace-pre-wrap">{m.content}</p>
-                </div>
-              ))}
-            </div>
-            {canSend && (
-              <div className="flex gap-2 border-t border-border pt-4">
-                <input
-                  value={reply}
-                  onChange={(e) => setReply(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendReply()}
-                  placeholder="Reply..."
-                  className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-white"
+                ) : (
+                  "DM conversation"
+                )}
+              </h3>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => void loadMessages(selected)}
+                disabled={messagesLoading}
+              >
+                <RefreshCw
+                  className={`h-4 w-4 ${messagesLoading ? "animate-spin" : ""}`}
                 />
-                <Button onClick={sendReply}>
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
-          </>
+                Refresh
+              </Button>
+            </div>
+
+            <DiscordChatFeed
+              messages={messages}
+              loading={messagesLoading}
+              emptyLabel="No messages in this DM."
+              canLoadOlder={canLoadOlder}
+              loadOlderLoading={messagesLoading}
+              onLoadOlder={() => {
+                const next = Math.min(100, messageLimit + 30);
+                setMessageLimit(next);
+                void loadMessages(selected, next);
+              }}
+              maxHeightClass="max-h-[calc(70vh-120px)]"
+              memberProfiles={enrichment.memberProfiles}
+              roleById={enrichment.roleById}
+              selectedProfileUserId={enrichment.selectedProfileUserId}
+              setSelectedProfileUserId={enrichment.setSelectedProfileUserId}
+              footer={
+                canSend ? (
+                  <div className="mt-3 space-y-2 border-t border-border pt-3">
+                    <div className="flex gap-2">
+                      <textarea
+                        value={reply}
+                        onChange={(e) => setReply(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key !== "Enter" || e.shiftKey) return;
+                          e.preventDefault();
+                          if (!sending && reply.trim()) void sendReply();
+                        }}
+                        placeholder="Message…"
+                        rows={2}
+                        maxLength={2000}
+                        className="flex-1 resize-none rounded-lg border border-border bg-surface px-3 py-2 text-sm text-white"
+                      />
+                      <Button
+                        variant="primary"
+                        onClick={() => void sendReply()}
+                        disabled={sending || !reply.trim()}
+                      >
+                        <Send className="h-4 w-4" />
+                        {sending ? "Sending…" : "Send"}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-3 border-t border-border pt-3 text-xs text-muted">
+                    You have read-only access to DM messages.
+                  </p>
+                )
+              }
+            />
+          </section>
         ) : (
-          <p className="text-sm text-muted">Select a conversation</p>
+          <Card className="flex flex-1 items-center justify-center p-8">
+            <p className="text-sm text-muted">Select a conversation</p>
+          </Card>
         )}
-      </Card>
+      </div>
     </div>
   );
 }

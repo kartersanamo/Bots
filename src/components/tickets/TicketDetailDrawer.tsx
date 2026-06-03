@@ -7,7 +7,10 @@ import { isTicketOpen } from "@/lib/tickets/types";
 import type { TicketEnrichment } from "@/lib/discord/tickets";
 import { formatRelativeTime } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
-import { DiscordUserProfileCard } from "@/components/games/DiscordUserProfileCard";
+import { DiscordChatFeed } from "@/components/discord/DiscordChatFeed";
+import { useDiscordChatEnrichment } from "@/hooks/useDiscordChatEnrichment";
+import type { DiscordChatMessage } from "@/lib/discord/chat-types";
+import { roleColorHex, topRoleForMember } from "@/lib/discord/guild-roles";
 import {
   X,
   ExternalLink,
@@ -18,12 +21,11 @@ import {
   Send,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { can } from "@/lib/permissions";
 import type { PermissionTier } from "@/lib/permissions";
 import { TICKET_BOT_COMMANDS } from "@/lib/tickets/commands";
 import { ViewerHighlightSpan } from "@/components/discord/ViewerHighlightProvider";
-import { topRoleForMember } from "@/lib/discord/guild-roles";
 
 interface TicketDetailDrawerProps {
   channelId: string | null;
@@ -46,56 +48,6 @@ interface DetailData {
   discordUrl: string;
 }
 
-interface TicketMessage {
-  id: string;
-  content: string;
-  timestamp: string;
-  author: {
-    id: string;
-    username?: string;
-    global_name?: string | null;
-    avatar?: string | null;
-    bot?: boolean;
-  };
-  embeds?: DiscordEmbed[];
-}
-
-interface DiscordEmbed {
-  title?: string;
-  description?: string;
-  url?: string;
-  color?: number;
-  author?: {
-    name?: string;
-    icon_url?: string;
-  };
-  fields?: { name?: string; value?: string; inline?: boolean }[];
-  thumbnail?: { url?: string };
-  image?: { url?: string };
-  footer?: { text?: string; icon_url?: string };
-  timestamp?: string;
-}
-
-interface GuildRoleLite {
-  id: string;
-  name: string;
-  color: number;
-  position: number;
-  icon?: string | null;
-  unicode_emoji?: string | null;
-}
-
-interface DiscordResolvedMember {
-  id: string;
-  displayName: string;
-  username: string;
-  avatar: string | null;
-  roles: string[];
-  nick?: string | null;
-  joinedAt?: string | null;
-}
-
-const USER_MENTION_RE = /<@!?(\d{15,22})>/g;
 
 function openedAtDate(openedAt: string): Date {
   const n = Number(openedAt);
@@ -103,356 +55,9 @@ function openedAtDate(openedAt: string): Date {
   return new Date(openedAt);
 }
 
-function embedBorderColor(color?: number): string {
-  if (!color || color <= 0) return "#5865F2";
-  return `#${color.toString(16).padStart(6, "0")}`;
-}
-
-function roleColorHex(color?: number): string | undefined {
-  if (!color || color <= 0) return undefined;
-  return `#${color.toString(16).padStart(6, "0")}`;
-}
-
-function roleIconUrl(role: GuildRoleLite): string | null {
+function roleIconUrl(role: { id: string; icon?: string | null }): string | null {
   if (!role.icon) return null;
   return `https://cdn.discordapp.com/role-icons/${role.id}/${role.icon}.png?size=64`;
-}
-
-function extractMentionUserIds(content: string): string[] {
-  return Array.from(content.matchAll(USER_MENTION_RE), (m) => m[1]);
-}
-
-function formatDiscordTimestampToken(unixSeconds: number, style?: string): string {
-  if (!Number.isFinite(unixSeconds)) return "";
-  const date = new Date(unixSeconds * 1000);
-  if (Number.isNaN(date.getTime())) return "";
-
-  const locale = undefined;
-  const shortDate = new Intl.DateTimeFormat(locale, {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-  const longDate = new Intl.DateTimeFormat(locale, {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-  const shortTime = new Intl.DateTimeFormat(locale, {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-  const longTime = new Intl.DateTimeFormat(locale, {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-  const longDateTime = new Intl.DateTimeFormat(locale, {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-
-  switch (style) {
-    case "t":
-      return shortTime.format(date);
-    case "T":
-      return longTime.format(date);
-    case "d":
-      return shortDate.format(date);
-    case "D":
-      return longDate.format(date);
-    case "f":
-      return `${longDate.format(date)} ${shortTime.format(date)}`;
-    case "F":
-      return longDateTime.format(date);
-    case "R": {
-      const now = Date.now();
-      const diffSec = Math.round((date.getTime() - now) / 1000);
-      const abs = Math.abs(diffSec);
-      const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
-      if (abs < 60) return rtf.format(diffSec, "second");
-      if (abs < 3600) return rtf.format(Math.round(diffSec / 60), "minute");
-      if (abs < 86400) return rtf.format(Math.round(diffSec / 3600), "hour");
-      if (abs < 2592000) return rtf.format(Math.round(diffSec / 86400), "day");
-      if (abs < 31536000) return rtf.format(Math.round(diffSec / 2592000), "month");
-      return rtf.format(Math.round(diffSec / 31536000), "year");
-    }
-    default:
-      return `${longDate.format(date)} ${shortTime.format(date)}`;
-  }
-}
-
-function extractMentionUserIdsFromEmbeds(embeds: DiscordEmbed[] | undefined): string[] {
-  if (!embeds?.length) return [];
-  const out: string[] = [];
-  for (const embed of embeds) {
-    if (embed.title) out.push(...extractMentionUserIds(embed.title));
-    if (embed.description) out.push(...extractMentionUserIds(embed.description));
-    if (embed.footer?.text) out.push(...extractMentionUserIds(embed.footer.text));
-    for (const field of embed.fields ?? []) {
-      if (field.name) out.push(...extractMentionUserIds(field.name));
-      if (field.value) out.push(...extractMentionUserIds(field.value));
-    }
-  }
-  return out;
-}
-
-function escapeHtml(input: string): string {
-  return input
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
-
-function renderDiscordMarkdown(
-  raw: string,
-  memberProfiles: Record<string, DiscordResolvedMember>
-): string {
-  if (!raw.trim()) return "";
-  const token = {
-    mention: (i: number) => `[[[MENTION${i}]]]`,
-    block: (i: number) => `[[[BLOCK${i}]]]`,
-    inline: (i: number) => `[[[INLINE${i}]]]`,
-  };
-
-  const mentionLinks: string[] = [];
-  let text = raw
-    .replace(USER_MENTION_RE, (_, id: string) => {
-      const p = memberProfiles[id];
-      const name = p?.displayName || p?.username || id;
-      const html = `<button type="button" data-user-id="${id}" class="rounded bg-accent/25 px-1 text-accent-light hover:underline">@${escapeHtml(
-        name
-      )}</button>`;
-      const idx = mentionLinks.push(html);
-      return token.mention(idx - 1);
-    })
-    .replace(/<@&(\d{15,22})>/g, (_m, id: string) => `@role:${id}`)
-    .replace(/<#(\d{15,22})>/g, (_m, id: string) => `#channel:${id}`)
-    .replace(/@everyone/g, "@everyone")
-    .replace(/@here/g, "@here");
-
-  text = text.replace(
-    /<t:(\d{1,12})(?::([tTdDfFR]))?>?/g,
-    (_m, unixRaw: string, styleRaw?: string) => {
-      const rendered = formatDiscordTimestampToken(
-        Number(unixRaw),
-        styleRaw || undefined
-      );
-      return rendered || `<t:${unixRaw}${styleRaw ? `:${styleRaw}` : ""}>`;
-    }
-  );
-
-  text = escapeHtml(text).replaceAll("\r\n", "\n");
-
-  const blockCodes: string[] = [];
-  text = text.replace(/```([a-zA-Z0-9+\-_.]*)?\n?([\s\S]*?)```/g, (_, lang, body) => {
-    const langLabel = lang ? escapeHtml(String(lang)) : "";
-    const idx = blockCodes.push(
-      `<pre class="my-2 overflow-x-auto rounded bg-black/30 p-2"><code>${
-        langLabel
-          ? `<span class="mr-2 text-[10px] uppercase text-muted">${langLabel}</span>\n`
-          : ""
-      }${escapeHtml(String(body))}</code></pre>`
-    );
-    return token.block(idx - 1);
-  });
-
-  const inlineCodes: string[] = [];
-  text = text.replace(/`([^`\n]+)`/g, (_, body) => {
-    const idx = inlineCodes.push(
-      `<code class="rounded bg-black/35 px-1 py-0.5 text-[0.95em]">${escapeHtml(
-        String(body)
-      )}</code>`
-    );
-    return token.inline(idx - 1);
-  });
-
-  text = text
-    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-accent-light underline">$1</a>')
-    .replace(/&lt;(https?:\/\/[^&\s]+)&gt;/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-accent-light underline">$1</a>')
-    .replace(/\|\|([^|]+)\|\|/g, '<span class="rounded bg-white/10 px-1 text-transparent hover:text-white">$1</span>')
-    .replace(/\*\*\*([^*]+)\*\*\*/g, "<strong><em>$1</em></strong>")
-    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-    .replace(/__([^_]+)__/g, "<u>$1</u>")
-    .replace(/\*([^*\n]+)\*/g, "<em>$1</em>")
-    .replace(/_([^_\n]+)_/g, "<em>$1</em>")
-    .replace(/~~([^~]+)~~/g, "<del>$1</del>");
-
-  const lines = text.split("\n");
-  const formattedLines: string[] = [];
-  for (const line of lines) {
-    if (line.startsWith("&gt; ")) {
-      formattedLines.push(
-        `<blockquote class="my-1 border-l-2 border-border pl-2 text-white/85">${line.slice(5)}</blockquote>`
-      );
-      continue;
-    }
-    if (line.startsWith("&gt;&gt;&gt; ")) {
-      formattedLines.push(
-        `<blockquote class="my-1 border-l-2 border-border pl-2 text-white/85">${line.slice(13)}</blockquote>`
-      );
-      continue;
-    }
-    formattedLines.push(line);
-  }
-  text = formattedLines.join("<br />");
-
-  text = text
-    .replace(/\[\[\[INLINE(\d+)\]\]\]/g, (_, i: string) => inlineCodes[Number(i)] ?? "")
-    .replace(/\[\[\[BLOCK(\d+)\]\]\]/g, (_, i: string) => blockCodes[Number(i)] ?? "")
-    .replace(/\[\[\[MENTION(\d+)\]\]\]/g, (_, i: string) => mentionLinks[Number(i)] ?? "");
-
-  return text;
-}
-
-function DiscordMessageContent({
-  content,
-  memberProfiles,
-  onUserMentionClick,
-}: {
-  content: string;
-  memberProfiles: Record<string, DiscordResolvedMember>;
-  onUserMentionClick: (userId: string) => void;
-}) {
-  const html = useMemo(
-    () => renderDiscordMarkdown(content, memberProfiles),
-    [content, memberProfiles]
-  );
-  if (!html) return null;
-  return (
-    <div
-      className="mt-1 break-words text-sm text-white/90"
-      dangerouslySetInnerHTML={{ __html: html }}
-      onClick={(e) => {
-        const target = e.target as HTMLElement | null;
-        const el = target?.closest?.("[data-user-id]") as HTMLElement | null;
-        const userId = el?.getAttribute("data-user-id");
-        if (userId) {
-          e.preventDefault();
-          onUserMentionClick(userId);
-        }
-      }}
-    />
-  );
-}
-
-function DiscordEmbedCard({
-  embed,
-  memberProfiles,
-  onUserMentionClick,
-}: {
-  embed: DiscordEmbed;
-  memberProfiles: Record<string, DiscordResolvedMember>;
-  onUserMentionClick: (userId: string) => void;
-}) {
-  const descriptionHtml = embed.description
-    ? renderDiscordMarkdown(embed.description, memberProfiles)
-    : "";
-  return (
-    <div
-      className="mt-2 max-w-[520px] rounded-md border border-border/60 bg-surface/70 p-3"
-      style={{ borderLeftWidth: 4, borderLeftColor: embedBorderColor(embed.color) }}
-    >
-      {embed.author?.name && (
-        <p className="text-xs font-medium text-muted">{embed.author.name}</p>
-      )}
-      {embed.title && (
-        <p className="mt-1 text-sm font-semibold text-white">
-          {embed.url ? (
-            <a href={embed.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
-              {embed.title}
-            </a>
-          ) : (
-            embed.title
-          )}
-        </p>
-      )}
-      {embed.description && (
-        <div
-          className="mt-1 break-words text-sm text-white/90"
-          dangerouslySetInnerHTML={{ __html: descriptionHtml }}
-          onClick={(e) => {
-            const target = e.target as HTMLElement | null;
-            const el = target?.closest?.("[data-user-id]") as HTMLElement | null;
-            const userId = el?.getAttribute("data-user-id");
-            if (userId) {
-              e.preventDefault();
-              onUserMentionClick(userId);
-            }
-          }}
-        />
-      )}
-      {embed.fields && embed.fields.length > 0 && (
-        <div className="mt-2 grid gap-2 sm:grid-cols-2">
-          {embed.fields.map((f, i) => (
-            <div key={`${f.name ?? "field"}-${i}`} className={f.inline ? "" : "sm:col-span-2"}>
-              {f.name && (
-                <div
-                  className="text-xs font-medium text-accent-light"
-                  dangerouslySetInnerHTML={{
-                    __html: renderDiscordMarkdown(f.name, memberProfiles),
-                  }}
-                />
-              )}
-              {f.value && (
-                <div
-                  className="break-words text-xs text-white/85"
-                  dangerouslySetInnerHTML={{
-                    __html: renderDiscordMarkdown(f.value, memberProfiles),
-                  }}
-                  onClick={(e) => {
-                    const target = e.target as HTMLElement | null;
-                    const el = target?.closest?.("[data-user-id]") as HTMLElement | null;
-                    const userId = el?.getAttribute("data-user-id");
-                    if (userId) {
-                      e.preventDefault();
-                      onUserMentionClick(userId);
-                    }
-                  }}
-                />
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-      {embed.thumbnail?.url && (
-        <img
-          src={embed.thumbnail.url}
-          alt="Embed thumbnail"
-          className="mt-2 h-16 w-16 rounded object-cover"
-        />
-      )}
-      {embed.image?.url && (
-        <img
-          src={embed.image.url}
-          alt="Embed image"
-          className="mt-2 max-h-80 w-full rounded object-contain"
-        />
-      )}
-      {(embed.footer?.text || embed.timestamp) && (
-        <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted">
-          {embed.footer?.icon_url && (
-            <img
-              src={embed.footer.icon_url}
-              alt="Footer icon"
-              className="h-3.5 w-3.5 rounded"
-            />
-          )}
-          <p>
-            {[embed.footer?.text, embed.timestamp ? formatRelativeTime(new Date(embed.timestamp)) : null]
-              .filter(Boolean)
-              .join(" • ")}
-          </p>
-        </div>
-      )}
-    </div>
-  );
 }
 
 export function TicketDetailDrawer({
@@ -472,7 +77,7 @@ export function TicketDetailDrawer({
   const [showRenameForm, setShowRenameForm] = useState(false);
   const [renameValue, setRenameValue] = useState("");
   const [renameError, setRenameError] = useState<string | null>(null);
-  const [messages, setMessages] = useState<TicketMessage[]>([]);
+  const [messages, setMessages] = useState<DiscordChatMessage[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [messageLimit, setMessageLimit] = useState(30);
   const [canLoadOlderMessages, setCanLoadOlderMessages] = useState(false);
@@ -480,19 +85,14 @@ export function TicketDetailDrawer({
   const [sendError, setSendError] = useState<string | null>(null);
   const [sendNotice, setSendNotice] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
-  const [guildRoles, setGuildRoles] = useState<GuildRoleLite[]>([]);
-  const [memberProfiles, setMemberProfiles] = useState<
-    Record<string, DiscordResolvedMember>
-  >({});
-  const [selectedProfileUserId, setSelectedProfileUserId] = useState<string | null>(
-    null
-  );
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
 
-  const roleById = useMemo(
-    () => new Map(guildRoles.map((r) => [r.id, r])),
-    [guildRoles]
-  );
+  const {
+    memberProfiles,
+    roleById,
+    selectedProfileUserId,
+    setSelectedProfileUserId,
+  } = useDiscordChatEnrichment(messages);
 
   useEffect(() => {
     if (!channelId) {
@@ -534,8 +134,8 @@ export function TicketDetailDrawer({
         );
         return;
       }
-      const nextMessages: TicketMessage[] = Array.isArray(payload.messages)
-        ? (payload.messages as TicketMessage[])
+      const nextMessages: DiscordChatMessage[] = Array.isArray(payload.messages)
+        ? (payload.messages as DiscordChatMessage[])
         : [];
       setMessages(nextMessages);
       setCanLoadOlderMessages(nextMessages.length >= limit && limit < 100);
@@ -543,55 +143,12 @@ export function TicketDetailDrawer({
         setSendError(
           "This Discord ticket channel is unavailable (deleted or no longer accessible by the bot)."
         );
-      }
-      const authorIds = Array.from(
-        new Set(
-          nextMessages
-            .flatMap((m) => [
-              String(m.author?.id || ""),
-              ...extractMentionUserIds(m.content || ""),
-              ...extractMentionUserIdsFromEmbeds(m.embeds),
-            ])
-            .filter(Boolean)
-        )
-      );
-      if (authorIds.length) {
-        void loadAuthorProfiles(authorIds);
-      }
-      if (payload.channelUnavailable !== true) {
+      } else {
         setSendError(null);
       }
     } finally {
       setMessagesLoading(false);
     }
-  }
-
-  async function loadGuildRoles() {
-    const res = await dashboardFetch("/api/server/info?roles=all");
-    const payload = await res.json().catch(() => ({}));
-    if (!res.ok || !Array.isArray(payload.roles)) return;
-    setGuildRoles(
-      payload.roles.map((r: GuildRoleLite) => ({
-        id: String(r.id),
-        name: String(r.name),
-        color: Number(r.color ?? 0),
-        position: Number(r.position ?? 0),
-        icon: r.icon ?? null,
-        unicode_emoji: r.unicode_emoji ?? null,
-      }))
-    );
-  }
-
-  async function loadAuthorProfiles(userIds: string[]) {
-    const ids = userIds.filter((id) => !memberProfiles[id]);
-    if (!ids.length) return;
-    const res = await dashboardFetch(
-      `/api/discord/users?ids=${encodeURIComponent(ids.join(","))}`
-    );
-    const payload = await res.json().catch(() => ({}));
-    if (!res.ok || !payload.users || typeof payload.users !== "object") return;
-    const mapped = payload.users as Record<string, DiscordResolvedMember>;
-    setMemberProfiles((prev) => ({ ...prev, ...mapped }));
   }
 
   useEffect(() => {
@@ -604,12 +161,6 @@ export function TicketDetailDrawer({
     void loadMessages();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelId]);
-
-  useEffect(() => {
-    void loadGuildRoles();
-    // one-time role catalog for role color/icon rendering
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   async function copyText(text: string) {
     await navigator.clipboard.writeText(text);
@@ -976,114 +527,23 @@ export function TicketDetailDrawer({
                           Refresh
                         </Button>
                       </div>
-                      <div className="rounded-xl border border-border bg-background p-3">
-                        {messagesLoading ? (
-                          <div className="space-y-2">
-                            {[1, 2, 3].map((i) => (
-                              <div
-                                key={i}
-                                className="h-14 animate-pulse rounded-md bg-surface-hover"
-                              />
-                            ))}
-                          </div>
-                        ) : messages.length === 0 ? (
-                          <p className="py-4 text-center text-sm text-muted">
-                            No channel messages found.
-                          </p>
-                        ) : (
-                          <div className="max-h-[calc(100vh-220px)] space-y-3 overflow-y-auto pr-1">
-                            {canLoadOlderMessages && (
-                              <div className="flex justify-center pb-2">
-                                <Button
-                                  variant="secondary"
-                                  size="sm"
-                                  disabled={messagesLoading}
-                                  onClick={() => {
-                                    const next = Math.min(100, messageLimit + 30);
-                                    setMessageLimit(next);
-                                    void loadMessages(next);
-                                  }}
-                                >
-                                  Load older messages
-                                </Button>
-                              </div>
-                            )}
-                            {messages.map((m) => {
-                              const displayName =
-                                m.author.global_name || m.author.username || m.author.id;
-                              const authorProfile = memberProfiles[m.author.id];
-                              const topRole = topRoleForMember(authorProfile?.roles, roleById);
-                              const nameColor = roleColorHex(topRole?.color);
-                              const iconUrl = topRole ? roleIconUrl(topRole) : null;
-                              const body = m.content?.trim() || "";
-                              return (
-                                <div key={m.id} className="flex gap-3">
-                                  <Avatar
-                                    userId={m.author.id}
-                                    avatarHash={m.author.avatar ?? null}
-                                    size={32}
-                                  />
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-2">
-                                      <button
-                                        type="button"
-                                        onClick={() => setSelectedProfileUserId(m.author.id)}
-                                        className="inline-flex items-center gap-1 rounded px-0.5 text-sm font-medium hover:bg-white/5"
-                                        style={{ color: nameColor ?? "#ffffff" }}
-                                      >
-                                        <ViewerHighlightSpan
-                                          userId={m.author.id}
-                                          className="inline-flex items-center gap-1"
-                                        >
-                                          {topRole?.unicode_emoji && (
-                                            <span>{topRole.unicode_emoji}</span>
-                                          )}
-                                          {displayName}
-                                          {iconUrl && (
-                                            <img
-                                              src={iconUrl}
-                                              alt="Role icon"
-                                              className="h-4 w-4 rounded"
-                                            />
-                                          )}
-                                        </ViewerHighlightSpan>
-                                      </button>
-                                      {m.author.bot && (
-                                        <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] text-accent-light">
-                                          BOT
-                                        </span>
-                                      )}
-                                      <span className="text-xs text-muted">
-                                        {formatRelativeTime(new Date(m.timestamp))}
-                                      </span>
-                                    </div>
-                                    {body ? (
-                                      <DiscordMessageContent
-                                        content={body}
-                                        memberProfiles={memberProfiles}
-                                        onUserMentionClick={(id) => setSelectedProfileUserId(id)}
-                                      />
-                                    ) : m.embeds?.length ? null : (
-                                      <p className="mt-1 whitespace-pre-wrap break-words text-sm text-white/90">
-                                        (attachment/system)
-                                      </p>
-                                    )}
-                                    {m.embeds?.map((embed, i) => (
-                                      <DiscordEmbedCard
-                                        key={`${m.id}-embed-${i}`}
-                                        embed={embed}
-                                        memberProfiles={memberProfiles}
-                                        onUserMentionClick={(id) =>
-                                          setSelectedProfileUserId(id)
-                                        }
-                                      />
-                                    ))}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
+                      <DiscordChatFeed
+                        messages={messages}
+                        loading={messagesLoading}
+                        emptyLabel="No channel messages found."
+                        canLoadOlder={canLoadOlderMessages}
+                        loadOlderLoading={messagesLoading}
+                        onLoadOlder={() => {
+                          const next = Math.min(100, messageLimit + 30);
+                          setMessageLimit(next);
+                          void loadMessages(next);
+                        }}
+                        memberProfiles={memberProfiles}
+                        roleById={roleById}
+                        selectedProfileUserId={selectedProfileUserId}
+                        setSelectedProfileUserId={setSelectedProfileUserId}
+                        footer={
+                          <>
                         {sendError && (
                           <p className="mt-3 text-sm text-red-400">{sendError}</p>
                         )}
@@ -1202,7 +662,9 @@ export function TicketDetailDrawer({
                             You have read-only access to ticket messages.
                           </p>
                         )}
-                      </div>
+                          </>
+                        }
+                      />
                     </section>
                   )}
 
@@ -1257,25 +719,6 @@ export function TicketDetailDrawer({
                 </>
               )}
             </div>
-      {selectedProfileUserId && (
-        <DiscordUserProfileCard
-          user={{
-            id: selectedProfileUserId,
-            username:
-              memberProfiles[selectedProfileUserId]?.username ??
-              "unknown",
-            displayName:
-              memberProfiles[selectedProfileUserId]?.displayName ??
-              memberProfiles[selectedProfileUserId]?.username ??
-              selectedProfileUserId,
-            avatar: memberProfiles[selectedProfileUserId]?.avatar ?? null,
-            nick: memberProfiles[selectedProfileUserId]?.nick ?? null,
-            roles: memberProfiles[selectedProfileUserId]?.roles ?? [],
-            joinedAt: memberProfiles[selectedProfileUserId]?.joinedAt ?? null,
-          }}
-          onClose={() => setSelectedProfileUserId(null)}
-        />
-      )}
     </>
   );
 
