@@ -14,7 +14,13 @@ export const POST = handleApiRoute(async (request, ctx) => {
     );
   }
 
-  const allowed = ["end_game", "toggle_2x", "reset", "reroll"];
+  const allowed = [
+    "end_game",
+    "toggle_2x",
+    "reset",
+    "reroll",
+    "show_correct_answer",
+  ];
   if (!allowed.includes(action)) {
     return Response.json({ error: "Invalid action" }, { status: 400 });
   }

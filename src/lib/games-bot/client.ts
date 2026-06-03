@@ -120,6 +120,10 @@ export async function reloadGamesConfig(): Promise<void> {
   await gamesFetch("/reload-config", { method: "POST" });
 }
 
+export async function getActiveChatGameIds(): Promise<{ gameIds: number[] }> {
+  return gamesFetch("/sessions/active");
+}
+
 export async function getSessionLiveState(gameId: number): Promise<{
   active: boolean;
   messageId?: string;
@@ -129,6 +133,8 @@ export async function getSessionLiveState(gameId: number): Promise<{
   testMode?: boolean;
   winners?: { user_id: string | null; xp: number }[];
   activityLog?: unknown[];
+  answer?: string;
+  revealed?: boolean;
 }> {
   return gamesFetch(`/session/${gameId}`);
 }

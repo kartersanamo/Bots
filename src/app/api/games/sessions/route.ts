@@ -1,5 +1,9 @@
 import { handleApiRoute, requireAction } from "@/lib/api/helpers";
 import { listGameSessions } from "@/lib/db/games";
+import {
+  getActiveChatGameIds,
+  isGamesBotApiConfigured,
+} from "@/lib/games-bot/client";
 import { isDbConfigured } from "@/lib/db/pool";
 
 export const GET = handleApiRoute(async (request) => {
@@ -16,5 +20,24 @@ export const GET = handleApiRoute(async (request) => {
   }
 
   const sessions = await listGameSessions({ limit, search, dm });
-  return Response.json({ sessions, configured: true });
+
+  let activeChatIds = new Set<number>();
+  if (isGamesBotApiConfigured()) {
+    try {
+      const { gameIds } = await getActiveChatGameIds();
+      activeChatIds = new Set(gameIds);
+    } catch {
+      activeChatIds = new Set();
+    }
+  }
+
+  const enriched = sessions.map((s) => {
+    const isDm = s.dm_game === 1 || s.dm_game === "1";
+    return {
+      ...s,
+      active: !isDm && activeChatIds.has(Number(s.game_id)),
+    };
+  });
+
+  return Response.json({ sessions: enriched, configured: true });
 });

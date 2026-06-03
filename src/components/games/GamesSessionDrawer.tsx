@@ -40,6 +40,8 @@ interface SessionDetail {
     testMode?: boolean;
     winners?: { user_id: string | null; xp: number }[];
     gameType?: string;
+    answer?: string;
+    answerRevealed?: boolean;
   } | null;
 }
 
@@ -57,6 +59,8 @@ export function GamesSessionDrawer({
   const [detail, setDetail] = useState<SessionDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<string | null>(null);
+  const [revealedAnswer, setRevealedAnswer] = useState<string | null>(null);
+  const [revealingAnswer, setRevealingAnswer] = useState(false);
   const [editingUser, setEditingUser] = useState<string | null>(null);
   const [editFields, setEditFields] = useState<Record<string, string>>({});
   const [apiUsers, setApiUsers] = useState<Record<string, ResolvedDiscordUser>>({});
@@ -79,8 +83,15 @@ export function GamesSessionDrawer({
   }, [gameId]);
 
   useEffect(() => {
+    setRevealedAnswer(null);
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (detail?.live?.answerRevealed && detail.live.answer) {
+      setRevealedAnswer(detail.live.answer);
+    }
+  }, [detail?.live?.answer, detail?.live?.answerRevealed]);
 
   const userIds = [
     ...(detail?.xpLogs.map((l) => snowflakeString(l.user_id)) ?? []),
@@ -106,9 +117,21 @@ export function GamesSessionDrawer({
       setMsg(data.error || "Action failed");
       return;
     }
-    setMsg("Done");
+    if (action === "show_correct_answer" && data.answer) {
+      setRevealedAnswer(String(data.answer));
+    }
+    setMsg(action === "show_correct_answer" ? "Answer revealed" : "Done");
     load();
     onUpdated();
+  }
+
+  async function showCorrectAnswer() {
+    setRevealingAnswer(true);
+    try {
+      await chatAction("show_correct_answer");
+    } finally {
+      setRevealingAnswer(false);
+    }
   }
 
   async function saveEntry(userId: string) {
@@ -202,6 +225,14 @@ export function GamesSessionDrawer({
                     {formatBoolFlag(detail.live.testMode ? 1 : 0)}
                   </p>
                   <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => void showCorrectAnswer()}
+                      disabled={revealingAnswer || !!revealedAnswer}
+                    >
+                      {revealedAnswer ? "Answer revealed" : "Show correct answer"}
+                    </Button>
                     <Button size="sm" variant="secondary" onClick={() => chatAction("toggle_2x")}>
                       Toggle 2x XP
                     </Button>
@@ -209,6 +240,17 @@ export function GamesSessionDrawer({
                       End game
                     </Button>
                   </div>
+                  {revealedAnswer && (
+                    <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+                      <p className="text-xs font-medium uppercase tracking-wide text-emerald-300/90">
+                        Correct answer
+                      </p>
+                      <p className="mt-1 text-sm text-white">{revealedAnswer}</p>
+                      <p className="mt-1 text-xs text-muted">
+                        Posted to the game message in Discord.
+                      </p>
+                    </div>
+                  )}
                   {detail.live.winners && detail.live.winners.length > 0 && (
                     <div className="mt-2">
                       <p className="text-xs text-muted mb-1">Winners (live)</p>

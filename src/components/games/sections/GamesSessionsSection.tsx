@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { GamesSessionDrawer } from "@/components/games/GamesSessionDrawer";
-import { formatUnixTimestamp } from "@/lib/utils";
+import { cn, formatUnixTimestamp } from "@/lib/utils";
 import type { PermissionTier } from "@/lib/permissions";
 import { useCallback, useEffect, useState } from "react";
 
@@ -17,6 +17,7 @@ export function GamesSessionsSection({ userTier }: { userTier: PermissionTier })
       game_name: string;
       refreshed_at: string | null;
       dm_game: number | string | null;
+      active?: boolean;
     }[]
   >([]);
   const [dmFilter, setDmFilter] = useState<DmFilter>("all");
@@ -90,18 +91,42 @@ export function GamesSessionsSection({ userTier }: { userTier: PermissionTier })
             <tbody>
               {sessions.map((s) => {
                 const isDm = s.dm_game === 1 || s.dm_game === "1";
+                const isLiveChat = !isDm && s.active;
                 return (
                   <tr
                     key={s.game_id}
-                    className="cursor-pointer border-b border-border/50 hover:bg-surface-hover"
+                    className={cn(
+                      "cursor-pointer border-b border-border/50 hover:bg-surface-hover",
+                      isLiveChat &&
+                        "border-l-2 border-l-emerald-500/70 bg-emerald-500/[0.08] hover:bg-emerald-500/[0.12]"
+                    )}
                     onClick={() => setSelectedId(s.game_id)}
                   >
-                    <td className="py-2 pr-4 font-mono">{s.game_id}</td>
-                    <td className="py-2 pr-4">{s.game_name}</td>
+                    <td
+                      className={cn(
+                        "py-2 pr-4 font-mono",
+                        isLiveChat && "text-emerald-200"
+                      )}
+                    >
+                      {s.game_id}
+                    </td>
+                    <td
+                      className={cn(
+                        "py-2 pr-4",
+                        isLiveChat && "font-medium text-emerald-100"
+                      )}
+                    >
+                      {s.game_name}
+                    </td>
                     <td className="py-2 pr-4">
-                      <Badge variant={isDm ? "info" : "default"}>
-                        {isDm ? "DM" : "Chat"}
-                      </Badge>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Badge variant={isDm ? "info" : "default"}>
+                          {isDm ? "DM" : "Chat"}
+                        </Badge>
+                        {isLiveChat && (
+                          <Badge variant="success">Live</Badge>
+                        )}
+                      </div>
                     </td>
                     <td className="py-2 text-xs text-muted">
                       {formatUnixTimestamp(s.refreshed_at)}
