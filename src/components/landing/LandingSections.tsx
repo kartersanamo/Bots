@@ -3,8 +3,6 @@ import { ArrowRight, Layers, Shield, Sparkles } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-const SITE_NAME = "kartersanamo";
-
 export function PublicShell({ children }: { children: ReactNode }) {
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-white">
@@ -37,7 +35,7 @@ export function PublicHeader({ activePath }: { activePath?: "/" | "/login" }) {
             <Sparkles className="h-4 w-4 text-white" strokeWidth={2} />
           </span>
           <span className="text-sm font-semibold tracking-tight text-white group-hover:text-accent-light">
-            {SITE_NAME}
+            Bots Dashboard
           </span>
         </Link>
         <nav className="flex items-center gap-1">
@@ -62,31 +60,10 @@ export function PublicHeader({ activePath }: { activePath?: "/" | "/login" }) {
 export function PublicFooter() {
   return (
     <footer className="mt-auto border-t border-border/60 px-6 py-8 text-center text-xs text-muted lg:px-8">
-      <p>© {new Date().getFullYear()} {SITE_NAME}</p>
+      <p>© {new Date().getFullYear()} Karter Sanamo</p>
     </footer>
   );
 }
-
-const LANDING_FEATURES = [
-  {
-    icon: Layers,
-    title: "Unified space",
-    description:
-      "One place to coordinate projects, updates, and the people who keep things running.",
-  },
-  {
-    icon: Shield,
-    title: "Access on your terms",
-    description:
-      "Gated entry for members who need it — nothing more exposed than necessary.",
-  },
-  {
-    icon: Sparkles,
-    title: "Always evolving",
-    description:
-      "Tools and surfaces that grow with the community behind them.",
-  },
-] as const;
 
 export function PublicLandingMain() {
   return (
@@ -96,13 +73,8 @@ export function PublicLandingMain() {
           Welcome
         </p>
         <h1 className="mt-4 text-4xl font-semibold leading-tight tracking-tight text-white sm:text-5xl">
-          A quiet home on the web
-        </h1>
-        <p className="mt-6 max-w-lg text-base leading-relaxed text-muted">
-          {SITE_NAME} is a personal corner of the internet — part archive, part
-          workspace. Most visitors land here by chance; members use the portal
-          when they need to step inside.
-        </p>
+          Bots Dashboard
+        </h1> 
         <div className="mt-10 flex flex-wrap items-center gap-4">
           <Link
             href="/login"
@@ -123,23 +95,6 @@ export function PublicLandingMain() {
             </Link>
           </p>
         </div>
-      </section>
-
-      <section className="mt-20 grid gap-5 sm:grid-cols-3">
-        {LANDING_FEATURES.map(({ icon: Icon, title, description }) => (
-          <article
-            key={title}
-            className="glass rounded-xl p-5 transition-colors hover:border-accent/30 hover:bg-surface-hover"
-          >
-            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/15 text-accent-light">
-              <Icon className="h-5 w-5" strokeWidth={1.75} />
-            </span>
-            <h2 className="mt-4 text-sm font-semibold text-white">{title}</h2>
-            <p className="mt-2 text-sm leading-relaxed text-muted">
-              {description}
-            </p>
-          </article>
-        ))}
       </section>
     </main>
   );
