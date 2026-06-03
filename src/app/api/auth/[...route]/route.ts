@@ -191,7 +191,9 @@ export async function GET(
   }
 
   if (action === "logout") {
-    const response = NextResponse.redirect(new URL("/", request.url));
+    const response = NextResponse.redirect(
+      new URL("/login", getRedirectBaseUrl(request))
+    );
     response.cookies.set(getSessionCookieName(), "", {
       ...getSessionCookieOptions(),
       maxAge: 0,
