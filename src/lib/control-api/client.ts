@@ -133,10 +133,42 @@ export async function tailBotLogs(
   }>(`/bots/${botId}/logs${q ? `?${q}` : ""}`);
 }
 
-export async function listBotDms(botId: string, limit = 50) {
-  return controlFetch<{ channels: unknown[] }>(
-    `/bots/${botId}/dms?limit=${limit}`
+export async function listBotDms(
+  botId: string,
+  limit = 50,
+  userIds?: string[]
+) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (userIds?.length) {
+    params.set("user_ids", userIds.join(","));
+  }
+  const url = `${baseUrl()}/bots/${botId}/dms?${params}`;
+  const res = await fetchWithTimeout(
+    url,
+    {
+      headers: {
+        "X-Control-Key": secret(),
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    },
+    90_000
   );
+  const text = await res.text();
+  let data: unknown;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text;
+  }
+  if (!res.ok) {
+    const detail =
+      typeof data === "object" && data && "detail" in data
+        ? formatErrorDetail((data as { detail: unknown }).detail)
+        : res.statusText;
+    throw new ControlApiError(detail, res.status, data);
+  }
+  return data as { channels: unknown[]; token_configured?: boolean };
 }
 
 export async function getDmMessages(

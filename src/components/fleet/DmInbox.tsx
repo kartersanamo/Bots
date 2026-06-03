@@ -1,6 +1,7 @@
 "use client";
 
 import { dashboardFetch } from "@/lib/api/dashboard-fetch";
+import { formatErrorDetail } from "@/lib/api/error-message";
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -31,17 +32,38 @@ export function DmInbox({ botId, canSend }: DmInboxProps) {
   const [messages, setMessages] = useState<DmMessage[]>([]);
   const [reply, setReply] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const loadChannels = useCallback(async () => {
-    const res = await dashboardFetch(`/api/bots/${botId}/dms`);
-    const data = await res.json();
-    if (data.error) setError(data.error);
-    else setChannels(data.channels || []);
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await dashboardFetch(`/api/bots/${botId}/dms`);
+      const data = await res.json();
+      if (!res.ok) {
+        setError(formatErrorDetail(data.error ?? data.detail) || "Failed to load DMs");
+        setChannels([]);
+        return;
+      }
+      if (data.error) {
+        setError(formatErrorDetail(data.error));
+      }
+      setChannels(data.channels || []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load DMs");
+      setChannels([]);
+    } finally {
+      setLoading(false);
+    }
   }, [botId]);
 
   const loadMessages = useCallback(async (channelId: string) => {
     const res = await dashboardFetch(`/api/bots/${botId}/dms/${channelId}/messages`);
     const data = await res.json();
+    if (!res.ok) {
+      setError(formatErrorDetail(data.error ?? data.detail) || "Failed to load messages");
+      return;
+    }
     setMessages((data.messages || []).reverse());
   }, [botId]);
 
@@ -62,11 +84,12 @@ export function DmInbox({ botId, canSend }: DmInboxProps) {
     });
     if (!res.ok) {
       const data = await res.json();
-      setError(data.error || "Send failed");
+      setError(formatErrorDetail(data.error ?? data.detail) || "Send failed");
       return;
     }
     setReply("");
     loadMessages(selected);
+    loadChannels();
   }
 
   function label(ch: DmChannel) {
@@ -79,6 +102,9 @@ export function DmInbox({ botId, canSend }: DmInboxProps) {
       <Card className="lg:col-span-1 max-h-[70vh] overflow-auto">
         <h3 className="mb-3 text-sm font-medium text-muted">DM Channels</h3>
         {error && <p className="text-xs text-red-400 mb-2">{error}</p>}
+        {loading && (
+          <p className="text-xs text-muted">Loading conversations…</p>
+        )}
         <ul className="space-y-1">
           {channels.map((ch) => (
             <li key={ch.id}>
@@ -95,8 +121,12 @@ export function DmInbox({ botId, canSend }: DmInboxProps) {
               </button>
             </li>
           ))}
-          {!channels.length && (
-            <p className="text-xs text-muted">No DMs or token not configured.</p>
+          {!loading && !channels.length && !error && (
+            <p className="text-xs text-muted">
+              No DM conversations found yet. Discord does not expose a bot&apos;s DM
+              list via API — conversations appear here after players message the bot
+              (and are remembered when you open them).
+            </p>
           )}
         </ul>
       </Card>

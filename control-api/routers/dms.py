@@ -20,10 +20,25 @@ class OpenDmBody(BaseModel):
 
 
 @router.get("/{bot_id}/dms")
-async def list_dms(bot_id: str, limit: int = Query(50, ge=1, le=100)):
+async def list_dms(
+    bot_id: str,
+    limit: int = Query(50, ge=1, le=100),
+    user_ids: Optional[str] = Query(
+        None,
+        description="Comma-separated Discord user IDs to probe for DM history",
+    ),
+):
     try:
-        channels = await dm_svc.list_dm_channels(bot_id, limit=limit)
-        return {"channels": channels}
+        uid_list = None
+        if user_ids:
+            uid_list = [u.strip() for u in user_ids.split(",") if u.strip()]
+        channels = await dm_svc.list_dm_channels(
+            bot_id, limit=limit, user_ids=uid_list
+        )
+        return {
+            "channels": channels,
+            "token_configured": dm_svc.token_configured(bot_id),
+        }
     except ValueError as e:
         raise HTTPException(400, detail=str(e)) from e
 
