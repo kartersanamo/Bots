@@ -1,12 +1,29 @@
-import { requireSession } from "@/lib/auth/session";
+import { hasDashboardAccess } from "@/lib/auth/dashboard-access";
+import { getSession } from "@/lib/auth/session";
 import { getGuildInfoPayload } from "@/lib/data/guild-info";
+import type { GuildInfoPayload } from "@/lib/guild-info-types";
 import { jsonCached } from "@/lib/http/json-cache";
 import { NextResponse } from "next/server";
 
+const EMPTY: GuildInfoPayload = {
+  configured: false,
+  guild: null,
+  roles: [],
+  channels: [],
+};
+
 export async function GET(request: Request) {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ ...EMPTY, error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!hasDashboardAccess(session)) {
+    return NextResponse.json({ ...EMPTY, error: "Forbidden" }, { status: 403 });
+  }
+
+  const url = new URL(request.url);
   try {
-    await requireSession();
-    const url = new URL(request.url);
     const payload = await getGuildInfoPayload({
       allRoles: url.searchParams.get("roles") === "all",
       allChannels: url.searchParams.get("channels") === "all",
@@ -16,8 +33,7 @@ export async function GET(request: Request) {
       private: true,
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Error";
-    const status = message === "Unauthorized" ? 401 : 403;
-    return NextResponse.json({ error: message }, { status });
+    console.error("[api/server/info] failed:", err);
+    return NextResponse.json(EMPTY, { status: 200 });
   }
 }

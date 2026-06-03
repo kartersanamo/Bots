@@ -1,6 +1,7 @@
 "use client";
 
 import { dashboardFetch } from "@/lib/api/dashboard-fetch";
+import { fetchGuildRolesClient } from "@/lib/api/guild-info-fetch";
 import type {
   DiscordChatMessage,
   DiscordResolvedMember,
@@ -27,11 +28,10 @@ export function useDiscordChatEnrichment(messages: DiscordChatMessage[]) {
   );
 
   async function loadGuildRoles() {
-    const res = await dashboardFetch("/api/server/info?roles=all");
-    const payload = await res.json().catch(() => ({}));
-    if (!res.ok || !Array.isArray(payload.roles)) return;
+    const roles = await fetchGuildRolesClient();
+    if (!roles.length) return;
     setGuildRoles(
-      payload.roles.map((r: GuildRoleLite) => ({
+      roles.map((r) => ({
         id: String(r.id),
         name: String(r.name),
         color: Number(r.color ?? 0),
@@ -49,6 +49,7 @@ export function useDiscordChatEnrichment(messages: DiscordChatMessage[]) {
       `/api/discord/users?ids=${encodeURIComponent(ids.join(","))}`
     );
     const payload = await res.json().catch(() => ({}));
+    if (res.status === 401 || res.status === 403) return;
     if (!res.ok || !payload.users || typeof payload.users !== "object") return;
     const mapped = payload.users as Record<string, DiscordResolvedMember>;
     setMemberProfiles((prev) => ({ ...prev, ...mapped }));

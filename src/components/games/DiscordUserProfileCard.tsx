@@ -7,6 +7,7 @@ import type { DiscordUserProfile } from "@/components/games/GamesDiscordUsersPro
 import { useGamesPlayerDrawer } from "@/components/games/GamesPlayerDrawerProvider";
 import type { TicketRow } from "@/lib/tickets/types";
 import { isTicketOpen } from "@/lib/tickets/types";
+import { fetchGuildRolesClient } from "@/lib/api/guild-info-fetch";
 import { cn, formatNumber, formatUnixTimestamp, isTruthyFlag } from "@/lib/utils";
 import { ExternalLink, Ticket, X, Zap } from "lucide-react";
 import Link from "next/link";
@@ -82,13 +83,11 @@ export function DiscordUserProfileCard({
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/server/info?roles=all")
-      .then((r) => r.json())
-      .then((data) => {
-        if (cancelled) return;
-        if (!Array.isArray(data?.roles)) return;
+    fetchGuildRolesClient()
+      .then((roles) => {
+        if (cancelled || !roles.length) return;
         setRoles(
-          data.roles.map((r: GuildRoleLite) => ({
+          roles.map((r: GuildRoleLite) => ({
             id: String(r.id),
             name: String(r.name),
             color: Number(r.color ?? 0),

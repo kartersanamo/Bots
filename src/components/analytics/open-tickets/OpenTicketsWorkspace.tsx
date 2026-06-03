@@ -14,6 +14,7 @@ const TicketDetailDrawer = dynamic(
     })),
   { loading: () => <PanelFallback /> }
 );
+import { fetchGuildInfoPayload } from "@/lib/api/guild-info-fetch";
 import { useOpenTicketsQueue } from "@/hooks/useOpenTicketsQueue";
 import { useTicketEnrichment } from "@/hooks/useTicketEnrichment";
 import type { TicketEnrichment } from "@/lib/discord/tickets";
@@ -168,10 +169,9 @@ export function OpenTicketsWorkspace({ userTier }: OpenTicketsWorkspaceProps) {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/server/info?channels=all")
-      .then((r) => r.json())
+    fetchGuildInfoPayload("channels=all")
       .then((payload) => {
-        if (cancelled || !Array.isArray(payload?.channels)) return;
+        if (cancelled || !payload.channels.length) return;
         const next = (payload.channels as GuildChannelLite[]).reduce<
           Record<string, string>
         >((acc, c) => {

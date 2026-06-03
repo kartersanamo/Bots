@@ -2,7 +2,7 @@
 
 import type { GuildRoleLite } from "@/lib/discord/guild-roles";
 import { topRoleForMember } from "@/lib/discord/guild-roles";
-import { fetchDedup } from "@/lib/api/fetch-dedup";
+import { fetchGuildInfoPayload } from "@/lib/api/guild-info-fetch";
 import {
   createContext,
   useCallback,
@@ -49,9 +49,9 @@ export function GuildRolesProvider({
       return;
     }
     let cancelled = false;
-    fetchDedup<{ roles?: GuildRoleLite[] }>("/api/server/info?roles=all")
+    fetchGuildInfoPayload("roles=all")
       .then((data) => {
-        if (cancelled || !Array.isArray(data?.roles)) return;
+        if (cancelled || !data.roles.length) return;
         setRoles(normalizeRoles(data.roles));
       })
       .catch(() => {

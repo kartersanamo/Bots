@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { fetchDedup } from "@/lib/api/fetch-dedup";
+import { fetchGuildInfoPayload } from "@/lib/api/guild-info-fetch";
 import type { GuildInfoPayload } from "@/lib/guild-info-types";
 import { CHANNEL_TYPE_LABELS } from "@/lib/discord/api";
 import { formatNumber } from "@/lib/utils";
@@ -52,12 +52,15 @@ export function ServerOverview({
 
   useEffect(() => {
     if (initialData) return;
-    fetchDedup<GuildInfoPayload>("/api/server/info")
+    fetchGuildInfoPayload()
       .then((data) => {
         setGuild(data.guild as GuildInfo | null);
         setRoles((data.roles as GuildRole[]) ?? []);
         setChannels((data.channels as GuildChannel[]) ?? []);
         setConfigured(data.configured);
+      })
+      .catch(() => {
+        setConfigured(false);
       })
       .finally(() => setLoading(false));
   }, [initialData]);
