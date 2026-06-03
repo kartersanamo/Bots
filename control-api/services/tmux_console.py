@@ -96,6 +96,7 @@ def capture_pane(
                 "-t",
                 target,
                 "-p",
+                "-e",
                 "-S",
                 start,
             ],

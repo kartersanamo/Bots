@@ -163,7 +163,7 @@ export function AuthRejectedNotifications() {
   return (
     <div
       role="alert"
-      className="fixed left-1/2 top-3 z-[130] w-[min(960px,calc(100vw-1rem))] -translate-x-1/2 rounded-xl border-2 border-red-500/70 bg-red-950/95 px-5 py-4 shadow-2xl shadow-red-900/40 backdrop-blur"
+      className="fixed left-1/2 top-[max(3.5rem,calc(0.75rem+env(safe-area-inset-top)))] z-[130] w-[min(960px,calc(100vw-1rem))] -translate-x-1/2 rounded-xl border-2 border-red-500/70 bg-red-950/95 px-4 py-3 shadow-2xl shadow-red-900/40 backdrop-blur sm:px-5 sm:py-4 lg:top-3"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-3">

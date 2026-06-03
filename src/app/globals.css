@@ -37,4 +37,23 @@
   .glass {
     @apply border border-border bg-surface;
   }
+
+  .safe-area-x {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+
+  .safe-area-bottom {
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+  }
+
+  .dashboard-main {
+    @apply mx-auto max-w-[1600px] px-4 pb-6 pt-14 safe-area-x safe-area-bottom sm:px-5 lg:px-6 lg:py-8 lg:pt-0;
+  }
+
+  .mobile-fullscreen-inset {
+    @apply fixed inset-0 z-50 sm:inset-4;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right)
+      env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
 }

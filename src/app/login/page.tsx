@@ -3,7 +3,6 @@ import {
   PublicBackLink,
   PublicDiscordContinueLink,
   PublicFooter,
-  PublicHeader,
   PublicShell,
 } from "@/components/landing/LandingSections";
 import type { Metadata } from "next";
@@ -37,10 +36,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
   return (
     <PublicShell>
-      <PublicHeader activePath="/login" />
       <PublicAuthCard
-        title="Portal"
-        subtitle="Use your Discord account to enter. Access is limited to invited members."
+        title="Login"
         footer={<PublicBackLink />}
       >
         {errorMessage && (

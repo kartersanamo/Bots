@@ -41,6 +41,7 @@ const BotActionsTab = dynamic(
   { loading: () => <PanelFallback /> }
 );
 import { Button } from "@/components/ui/Button";
+import { ScrollableTabNav } from "@/components/ui/ScrollableTabNav";
 import type { BotDefinition } from "@/lib/bots/registry";
 import {
   formatBotUptime,
@@ -48,7 +49,6 @@ import {
   type BotProcessStatus,
 } from "@/hooks/useBotFleet";
 import { can, type PermissionTier } from "@/lib/permissions";
-import { cn } from "@/lib/utils";
 import {
   ChevronLeft,
   Play,
@@ -123,10 +123,12 @@ export function BotWorkspace({
         </Link>
       </div>
 
-      <div className="sticky top-0 z-10 border-b border-border bg-background pb-0">
-        <div className="flex flex-wrap items-center justify-between gap-3 pb-3">
-          <div>
-            <h1 className="text-lg font-semibold text-white">{bot.shortName}</h1>
+      <div className="sticky top-0 z-[30] -mx-4 border-b border-border bg-background px-4 pb-0 sm:-mx-5 sm:px-5 lg:mx-0 lg:px-0 lg:top-0 lg:z-10">
+        <div className="flex flex-col gap-3 pb-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="truncate text-lg font-semibold text-white sm:text-xl">
+              {bot.shortName}
+            </h1>
             <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
               <Badge variant={STATUS_VARIANT[status]}>{status}</Badge>
               <span>{formatBotUptime(row?.uptimeSeconds)}</span>
@@ -134,9 +136,10 @@ export function BotWorkspace({
             </div>
           </div>
           {canRestart && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex shrink-0 gap-2">
               <Button
                 size="sm"
+                className="min-w-11"
                 variant="secondary"
                 disabled={!!actionLoading || status === "online"}
                 onClick={() => runAction(bot.id, "start")}
@@ -146,6 +149,7 @@ export function BotWorkspace({
               <Button
                 size="sm"
                 variant="ghost"
+                className="min-w-11"
                 disabled={!!actionLoading || status === "offline"}
                 onClick={() => runAction(bot.id, "stop")}
               >
@@ -154,6 +158,7 @@ export function BotWorkspace({
               <Button
                 size="sm"
                 variant="primary"
+                className="min-w-11"
                 disabled={!!actionLoading}
                 onClick={() => runAction(bot.id, "restart")}
               >
@@ -163,23 +168,11 @@ export function BotWorkspace({
           )}
         </div>
 
-        <nav className="flex gap-4">
-          {visibleTabs.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setTab(t.id)}
-              className={cn(
-                "border-b-2 pb-2 text-sm transition-colors",
-                activeTab === t.id
-                  ? "border-accent text-white"
-                  : "border-transparent text-muted hover:text-white"
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
-        </nav>
+        <ScrollableTabNav
+          tabs={visibleTabs.map((t) => ({ id: t.id, label: t.label }))}
+          activeId={activeTab}
+          onSelect={setTab}
+        />
       </div>
 
       {activeTab === "overview" && (

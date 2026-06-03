@@ -54,7 +54,7 @@ function ToggleGroup<T extends string>({
             type="button"
             onClick={() => onChange(opt.value)}
             className={cn(
-              "rounded-md px-3 py-1.5 text-sm transition-colors",
+              "min-h-10 rounded-md px-3 py-2 text-sm transition-colors",
               value === opt.value
                 ? "bg-accent text-white"
                 : "text-muted hover:bg-surface-hover hover:text-white"

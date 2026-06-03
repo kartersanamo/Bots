@@ -1,6 +1,7 @@
 "use client";
 
 import { PanelFallback } from "@/components/ui/panel-fallback";
+import { ScrollableTabNav } from "@/components/ui/ScrollableTabNav";
 import { can, type PermissionTier } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import dynamic from "next/dynamic";
@@ -171,15 +172,22 @@ export function BotGamesTab({ userTier, initialOverview }: BotGamesTabProps) {
 
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
-      <aside className="lg:w-44 lg:shrink-0">
-        <nav className="flex flex-wrap gap-1 lg:flex-col lg:gap-0.5">
+      <aside className="min-w-0 lg:w-44 lg:shrink-0">
+        <ScrollableTabNav
+          className="lg:hidden"
+          variant="pill"
+          tabs={visibleSections.map((s) => ({ id: s.id, label: s.label }))}
+          activeId={section}
+          onSelect={setSection}
+        />
+        <nav className="hidden flex-col gap-0.5 lg:flex">
           {visibleSections.map((s) => (
             <button
               key={s.id}
               type="button"
               onClick={() => setSection(s.id)}
               className={cn(
-                "rounded-md px-3 py-1.5 text-left text-sm transition-colors",
+                "min-h-10 rounded-md px-3 py-2 text-left text-sm transition-colors",
                 section === s.id
                   ? "bg-surface-hover text-white"
                   : "text-muted hover:bg-surface-hover hover:text-white"

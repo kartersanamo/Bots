@@ -118,7 +118,7 @@ export function BotsHub({ canRestart, canRestartAll }: BotsHubProps) {
             type="button"
             onClick={() => setFilter(f)}
             className={cn(
-              "rounded-md px-2.5 py-1 text-sm capitalize transition-colors",
+              "min-h-10 rounded-md px-3 py-2 text-sm capitalize transition-colors",
               filter === f
                 ? "bg-surface-hover text-white"
                 : "text-muted hover:text-white"
@@ -130,7 +130,7 @@ export function BotsHub({ canRestart, canRestartAll }: BotsHubProps) {
         <select
           value={sort}
           onChange={(e) => setSort(e.target.value as SortMode)}
-          className="ml-auto rounded-md border border-border bg-background px-2 py-1 text-sm text-white"
+          className="ml-auto min-h-10 rounded-md border border-border bg-background px-3 py-2 text-sm text-white"
         >
           <option value="name">Name</option>
           <option value="status">Status</option>

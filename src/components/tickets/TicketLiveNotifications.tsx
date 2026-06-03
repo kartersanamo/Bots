@@ -137,9 +137,9 @@ export function TicketLiveNotifications() {
   return (
     <div
       role="status"
-      className="fixed left-1/2 top-3 z-[120] w-[min(860px,calc(100vw-1rem))] -translate-x-1/2 rounded-lg border border-accent/50 bg-zinc-950/95 px-4 py-3 shadow-xl backdrop-blur"
+      className="fixed left-1/2 top-[max(3.5rem,calc(0.75rem+env(safe-area-inset-top)))] z-[120] w-[min(860px,calc(100vw-1rem))] -translate-x-1/2 rounded-lg border border-accent/50 bg-zinc-950/95 px-4 py-3 shadow-xl backdrop-blur lg:top-3"
     >
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-white">New ticket — info submitted</p>
           <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-zinc-300">
@@ -154,7 +154,7 @@ export function TicketLiveNotifications() {
             />
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">
           <a
             href={`/dashboard/tickets?openChannelId=${encodeURIComponent(
               banner.channelId

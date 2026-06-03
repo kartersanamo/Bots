@@ -161,7 +161,7 @@ export function DashboardOverview({
               {tickets.map((t) => (
                 <div
                   key={t.channelID}
-                  className="flex items-center justify-between gap-2 rounded-md px-2 py-2 hover:bg-surface-hover"
+                  className="flex flex-col gap-2 rounded-md px-2 py-2 hover:bg-surface-hover sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-sm capitalize text-white">{t.type}</p>
@@ -172,7 +172,10 @@ export function DashboardOverview({
                       {t.opened ? formatRelativeTime(t.opened) : "—"}
                     </p>
                   </div>
-                  <Badge variant={isTicketOpen(t.active) ? "success" : "default"}>
+                  <Badge
+                    variant={isTicketOpen(t.active) ? "success" : "default"}
+                    className="w-fit shrink-0"
+                  >
                     {isTicketOpen(t.active) ? "Open" : "Closed"}
                   </Badge>
                 </div>

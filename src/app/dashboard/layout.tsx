@@ -39,10 +39,8 @@ export default async function DashboardLayout({
       >
         <div className="flex min-h-screen bg-background">
           <Sidebar user={session} />
-          <main className="flex-1 overflow-auto">
-            <div className="mx-auto max-w-[1600px] px-4 py-6 lg:px-6 lg:py-8">
-              {children}
-            </div>
+          <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
+            <div className="dashboard-main">{children}</div>
           </main>
         </div>
         <TicketLiveNotifications />

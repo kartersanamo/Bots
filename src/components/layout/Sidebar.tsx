@@ -98,7 +98,7 @@ export function Sidebar({ user }: SidebarProps) {
             prefetch={prefetch}
             onClick={() => setMobileOpen(false)}
             className={cn(
-              "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors",
+              "flex min-h-11 items-center gap-2.5 rounded-md px-3 py-2.5 text-sm transition-colors",
               active
                 ? "border-l-2 border-accent bg-surface-hover pl-[10px] text-white"
                 : "border-l-2 border-transparent text-muted hover:bg-surface-hover hover:text-white"
@@ -135,7 +135,7 @@ export function Sidebar({ user }: SidebarProps) {
       <Link
         href="/api/auth/logout"
         prefetch={false}
-        className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted hover:bg-surface-hover hover:text-white"
+        className="flex min-h-11 items-center gap-2 rounded-md px-3 py-2.5 text-sm text-muted hover:bg-surface-hover hover:text-white"
       >
         <LogOut className="h-4 w-4" />
         Sign out
@@ -160,7 +160,11 @@ export function Sidebar({ user }: SidebarProps) {
     <>
       <button
         onClick={() => setMobileOpen(true)}
-        className="fixed left-4 top-4 z-40 rounded-md border border-border bg-surface p-2 lg:hidden"
+        className="fixed z-40 flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-surface lg:hidden"
+        style={{
+          top: "max(1rem, env(safe-area-inset-top))",
+          left: "max(1rem, env(safe-area-inset-left))",
+        }}
         aria-label="Open menu"
       >
         <Menu className="h-5 w-5" />
@@ -177,10 +181,13 @@ export function Sidebar({ user }: SidebarProps) {
             onClick={() => setMobileOpen(false)}
             aria-hidden
           />
-          <aside className="fixed inset-y-0 left-0 z-50 flex w-56 flex-col border-r border-border bg-surface shadow-xl lg:hidden">
+          <aside
+            className="fixed inset-y-0 left-0 z-50 flex w-[min(85vw,17.5rem)] flex-col border-r border-border bg-surface shadow-xl lg:hidden"
+            style={{ paddingTop: "env(safe-area-inset-top)" }}
+          >
             <button
               onClick={() => setMobileOpen(false)}
-              className="absolute right-3 top-4 rounded-md p-1 text-muted hover:text-white"
+              className="absolute right-3 top-4 flex h-11 w-11 items-center justify-center rounded-lg text-muted hover:bg-surface-hover hover:text-white"
               aria-label="Close menu"
             >
               <X className="h-5 w-5" />

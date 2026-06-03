@@ -35,7 +35,7 @@ export function StatCard({
           {loading ? (
             <div className="mt-2 h-7 w-20 animate-pulse rounded bg-surface-hover" />
           ) : (
-            <p className="mt-1 text-2xl font-semibold text-white">
+            <p className="mt-1 text-xl font-semibold text-white sm:text-2xl">
               {typeof value === "number" ? formatNumber(value) : value}
             </p>
           )}

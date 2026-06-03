@@ -65,7 +65,8 @@ export function GamesCountingSection({ userTier }: { userTier: PermissionTier })
       </Card>
       <Card>
         <h3 className="mb-3 text-sm font-semibold text-white">Top counters</h3>
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[280px] text-sm">
           <thead>
             <tr className="border-b border-border text-left text-muted">
               <th className="pb-2 pr-4">User</th>
@@ -85,6 +86,7 @@ export function GamesCountingSection({ userTier }: { userTier: PermissionTier })
             ))}
           </tbody>
         </table>
+        </div>
       </Card>
     </div>
   );

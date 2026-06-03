@@ -9,7 +9,8 @@ import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { useDiscordChatEnrichment } from "@/hooks/useDiscordChatEnrichment";
 import type { DiscordChatMessage } from "@/lib/discord/chat-types";
-import { MessageSquare, RefreshCw, Send } from "lucide-react";
+import { ArrowLeft, MessageSquare, RefreshCw, Send } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 interface DmChannel {
@@ -192,9 +193,16 @@ export function DmInbox({ botId, canSend }: DmInboxProps) {
     selectedChannel?.recipients?.find((r) => !r.bot) ??
     selectedChannel?.recipients?.[0];
 
+  const mobileShowThread = !!selectedRecipientId;
+
   return (
     <div className="grid gap-4 lg:grid-cols-3">
-      <Card className="lg:col-span-1 max-h-[70vh] overflow-auto">
+      <Card
+        className={cn(
+          "max-h-[min(70vh,32rem)] overflow-auto lg:col-span-1 lg:max-h-[70vh]",
+          mobileShowThread ? "hidden lg:block" : "block"
+        )}
+      >
         <h3 className="mb-3 text-sm font-medium text-muted">DM Channels</h3>
         {error && <p className="mb-2 text-xs text-red-400">{error}</p>}
         {loading && (
@@ -209,7 +217,7 @@ export function DmInbox({ botId, canSend }: DmInboxProps) {
                 <button
                   type="button"
                   onClick={() => void selectConversation(uid)}
-                  className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                  className={`flex min-h-11 w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${
                     selectedRecipientId === uid
                       ? "bg-accent/20 text-white"
                       : "text-muted hover:bg-surface-hover"
@@ -239,11 +247,30 @@ export function DmInbox({ botId, canSend }: DmInboxProps) {
         </ul>
       </Card>
 
-      <div className="lg:col-span-2 flex min-h-0 flex-col">
+      <div
+        className={cn(
+          "flex min-h-0 flex-col lg:col-span-2",
+          !mobileShowThread && "hidden lg:flex"
+        )}
+      >
         {selectedRecipientId ? (
           <section className="flex min-h-0 flex-1 flex-col">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <h3 className="flex items-center gap-2 text-sm font-semibold text-accent-light">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex min-w-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    loadSeqRef.current += 1;
+                    setSelectedRecipientId(null);
+                    setSelectedChannelId(null);
+                    setMessages([]);
+                  }}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border text-muted hover:bg-surface-hover hover:text-white lg:hidden"
+                  aria-label="Back to conversations"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </button>
+                <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-accent-light">
                 <MessageSquare className="h-4 w-4" />
                 {recipient ? (
                   <span className="inline-flex items-center gap-2">
@@ -257,7 +284,8 @@ export function DmInbox({ botId, canSend }: DmInboxProps) {
                 ) : (
                   "DM conversation"
                 )}
-              </h3>
+                </h3>
+              </div>
               <Button
                 variant="secondary"
                 size="sm"
@@ -297,7 +325,7 @@ export function DmInbox({ botId, canSend }: DmInboxProps) {
               footer={
                 canSend ? (
                   <div className="mt-3 space-y-2 border-t border-border pt-3">
-                    <div className="flex gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row">
                       <textarea
                         value={reply}
                         onChange={(e) => setReply(e.target.value)}
@@ -309,10 +337,11 @@ export function DmInbox({ botId, canSend }: DmInboxProps) {
                         placeholder="Message…"
                         rows={2}
                         maxLength={2000}
-                        className="flex-1 resize-none rounded-lg border border-border bg-surface px-3 py-2 text-sm text-white"
+                        className="min-h-[4.5rem] flex-1 resize-none rounded-lg border border-border bg-surface px-3 py-2 text-base text-white sm:text-sm"
                       />
                       <Button
                         variant="primary"
+                        className="w-full shrink-0 sm:w-auto"
                         onClick={() => void sendReply()}
                         disabled={sending || !reply.trim()}
                       >

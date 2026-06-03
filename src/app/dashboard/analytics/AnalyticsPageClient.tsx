@@ -16,7 +16,7 @@ import {
 import { parseAnalyticsRange } from "@/lib/analytics/range";
 import type { AnalyticsRange, AnalyticsSummary } from "@/lib/analytics/types";
 import { can, type PermissionTier } from "@/lib/permissions";
-import { cn } from "@/lib/utils";
+import { ScrollableTabNav } from "@/components/ui/ScrollableTabNav";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -350,48 +350,35 @@ export function AnalyticsPageClient({
         rangeApplies={tabUsesRangeControls(tab)}
       >
       <div className="space-y-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          {tabUsesRangeControls(tab) ? (
-            <AnalyticsControls
-              range={range}
-              groupBy={groupBy}
-              onRangeChange={setRange}
-              onGroupByChange={setGroupBy}
-            />
-          ) : (
-            <p className="text-sm text-muted">
-              This tab shows the current manager period only — range and group
-              controls do not apply.
-            </p>
-          )}
-          <p className="text-xs text-muted sm:pt-8">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <div className="min-w-0 flex-1">
+            {tabUsesRangeControls(tab) ? (
+              <AnalyticsControls
+                range={range}
+                groupBy={groupBy}
+                onRangeChange={setRange}
+                onGroupByChange={setGroupBy}
+              />
+            ) : (
+              <p className="text-sm text-muted">
+                This tab shows the current manager period only — range and group
+                controls do not apply.
+              </p>
+            )}
+          </div>
+          <p className="shrink-0 text-xs text-muted">
             Private tickets{" "}
             {can(userTier, "tickets.view_private") ? "included" : "excluded"}
             {refreshing && summaryReady ? " · updating…" : ""}
             {!refreshing && summaryReady && tabReady ? " · cached" : ""}
           </p>
-          <p className="text-xs text-muted">
-            Rolith is bald
-          </p>
         </div>
 
-        <div className="flex flex-wrap gap-1 border-b border-border">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setTab(t.id)}
-              className={cn(
-                "border-b-2 px-4 py-2 text-sm transition-colors",
-                tab === t.id
-                  ? "border-accent text-white"
-                  : "border-transparent text-muted hover:text-white"
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        <ScrollableTabNav
+          tabs={TABS}
+          activeId={tab}
+          onSelect={setTab}
+        />
 
         {error && (
           <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">

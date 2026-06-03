@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/Button";
 import { responseErrorMessage } from "@/lib/api/error-message";
+import { hasAnsi, renderAnsiText, stripAnsi } from "@/lib/console/ansi";
 import {
   formatConsoleTimestamp,
   LEVEL_STYLES,
@@ -12,6 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 import {
   ArrowDown,
+  Hash,
   Maximize2,
   Minimize2,
   Pause,
@@ -39,7 +41,7 @@ interface RenderLine {
   key: string;
   lineNumber: number;
   text: string;
-  displayText: string;
+  plainText: string;
   level: ConsoleLineLevel;
   isContinuation: boolean;
   timestamp: Date | null;
@@ -74,6 +76,33 @@ function highlightSearch(text: string, query: string): ReactNode {
   }
 }
 
+function ConsoleToggle({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        "rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
+        checked
+          ? "border-accent/35 bg-accent/10 text-accent-light"
+          : "border-border bg-background text-muted hover:border-border hover:text-white"
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+
 /** Live mirror of the bot's tmux pane — never reads log files. */
 export function TmuxConsole({ botId }: TmuxConsoleProps) {
   const [rawLines, setRawLines] = useState<string[]>([]);
@@ -87,6 +116,8 @@ export function TmuxConsole({ botId }: TmuxConsoleProps) {
   const [tmuxAvailable, setTmuxAvailable] = useState<boolean | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
+  const [showLineNumbers, setShowLineNumbers] = useState(false);
+  const [showTimestamp, setShowTimestamp] = useState(true);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -159,11 +190,11 @@ export function TmuxConsole({ botId }: TmuxConsoleProps) {
       const pattern = new RegExp(needle, "i");
       return rawLines
         .map((text, index) => ({ text, index }))
-        .filter(({ text }) => pattern.test(text));
+        .filter(({ text }) => pattern.test(stripAnsi(text)));
     } catch {
       return rawLines
         .map((text, index) => ({ text, index }))
-        .filter(({ text }) => text.toLowerCase().includes(needle));
+        .filter(({ text }) => stripAnsi(text).toLowerCase().includes(needle));
     }
   }, [rawLines, search]);
 
@@ -171,7 +202,8 @@ export function TmuxConsole({ botId }: TmuxConsoleProps) {
     let prevLevel: ConsoleLineLevel = "default";
 
     return filteredLines.map(({ text, index }) => {
-      const parsed = parseConsoleLine(text, prevLevel);
+      const plainText = stripAnsi(text);
+      const parsed = parseConsoleLine(plainText, prevLevel);
       prevLevel = parsed.level;
 
       const seenAt = firstSeenAt[index] ?? null;
@@ -179,10 +211,10 @@ export function TmuxConsole({ botId }: TmuxConsoleProps) {
         parsed.embeddedAt ?? (seenAt != null ? new Date(seenAt) : null);
 
       return {
-        key: `${index}-${text.slice(0, 48)}`,
+        key: `${index}-${plainText.slice(0, 48)}`,
         lineNumber: index + 1,
         text,
-        displayText: parsed.displayText,
+        plainText,
         level: parsed.level,
         isContinuation: parsed.isContinuation,
         timestamp,
@@ -203,7 +235,7 @@ export function TmuxConsole({ botId }: TmuxConsoleProps) {
   useEffect(() => {
     if (!followTail || userScrolledRef.current) return;
     scrollToBottom("auto");
-  }, [renderLines, followTail, scrollToBottom]);
+  }, [renderLines, followTail, scrollToBottom, showLineNumbers, showTimestamp]);
 
   const onScroll = useCallback(() => {
     const el = scrollRef.current;
@@ -242,244 +274,253 @@ export function TmuxConsole({ botId }: TmuxConsoleProps) {
       ? "Tmux pane not available. Ensure the bots session and this bot's window exist on the host."
       : "No output yet. Use Start to run ./run.sh in the window.";
 
+  const showGutter = showLineNumbers || showTimestamp;
+
+  function renderLineContent(line: RenderLine, styles: (typeof LEVEL_STYLES)[ConsoleLineLevel]) {
+    const query = search.trim();
+    if (query && !hasAnsi(line.text)) {
+      return (
+        <span className={cn("min-w-0 whitespace-pre-wrap break-all", styles.text)}>
+          {highlightSearch(line.plainText || " ", query)}
+        </span>
+      );
+    }
+    return (
+      <span className="min-w-0 whitespace-pre-wrap break-all">
+        {renderAnsiText(line.text || " ", styles.text)}
+      </span>
+    );
+  }
+
   return (
     <div
       className={cn(
-        "flex flex-col overflow-hidden rounded-xl border border-border/80 bg-[#070709] shadow-[0_0_0_1px_rgba(139,92,246,0.06),0_20px_50px_-20px_rgba(0,0,0,0.8)]",
-        isLive && "ring-1 ring-accent/15",
-        fullscreen &&
-          "fixed inset-3 z-50 flex max-h-none flex-col rounded-2xl shadow-2xl ring-1 ring-accent/25"
+        "flex flex-col overflow-hidden rounded-lg border border-border bg-surface",
+        fullscreen && "mobile-fullscreen-inset max-h-none flex-col shadow-2xl ring-1 ring-border"
       )}
     >
-      {/* Terminal chrome */}
-      <div className="border-b border-white/[0.06] bg-gradient-to-b from-[#121218] to-[#0d0d12] px-4 py-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex min-w-0 flex-1 items-center gap-3">
-            <div className="hidden items-center gap-1.5 sm:flex" aria-hidden>
-              <span className="h-2.5 w-2.5 rounded-full bg-red-500/80" />
-              <span className="h-2.5 w-2.5 rounded-full bg-amber-400/80" />
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/80" />
-            </div>
-            <div className="flex min-w-0 items-center gap-2">
-              <Terminal className="h-4 w-4 shrink-0 text-accent-light/80" />
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-white">
-                  Live Console
-                </p>
-                <p className="truncate text-[11px] text-zinc-500">
-                  tmux pane mirror · read-only
-                </p>
-              </div>
-            </div>
-            <span
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide",
-                isLive
-                  ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300"
-                  : autoRefresh
-                    ? "border-amber-500/25 bg-amber-500/10 text-amber-300"
-                    : "border-zinc-700 bg-zinc-800/60 text-zinc-400"
-              )}
-            >
-              <Radio
-                className={cn(
-                  "h-3 w-3",
-                  isLive && "animate-pulse text-emerald-400"
-                )}
-              />
-              {isLive ? "Live" : autoRefresh ? "Syncing" : "Paused"}
-            </span>
+      <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <Terminal className="h-4 w-4 shrink-0 text-muted" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-white">Live console</p>
+            <p className="text-xs text-muted">tmux pane · read-only</p>
           </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative min-w-[180px] flex-1 sm:min-w-[220px] sm:flex-none">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
-              <input
-                ref={searchRef}
-                type="text"
-                placeholder="Filter output…  ( / )"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full rounded-lg border border-white/[0.08] bg-black/40 py-1.5 pl-9 pr-8 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-accent/40 focus:outline-none focus:ring-1 focus:ring-accent/30"
-              />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-zinc-500 hover:text-zinc-300"
-                  aria-label="Clear filter"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              )}
-            </div>
-
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => fetchConsole()}
-              disabled={loading}
-              className="h-8 border-white/[0.08] bg-white/[0.04] px-2.5"
-            >
-              <RefreshCw
-                className={cn("h-3.5 w-3.5", loading && "animate-spin")}
-              />
-            </Button>
-
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setAutoRefresh((v) => !v)}
-              className={cn(
-                "h-8 gap-1.5 px-2.5 text-xs",
-                autoRefresh ? "text-emerald-300" : "text-zinc-400"
-              )}
-            >
-              {autoRefresh ? (
-                <Pause className="h-3.5 w-3.5" />
-              ) : (
-                <Play className="h-3.5 w-3.5" />
-              )}
-              <span className="hidden sm:inline">
-                {autoRefresh ? "Live" : "Resume"}
-              </span>
-            </Button>
-
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                setFollowTail((v) => !v);
-                if (!followTail) scrollToBottom("smooth");
-              }}
-              className={cn(
-                "h-8 gap-1.5 px-2.5 text-xs",
-                followTail ? "text-accent-light" : "text-zinc-400"
-              )}
-            >
-              <ArrowDown className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Tail</span>
-            </Button>
-
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setFullscreen((f) => !f)}
-              className="h-8 px-2.5"
-              aria-label={fullscreen ? "Exit fullscreen" : "Fullscreen"}
-            >
-              {fullscreen ? (
-                <Minimize2 className="h-3.5 w-3.5" />
-              ) : (
-                <Maximize2 className="h-3.5 w-3.5" />
-              )}
-            </Button>
-          </div>
+          <span
+            className={cn(
+              "ml-1 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide",
+              isLive
+                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                : autoRefresh
+                  ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                  : "border-border text-muted"
+            )}
+          >
+            <Radio
+              className={cn("h-2.5 w-2.5", isLive && "animate-pulse")}
+            />
+            {isLive ? "Live" : autoRefresh ? "Syncing" : "Paused"}
+          </span>
         </div>
 
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-500">
-          <span>
-            {renderLines.length.toLocaleString()}
-            {search ? ` / ${rawLines.length.toLocaleString()}` : ""} line
-            {renderLines.length !== 1 ? "s" : ""}
-          </span>
-          <span className="text-zinc-700">·</span>
-          <span>
-            {lastUpdatedAt
-              ? `Updated ${lastUpdatedAt.toLocaleTimeString(undefined, { hour12: false })}`
-              : "Waiting for first sync"}
-          </span>
-          {tmuxAvailable === false && (
+        <div className="flex flex-wrap items-center gap-2">
+          <ConsoleToggle
+            label="Line #"
+            checked={showLineNumbers}
+            onChange={setShowLineNumbers}
+          />
+          <ConsoleToggle
+            label="Timestamp"
+            checked={showTimestamp}
+            onChange={setShowTimestamp}
+          />
+
+            <div className="relative min-w-0 w-full flex-1 sm:min-w-[200px] sm:flex-none">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted" />
+            <input
+              ref={searchRef}
+              type="text"
+              placeholder="Filter… ( / )"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full rounded-lg border border-border bg-background py-1.5 pl-8 pr-8 text-sm text-white placeholder:text-muted focus:border-accent/40 focus:outline-none focus:ring-1 focus:ring-accent/30"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-white"
+                aria-label="Clear filter"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => fetchConsole()}
+            disabled={loading}
+            className="h-8 px-2"
+          >
+            <RefreshCw
+              className={cn("h-3.5 w-3.5", loading && "animate-spin")}
+            />
+          </Button>
+
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setAutoRefresh((v) => !v)}
+            className={cn(
+              "h-8 gap-1 px-2 text-xs",
+              autoRefresh ? "text-emerald-300" : "text-muted"
+            )}
+          >
+            {autoRefresh ? (
+              <Pause className="h-3.5 w-3.5" />
+            ) : (
+              <Play className="h-3.5 w-3.5" />
+            )}
+          </Button>
+
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              setFollowTail((v) => !v);
+              if (!followTail) scrollToBottom("smooth");
+            }}
+            className={cn(
+              "h-8 gap-1 px-2 text-xs",
+              followTail ? "text-accent-light" : "text-muted"
+            )}
+          >
+            <ArrowDown className="h-3.5 w-3.5" />
+          </Button>
+
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setFullscreen((f) => !f)}
+            className="h-8 px-2"
+            aria-label={fullscreen ? "Exit fullscreen" : "Fullscreen"}
+          >
+            {fullscreen ? (
+              <Minimize2 className="h-3.5 w-3.5" />
+            ) : (
+              <Maximize2 className="h-3.5 w-3.5" />
+            )}
+          </Button>
+        </div>
+
+        <p className="w-full text-xs text-muted">
+          {renderLines.length.toLocaleString()}
+          {search ? ` / ${rawLines.length.toLocaleString()}` : ""} line
+          {renderLines.length !== 1 ? "s" : ""}
+          {lastUpdatedAt && (
             <>
-              <span className="text-zinc-700">·</span>
-              <span className="text-amber-400/80">tmux unavailable</span>
+              {" · "}synced{" "}
+              {formatConsoleTimestamp(lastUpdatedAt)}
             </>
           )}
-        </div>
+          {tmuxAvailable === false && (
+            <span className="text-amber-400"> · tmux unavailable</span>
+          )}
+        </p>
       </div>
 
       {fetchError && (
-        <div className="border-b border-red-500/20 bg-red-500/10 px-4 py-2 text-sm text-red-300">
+        <p className="border-b border-red-500/20 bg-red-500/10 px-4 py-2 text-sm text-red-300">
           {fetchError}
-        </div>
+        </p>
       )}
 
-      {/* Console viewport */}
       <div
         className={cn(
-          "relative min-h-0 bg-[#050508]",
+          "relative min-h-0 bg-[#0c0c0c]",
           fullscreen ? "flex-1" : "h-[min(68vh,720px)]"
         )}
       >
         <div
-          className="h-full overflow-auto"
+          className="h-full overflow-auto font-mono text-[12px] leading-[1.55] sm:text-[13px]"
           ref={scrollRef}
           onScroll={onScroll}
         >
-          <div className="sticky top-0 z-10 grid grid-cols-[3rem_5.5rem_1fr] gap-x-3 border-b border-white/[0.05] bg-[#08080c]/95 px-3 py-2 text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-600 backdrop-blur-sm sm:grid-cols-[3.5rem_6.5rem_1fr]">
-            <span className="text-right">#</span>
-            <span>Time</span>
-            <span>Output</span>
-          </div>
+          {showGutter && renderLines.length > 0 && (
+            <div
+              className={cn(
+                "sticky top-0 z-10 flex gap-3 border-b border-border/60 bg-[#0c0c0c]/95 px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider text-[#666666] backdrop-blur-sm",
+                showLineNumbers && showTimestamp && "grid grid-cols-[2.5rem_6.5rem_1fr]",
+                showLineNumbers && !showTimestamp && "grid grid-cols-[2.5rem_1fr]",
+                !showLineNumbers && showTimestamp && "grid grid-cols-[6.5rem_1fr]"
+              )}
+            >
+              {showLineNumbers && (
+                <span className="flex items-center justify-end gap-0.5">
+                  <Hash className="h-2.5 w-2.5" />
+                </span>
+              )}
+              {showTimestamp && <span>Time</span>}
+              <span>Output</span>
+            </div>
+          )}
 
           {renderLines.length === 0 ? (
-            <div className="flex min-h-[280px] flex-col items-center justify-center px-6 py-16 text-center">
-              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.03]">
-                <Terminal className="h-7 w-7 text-zinc-600" />
-              </div>
-              <p className="max-w-md text-sm text-zinc-400">{emptyMessage}</p>
-              {!loading && tmuxAvailable !== false && (
-                <p className="mt-2 text-xs text-zinc-600">
-                  Output appears here as the bot writes to its tmux window.
-                </p>
-              )}
+            <div className="flex min-h-[240px] flex-col items-center justify-center px-6 py-12 text-center">
+              <Terminal className="mb-3 h-8 w-8 text-[#666666]" />
+              <p className="max-w-md text-sm text-[#23d18b]/70">{emptyMessage}</p>
             </div>
           ) : (
-            <div className="divide-y divide-white/[0.03] font-mono text-[12px] leading-[1.65] sm:text-[13px]">
+            <div>
               {renderLines.map((line) => {
                 const styles = LEVEL_STYLES[line.level];
                 return (
                   <div
                     key={line.key}
                     className={cn(
-                      "group grid grid-cols-[3rem_5.5rem_1fr] gap-x-3 px-3 py-[3px] transition-colors hover:bg-white/[0.02] sm:grid-cols-[3.5rem_6.5rem_1fr]",
+                      "flex gap-3 px-3 py-px hover:bg-white/[0.03]",
+                      showLineNumbers &&
+                        showTimestamp &&
+                        "grid grid-cols-[2.5rem_6.5rem_1fr]",
+                      showLineNumbers &&
+                        !showTimestamp &&
+                        "grid grid-cols-[2.5rem_1fr]",
+                      !showLineNumbers &&
+                        showTimestamp &&
+                        "grid grid-cols-[6.5rem_1fr]",
+                      !showGutter && "block",
                       styles.row,
                       line.isContinuation && "opacity-90"
                     )}
                   >
-                    <span
-                      className={cn(
-                        "select-none text-right tabular-nums text-zinc-600 group-hover:text-zinc-500",
-                        styles.gutter
-                      )}
-                    >
-                      {line.lineNumber}
-                    </span>
-                    <span
-                      className={cn(
-                        "select-none tabular-nums text-zinc-500",
-                        styles.gutter
-                      )}
-                      title={
-                        line.firstSeenAt && !line.hasEmbeddedTimestamp
-                          ? "First seen during this session"
-                          : undefined
-                      }
-                    >
-                      {formatConsoleTimestamp(line.timestamp)}
-                    </span>
-                    <span
-                      className={cn(
-                        "min-w-0 whitespace-pre-wrap break-all",
-                        styles.text,
-                        line.isContinuation && "pl-2 text-zinc-400"
-                      )}
-                    >
-                      {highlightSearch(
-                        line.displayText || " ",
-                        search.trim()
-                      )}
-                    </span>
+                    {showLineNumbers && (
+                      <span
+                        className={cn(
+                          "select-none text-right tabular-nums text-[#666666]",
+                          styles.gutter
+                        )}
+                      >
+                        {line.lineNumber}
+                      </span>
+                    )}
+                    {showTimestamp && (
+                      <span
+                        className={cn(
+                          "select-none shrink-0 tabular-nums text-[#666666]",
+                          styles.gutter
+                        )}
+                        title={
+                          line.firstSeenAt && !line.hasEmbeddedTimestamp
+                            ? "First seen during this session"
+                            : undefined
+                        }
+                      >
+                        {formatConsoleTimestamp(line.timestamp)}
+                      </span>
+                    )}
+                    {renderLineContent(line, styles)}
                   </div>
                 );
               })}
@@ -494,10 +535,10 @@ export function TmuxConsole({ botId }: TmuxConsoleProps) {
               setFollowTail(true);
               scrollToBottom("smooth");
             }}
-            className="absolute bottom-4 right-4 inline-flex items-center gap-2 rounded-full border border-accent/30 bg-[#12121a]/95 px-3 py-1.5 text-xs font-medium text-accent-light shadow-lg backdrop-blur-sm transition hover:border-accent/50 hover:bg-accent/10"
+            className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs font-medium text-accent-light shadow-md transition hover:bg-surface-hover"
           >
             <ArrowDown className="h-3.5 w-3.5" />
-            Jump to latest
+            Latest
           </button>
         )}
       </div>

@@ -102,21 +102,24 @@ export function parseConsoleLine(
   };
 }
 
-export function formatConsoleTimestamp(
-  date: Date | null,
-  opts?: { withMs?: boolean }
-): string {
+const EST_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  hour12: false,
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  timeZoneName: "short",
+});
+
+/** HH:MM:SS TZ in US Eastern (EST/EDT per DST). */
+export function formatConsoleTimestamp(date: Date | null): string {
   if (!date) return "—";
-  const withMs = opts?.withMs ?? true;
-  const base = date.toLocaleTimeString(undefined, {
-    hour12: false,
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-  if (!withMs) return base;
-  const ms = String(date.getMilliseconds()).padStart(3, "0");
-  return `${base}.${ms}`;
+  const parts = EST_FORMATTER.formatToParts(date);
+  const hour = parts.find((p) => p.type === "hour")?.value ?? "00";
+  const minute = parts.find((p) => p.type === "minute")?.value ?? "00";
+  const second = parts.find((p) => p.type === "second")?.value ?? "00";
+  const tz = parts.find((p) => p.type === "timeZoneName")?.value ?? "EST";
+  return `${hour}:${minute}:${second} ${tz}`;
 }
 
 export function syncLineFirstSeen(
@@ -173,8 +176,8 @@ export const LEVEL_STYLES: Record<
     gutter: "text-zinc-600",
   },
   default: {
-    row: "border-l-2 border-l-transparent hover:border-l-accent/20",
-    text: "text-zinc-200/90",
-    gutter: "text-zinc-600",
+    row: "",
+    text: "text-[#23d18b]",
+    gutter: "text-[#666666]",
   },
 };

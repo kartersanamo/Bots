@@ -71,12 +71,11 @@ export function BotLogFileViewer({ botId }: BotLogFileViewerProps) {
     <Card
       className={cn(
         "flex flex-col",
-        fullscreen &&
-          "fixed inset-4 z-50 max-h-none shadow-2xl ring-1 ring-border"
+        fullscreen && "mobile-fullscreen-inset max-h-none shadow-2xl ring-1 ring-border"
       )}
     >
       <div className="flex flex-wrap items-center gap-2 border-b border-border pb-4">
-        <div className="relative min-w-[200px] flex-1">
+        <div className="relative min-w-0 w-full flex-1 sm:min-w-[200px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
           <input
             type="text"

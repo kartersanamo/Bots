@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 
 export function PublicShell({ children }: { children: ReactNode }) {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-background text-white">
+    <div className="relative min-h-screen overflow-x-hidden bg-background text-white">
       <div
         className="pointer-events-none absolute inset-0 bg-gradient-radial from-accent/20 via-transparent to-transparent opacity-60"
         aria-hidden
@@ -26,7 +26,7 @@ export function PublicShell({ children }: { children: ReactNode }) {
 export function PublicHeader({ activePath }: { activePath?: "/" | "/login" }) {
   return (
     <header className="border-b border-border/60 bg-background/80 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-6 lg:px-8">
+      <div className="safe-area-x mx-auto flex h-14 max-w-5xl items-center justify-between sm:h-16">
         <Link
           href="/"
           className="group flex items-center gap-2.5 no-underline"
@@ -59,7 +59,7 @@ export function PublicHeader({ activePath }: { activePath?: "/" | "/login" }) {
 
 export function PublicFooter() {
   return (
-    <footer className="mt-auto border-t border-border/60 px-6 py-8 text-center text-xs text-muted lg:px-8">
+    <footer className="safe-area-x safe-area-bottom mt-auto border-t border-border/60 py-6 text-center text-xs text-muted sm:py-8">
       <p>© {new Date().getFullYear()} Karter Sanamo</p>
     </footer>
   );
@@ -67,19 +67,19 @@ export function PublicFooter() {
 
 export function PublicLandingMain() {
   return (
-    <main className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center lg:px-8">
-      <section className="max-w-2xl">
+    <main className="safe-area-x flex flex-1 flex-col items-center justify-center px-4 py-12 text-center sm:py-16">
+      <section className="w-full max-w-2xl">
         <p className="text-sm font-medium uppercase tracking-widest text-accent-light">
           Welcome
         </p>
-        <h1 className="mt-4 text-4xl font-semibold leading-tight tracking-tight text-white sm:text-5xl">
+        <h1 className="mt-4 text-3xl font-semibold leading-tight tracking-tight text-white sm:text-4xl md:text-5xl">
           Bots Dashboard
         </h1>
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+        <div className="mt-8 flex flex-col items-stretch gap-4 sm:mt-10 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center">
           <Link
             href="/login"
             prefetch={false}
-            className="inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-white no-underline shadow-glow transition-colors hover:bg-accent/90"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-accent px-5 py-3 text-sm font-medium text-white no-underline shadow-glow transition-colors hover:bg-accent/90 sm:py-2.5"
           >
             Open portal
             <ArrowRight className="h-4 w-4" />
@@ -112,9 +112,9 @@ export function PublicAuthCard({
   footer?: ReactNode;
 }) {
   return (
-    <main className="flex flex-1 flex-col items-center justify-center px-6 py-16">
+    <main className="safe-area-x flex flex-1 flex-col items-center justify-center px-4 py-10 sm:py-16">
       <div className="w-full max-w-md">
-        <div className="glass rounded-2xl border-accent/20 p-8 shadow-glow-lg sm:p-10">
+        <div className="glass rounded-2xl border-accent/20 p-6 shadow-glow-lg sm:p-10">
           <div className="text-center">
             <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-purple shadow-glow">
               <Sparkles className="h-5 w-5 text-white" strokeWidth={2} />
