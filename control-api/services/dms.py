@@ -42,6 +42,31 @@ def _headers(bot_id: str) -> dict[str, str]:
     return {"Authorization": f"Bot {_token(bot_id)}"}
 
 
+def _recipient_user_id(channel: dict[str, Any]) -> Optional[str]:
+    """Human user in a bot DM (exclude the bot account)."""
+    for r in channel.get("recipients") or []:
+        if r.get("bot"):
+            continue
+        rid = r.get("id")
+        if rid:
+            return str(rid)
+    recipients = channel.get("recipients") or []
+    if recipients and recipients[0].get("id"):
+        return str(recipients[0]["id"])
+    return None
+
+
+def _enrich_channel(
+    channel: dict[str, Any], registry_meta: Optional[dict[str, Any]] = None
+) -> dict[str, Any]:
+    meta = registry_meta or {}
+    rid = _recipient_user_id(channel) or meta.get("user_id")
+    out = dict(channel)
+    if rid:
+        out["recipient_id"] = str(rid)
+    return out
+
+
 def _snowflake_key(value: Optional[str]) -> int:
     if not value:
         return 0
@@ -81,17 +106,19 @@ async def get_channel_messages(
         )
         res.raise_for_status()
         messages = res.json()
-        if messages:
-            latest = messages[0]
-            author = latest.get("author") or {}
-            dm_registry.touch(
-                bot_id,
-                channel_id,
-                user_id=author.get("id") if not author.get("bot") else None,
-                last_message_id=latest.get("id"),
-                recipient_username=author.get("username"),
-                recipient_global_name=author.get("global_name"),
-            )
+        ch = await _get_channel(client, bot_id, channel_id)
+        recipient = (ch or {}).get("recipients") or []
+        human = next((r for r in recipient if not r.get("bot")), None)
+        if not human and recipient:
+            human = recipient[0]
+        touch_kwargs: dict[str, Any] = {
+            "last_message_id": messages[0].get("id") if messages else None,
+        }
+        if human:
+            touch_kwargs["user_id"] = human.get("id")
+            touch_kwargs["recipient_username"] = human.get("username")
+            touch_kwargs["recipient_global_name"] = human.get("global_name")
+        dm_registry.touch(bot_id, channel_id, **touch_kwargs)
         return messages
 
 
@@ -123,16 +150,19 @@ async def open_dm(bot_id: str, user_id: str) -> dict[str, Any]:
         )
         res.raise_for_status()
         channel = res.json()
-        recipient = (channel.get("recipients") or [{}])[0]
+        human = next(
+            (r for r in channel.get("recipients") or [] if not r.get("bot")),
+            (channel.get("recipients") or [{}])[0],
+        )
         dm_registry.touch(
             bot_id,
-            channel["id"],
-            user_id=user_id,
-            recipient_username=recipient.get("username"),
-            recipient_global_name=recipient.get("global_name"),
+            str(channel["id"]),
+            user_id=str(user_id),
+            recipient_username=human.get("username"),
+            recipient_global_name=human.get("global_name"),
             last_message_id=channel.get("last_message_id"),
         )
-        return channel
+        return _enrich_channel(channel, {"user_id": user_id})
 
 
 async def _probe_user_dm(
@@ -285,4 +315,8 @@ async def list_dm_channels(
         )
 
     ordered = sorted(by_id.values(), key=sort_key, reverse=True)
-    return ordered[:limit]
+    enriched: list[dict[str, Any]] = []
+    for ch in ordered[:limit]:
+        cid = str(ch.get("id", ""))
+        enriched.append(_enrich_channel(ch, registry.get(cid)))
+    return enriched

@@ -171,6 +171,16 @@ export async function listBotDms(
   return data as { channels: unknown[]; token_configured?: boolean };
 }
 
+export async function openBotDm(botId: string, userId: string) {
+  return controlFetch<{ channel: { id: string; recipient_id?: string } }>(
+    `/bots/${botId}/dms/open`,
+    {
+      method: "POST",
+      body: JSON.stringify({ user_id: userId }),
+    }
+  );
+}
+
 export async function getDmMessages(
   botId: string,
   channelId: string,

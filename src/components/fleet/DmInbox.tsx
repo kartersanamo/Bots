@@ -10,15 +10,17 @@ import { Avatar } from "@/components/ui/Avatar";
 import { useDiscordChatEnrichment } from "@/hooks/useDiscordChatEnrichment";
 import type { DiscordChatMessage } from "@/lib/discord/chat-types";
 import { MessageSquare, RefreshCw, Send } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface DmChannel {
   id: string;
+  recipient_id?: string;
   recipients?: {
     id: string;
     username: string;
     global_name?: string;
     avatar?: string | null;
+    bot?: boolean;
   }[];
   last_message_id?: string;
 }
@@ -28,9 +30,16 @@ interface DmInboxProps {
   canSend: boolean;
 }
 
+function recipientId(ch: DmChannel): string | null {
+  if (ch.recipient_id) return ch.recipient_id;
+  const human = ch.recipients?.find((r) => !r.bot) ?? ch.recipients?.[0];
+  return human?.id ?? null;
+}
+
 export function DmInbox({ botId, canSend }: DmInboxProps) {
   const [channels, setChannels] = useState<DmChannel[]>([]);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selectedRecipientId, setSelectedRecipientId] = useState<string | null>(null);
+  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [messages, setMessages] = useState<DiscordChatMessage[]>([]);
   const [messageLimit, setMessageLimit] = useState(50);
   const [canLoadOlder, setCanLoadOlder] = useState(false);
@@ -39,6 +48,7 @@ export function DmInbox({ botId, canSend }: DmInboxProps) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const loadSeqRef = useRef(0);
 
   const enrichment = useDiscordChatEnrichment(messages);
 
@@ -46,7 +56,7 @@ export function DmInbox({ botId, canSend }: DmInboxProps) {
     setLoading(true);
     setError(null);
     try {
-      const res = await dashboardFetch(`/api/bots/${botId}/dms`);
+      const res = await dashboardFetch(`/api/bots/${botId}/dms?limit=100`);
       const data = await res.json();
       if (!res.ok) {
         setError(formatErrorDetail(data.error ?? data.detail) || "Failed to load DMs");
@@ -67,6 +77,7 @@ export function DmInbox({ botId, canSend }: DmInboxProps) {
 
   const loadMessages = useCallback(
     async (channelId: string, limitOverride?: number) => {
+      const seq = ++loadSeqRef.current;
       const limit = limitOverride ?? messageLimit;
       setMessagesLoading(true);
       try {
@@ -74,6 +85,7 @@ export function DmInbox({ botId, canSend }: DmInboxProps) {
           `/api/bots/${botId}/dms/${channelId}/messages?limit=${limit}`
         );
         const data = await res.json();
+        if (seq !== loadSeqRef.current) return;
         if (!res.ok) {
           setError(
             formatErrorDetail(data.error ?? data.detail) || "Failed to load messages"
@@ -85,33 +97,68 @@ export function DmInbox({ botId, canSend }: DmInboxProps) {
           : [];
         setMessages(next);
         setCanLoadOlder(next.length >= limit && limit < 100);
+        setError(null);
       } finally {
-        setMessagesLoading(false);
+        if (seq === loadSeqRef.current) {
+          setMessagesLoading(false);
+        }
       }
     },
     [botId, messageLimit]
+  );
+
+  const selectConversation = useCallback(
+    async (userId: string) => {
+      loadSeqRef.current += 1;
+      setSelectedRecipientId(userId);
+      setMessages([]);
+      setMessageLimit(50);
+      setCanLoadOlder(false);
+      setMessagesLoading(true);
+      setError(null);
+
+      try {
+        const openRes = await dashboardFetch(`/api/bots/${botId}/dms/open`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: userId }),
+        });
+        const openData = await openRes.json();
+        if (!openRes.ok) {
+          setError(
+            formatErrorDetail(openData.error ?? openData.detail) ||
+              "Failed to open DM channel"
+          );
+          setSelectedChannelId(null);
+          setMessagesLoading(false);
+          return;
+        }
+        const channelId = String(openData.channel?.id ?? "");
+        if (!channelId) {
+          setError("Discord did not return a DM channel");
+          setMessagesLoading(false);
+          return;
+        }
+        setSelectedChannelId(channelId);
+        await loadMessages(channelId, 50);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to open conversation");
+        setMessagesLoading(false);
+      }
+    },
+    [botId, loadMessages]
   );
 
   useEffect(() => {
     loadChannels();
   }, [loadChannels]);
 
-  useEffect(() => {
-    if (selected) {
-      setMessageLimit(50);
-      setCanLoadOlder(false);
-      void loadMessages(selected, 50);
-    } else {
-      setMessages([]);
-    }
-  }, [selected, loadMessages]);
-
   async function sendReply() {
-    if (!selected || !reply.trim()) return;
+    if (!selectedChannelId || !reply.trim()) return;
     setSending(true);
     try {
       const res = await dashboardFetch(
-        `/api/bots/${botId}/dms/${selected}/messages`,
+        `/api/bots/${botId}/dms/${selectedChannelId}/messages`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -124,7 +171,9 @@ export function DmInbox({ botId, canSend }: DmInboxProps) {
         return;
       }
       setReply("");
-      await loadMessages(selected);
+      if (selectedRecipientId) {
+        await loadMessages(selectedChannelId);
+      }
       loadChannels();
     } finally {
       setSending(false);
@@ -132,12 +181,16 @@ export function DmInbox({ botId, canSend }: DmInboxProps) {
   }
 
   function label(ch: DmChannel) {
-    const r = ch.recipients?.[0];
-    return r?.global_name || r?.username || ch.id;
+    const r = ch.recipients?.find((x) => !x.bot) ?? ch.recipients?.[0];
+    return r?.global_name || r?.username || ch.recipient_id || ch.id;
   }
 
-  const selectedChannel = channels.find((c) => c.id === selected);
-  const recipient = selectedChannel?.recipients?.[0];
+  const selectedChannel = channels.find(
+    (c) => recipientId(c) === selectedRecipientId
+  );
+  const recipient =
+    selectedChannel?.recipients?.find((r) => !r.bot) ??
+    selectedChannel?.recipients?.[0];
 
   return (
     <div className="grid gap-4 lg:grid-cols-3">
@@ -148,28 +201,35 @@ export function DmInbox({ botId, canSend }: DmInboxProps) {
           <p className="text-xs text-muted">Loading conversations…</p>
         )}
         <ul className="space-y-1">
-          {channels.map((ch) => (
-            <li key={ch.id}>
-              <button
-                type="button"
-                onClick={() => setSelected(ch.id)}
-                className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                  selected === ch.id
-                    ? "bg-accent/20 text-white"
-                    : "text-muted hover:bg-surface-hover"
-                }`}
-              >
-                {ch.recipients?.[0] && (
-                  <Avatar
-                    userId={ch.recipients[0].id}
-                    avatarHash={ch.recipients[0].avatar ?? null}
-                    size={24}
-                  />
-                )}
-                <span className="truncate">{label(ch)}</span>
-              </button>
-            </li>
-          ))}
+          {channels.map((ch) => {
+            const uid = recipientId(ch);
+            if (!uid) return null;
+            return (
+              <li key={uid}>
+                <button
+                  type="button"
+                  onClick={() => void selectConversation(uid)}
+                  className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                    selectedRecipientId === uid
+                      ? "bg-accent/20 text-white"
+                      : "text-muted hover:bg-surface-hover"
+                  }`}
+                >
+                  {ch.recipients?.[0] && (
+                    <Avatar
+                      userId={uid}
+                      avatarHash={
+                        (ch.recipients.find((r) => !r.bot) ?? ch.recipients[0])
+                          ?.avatar ?? null
+                      }
+                      size={24}
+                    />
+                  )}
+                  <span className="truncate">{label(ch)}</span>
+                </button>
+              </li>
+            );
+          })}
           {!loading && !channels.length && !error && (
             <p className="text-xs text-muted">
               No DM conversations found yet. Discord does not expose a bot&apos;s DM
@@ -180,7 +240,7 @@ export function DmInbox({ botId, canSend }: DmInboxProps) {
       </Card>
 
       <div className="lg:col-span-2 flex min-h-0 flex-col">
-        {selected ? (
+        {selectedRecipientId ? (
           <section className="flex min-h-0 flex-1 flex-col">
             <div className="mb-3 flex items-center justify-between gap-2">
               <h3 className="flex items-center gap-2 text-sm font-semibold text-accent-light">
@@ -192,7 +252,7 @@ export function DmInbox({ botId, canSend }: DmInboxProps) {
                       avatarHash={recipient.avatar ?? null}
                       size={24}
                     />
-                    {label(selectedChannel!)}
+                    {label(selectedChannel ?? { id: "", recipients: [recipient] })}
                   </span>
                 ) : (
                   "DM conversation"
@@ -201,7 +261,13 @@ export function DmInbox({ botId, canSend }: DmInboxProps) {
               <Button
                 variant="secondary"
                 size="sm"
-                onClick={() => void loadMessages(selected)}
+                onClick={() => {
+                  if (selectedChannelId && selectedRecipientId) {
+                    void loadMessages(selectedChannelId);
+                  } else if (selectedRecipientId) {
+                    void selectConversation(selectedRecipientId);
+                  }
+                }}
                 disabled={messagesLoading}
               >
                 <RefreshCw
@@ -218,9 +284,10 @@ export function DmInbox({ botId, canSend }: DmInboxProps) {
               canLoadOlder={canLoadOlder}
               loadOlderLoading={messagesLoading}
               onLoadOlder={() => {
+                if (!selectedChannelId || !selectedRecipientId) return;
                 const next = Math.min(100, messageLimit + 30);
                 setMessageLimit(next);
-                void loadMessages(selected, next);
+                void loadMessages(selectedChannelId, next);
               }}
               maxHeightClass="max-h-[calc(70vh-120px)]"
               memberProfiles={enrichment.memberProfiles}
