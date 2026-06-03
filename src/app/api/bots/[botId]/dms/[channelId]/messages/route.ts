@@ -23,7 +23,8 @@ export const GET = handleApiRoute(async (request, { params }) => {
   const limit = Number(url.searchParams.get("limit") || 50);
   const before = url.searchParams.get("before") || undefined;
   const data = await getDmMessages(botId, channelId, limit, before);
-  return Response.json(data);
+  const messages = Array.isArray(data.messages) ? [...data.messages].reverse() : [];
+  return Response.json({ ...data, messages });
 });
 
 export const POST = handleApiRoute(async (request, { params }) => {
