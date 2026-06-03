@@ -35,14 +35,19 @@ else
   nice -n 19 ionice -c 3 npm run build
 fi
 
+LOG_FILE="/tmp/bots-next.log"
+
 echo "Restarting next…"
 pkill -f "next-server" 2>/dev/null || true
 sleep 1
-nohup npm run start > /tmp/bots-next.log 2>&1 &
+nohup npm run start > "$LOG_FILE" 2>&1 &
 
 if command -v nginx >/dev/null 2>&1; then
   nginx -t && systemctl reload nginx
 fi
 
-echo "Done. Logs: tail -f /tmp/bots-next.log"
-echo "Purge Cloudflare cache, then hard refresh (Ctrl+Shift+R)."
+echo "Deploy finished. Purge Cloudflare cache, then hard refresh (Ctrl+Shift+R)."
+echo "Following live site logs (Ctrl+C stops tail only; Next keeps running)…"
+echo "────────────────────────────────────────────────────────"
+sleep 1
+tail -n 50 -f "$LOG_FILE"
