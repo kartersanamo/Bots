@@ -1,28 +1,40 @@
-"use client";
-
-import { Button } from "@/components/ui/Button";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
-export function LandingHero() {
+/** Public-facing shell — intentionally generic, no product branding. */
+export function PublicShell({ children }: { children: ReactNode }) {
   return (
-    <section className="flex min-h-[85vh] flex-col items-center justify-center px-4 text-center">
-      <h1 className="text-4xl font-semibold tracking-tight text-white md:text-5xl">
-        Bots
-      </h1>
-      <p className="mt-4 max-w-md text-muted">
-        Minecadia staff dashboard for bots and server tools.
-      </p>
-      <Link href="/login" className="mt-8">
-        <Button size="lg">Log in with Discord</Button>
-      </Link>
-    </section>
+    <div className="min-h-screen bg-[#e8e8e8] font-[system-ui,-apple-system,Segoe_UI,Roboto,sans-serif] text-[13px] leading-normal text-[#555]">
+      {children}
+    </div>
   );
 }
 
-export function LandingFooter() {
+export function PublicPlaceholder() {
   return (
-    <footer className="border-t border-border px-4 py-6 text-center text-xs text-muted">
-      <p>Minecadia · bots.kartersanamo.com</p>
-    </footer>
+    <div className="flex min-h-screen flex-col">
+      <div className="flex flex-1 items-center justify-center px-6">
+        <p className="max-w-md text-center text-[#666]">
+          There is no content published at this address.
+        </p>
+      </div>
+      <footer className="px-6 pb-8 text-center text-[11px] text-[#999]">
+        © {new Date().getFullYear()}
+      </footer>
+    </div>
+  );
+}
+
+/** Unlabeled entry point — visible only on hover/focus. */
+export function PublicEntryLink() {
+  return (
+    <Link
+      href="/login"
+      prefetch={false}
+      className="fixed bottom-2 right-2 z-10 block h-6 w-6 rounded-sm text-[11px] leading-6 text-[#c8c8c8] no-underline opacity-0 transition-opacity hover:text-[#aaa] hover:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#bbb]"
+      aria-label="Sign in"
+    >
+      ·
+    </Link>
   );
 }

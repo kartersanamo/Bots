@@ -12,13 +12,14 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "Bots — Minecadia Dashboard",
-    template: "%s | Bots",
+    default: "kartersanamo.com",
+    template: "%s",
   },
-  description: "Minecadia staff dashboard for Discord bots.",
+  description: "",
   metadataBase: new URL(
     env("NEXT_PUBLIC_APP_URL") || "https://bots.kartersanamo.com"
   ),
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({
@@ -27,8 +28,8 @@ export default function RootLayout({
   children: ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${inter.variable} font-sans`}>
+    <html lang="en">
+      <body className={`${inter.variable} font-sans antialiased`}>
         {children}
         <ChunkLoadRecovery />
       </body>

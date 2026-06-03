@@ -5,8 +5,18 @@ import { TicketLiveNotifications } from "@/components/tickets/TicketLiveNotifica
 import { hasDashboardAccess } from "@/lib/auth/dashboard-access";
 import { getSession } from "@/lib/auth/session";
 import { getGuildRolesAll } from "@/lib/data/guild-info";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
+
+export const metadata: Metadata = {
+  title: {
+    default: "Dashboard",
+    template: "%s | Bots",
+  },
+  description: "Minecadia staff dashboard",
+  robots: { index: false, follow: false },
+};
 
 export default async function DashboardLayout({
   children,
@@ -20,22 +30,24 @@ export default async function DashboardLayout({
   const initialRoles = await getGuildRolesAll().catch(() => []);
 
   return (
-    <DashboardDiscordProviders
-      viewerId={session.id}
-      viewerRoleIds={session.roleIds}
-      userTier={session.tier}
-      initialRoles={initialRoles}
-    >
-      <div className="flex min-h-screen bg-background">
-        <Sidebar user={session} />
-        <main className="flex-1 overflow-auto">
-          <div className="mx-auto max-w-[1600px] px-4 py-6 lg:px-6 lg:py-8">
-            {children}
-          </div>
-        </main>
-      </div>
-      <TicketLiveNotifications />
-      <AuthRejectedNotifications />
-    </DashboardDiscordProviders>
+    <div className="dark min-h-screen bg-background text-white">
+      <DashboardDiscordProviders
+        viewerId={session.id}
+        viewerRoleIds={session.roleIds}
+        userTier={session.tier}
+        initialRoles={initialRoles}
+      >
+        <div className="flex min-h-screen bg-background">
+          <Sidebar user={session} />
+          <main className="flex-1 overflow-auto">
+            <div className="mx-auto max-w-[1600px] px-4 py-6 lg:px-6 lg:py-8">
+              {children}
+            </div>
+          </main>
+        </div>
+        <TicketLiveNotifications />
+        <AuthRejectedNotifications />
+      </DashboardDiscordProviders>
+    </div>
   );
 }

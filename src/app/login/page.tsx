@@ -1,6 +1,15 @@
-import { Button } from "@/components/ui/Button";
-import { AlertCircle, Bot } from "lucide-react";
+import {
+  PublicEntryLink,
+  PublicShell,
+} from "@/components/landing/LandingSections";
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "Sign in",
+  description: "",
+  robots: { index: false, follow: false },
+};
 
 interface LoginPageProps {
   searchParams: Promise<{ error?: string; redirect?: string }>;
@@ -9,13 +18,13 @@ interface LoginPageProps {
 function loginErrorMessage(code: string | undefined): string | null {
   switch (code) {
     case "auth_failed":
-      return "Sign-in failed. Try again.";
+      return "Could not complete sign-in. Try again.";
     case "rate_limited":
-      return "Too many sign-in attempts. Wait a minute and try again.";
+      return "Too many attempts. Wait a moment and try again.";
     case "server_config":
-      return "The dashboard could not start a session. Contact an administrator (server SESSION_SECRET).";
+      return "Service unavailable. Try again later.";
     default:
-      return code ? "Sign-in failed. Try again." : null;
+      return code ? "Could not complete sign-in. Try again." : null;
   }
 }
 
@@ -24,35 +33,32 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const errorMessage = loginErrorMessage(error);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-sm rounded-lg border border-border bg-surface p-8 text-center">
-        <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-md bg-accent">
-          <Bot className="h-6 w-6 text-white" />
+    <PublicShell>
+      <div className="flex min-h-screen flex-col items-center justify-center px-6">
+        <div className="w-full max-w-xs border border-[#d4d4d4] bg-[#f4f4f4] px-6 py-8 text-center shadow-sm">
+          <h1 className="text-[15px] font-normal text-[#444]">Sign in</h1>
+
+          {errorMessage && (
+            <p className="mt-4 text-[12px] text-[#8b4513]">{errorMessage}</p>
+          )}
+
+          <Link
+            href="/api/auth/login"
+            prefetch={false}
+            className="mt-6 inline-block w-full border border-[#bbb] bg-[#e0e0e0] px-4 py-2 text-[13px] text-[#333] no-underline hover:bg-[#d6d6d6]"
+          >
+            Continue
+          </Link>
+
+          <Link
+            href="/"
+            className="mt-5 inline-block text-[11px] text-[#999] no-underline hover:text-[#777]"
+          >
+            Back
+          </Link>
         </div>
-
-        <h1 className="text-xl font-semibold text-white">Sign in</h1>
-        <p className="mt-2 text-sm text-muted">Staff Discord account required.</p>
-
-        {errorMessage && (
-          <div className="mt-4 flex items-center justify-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            {errorMessage}
-          </div>
-        )}
-
-        <Link href="/api/auth/login" prefetch={false} className="mt-6 block">
-          <Button size="lg" className="w-full">
-            Log in with Discord
-          </Button>
-        </Link>
-
-        <Link
-          href="/"
-          className="mt-4 inline-block text-sm text-muted hover:text-white"
-        >
-          Back
-        </Link>
       </div>
-    </main>
+      <PublicEntryLink />
+    </PublicShell>
   );
 }
