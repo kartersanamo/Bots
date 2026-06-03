@@ -8,7 +8,7 @@
   }
 
   body {
-    @apply bg-[#e8e8e8] text-[#555];
+    @apply bg-background text-white;
   }
 
   ::selection {

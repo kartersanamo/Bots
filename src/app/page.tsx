@@ -1,6 +1,7 @@
 import {
-  PublicEntryLink,
-  PublicPlaceholder,
+  PublicFooter,
+  PublicHeader,
+  PublicLandingMain,
   PublicShell,
 } from "@/components/landing/LandingSections";
 import { hasDashboardAccess } from "@/lib/auth/dashboard-access";
@@ -22,8 +23,9 @@ export default async function HomePage() {
 
   return (
     <PublicShell>
-      <PublicPlaceholder />
-      <PublicEntryLink />
+      <PublicHeader activePath="/" />
+      <PublicLandingMain />
+      <PublicFooter />
     </PublicShell>
   );
 }
