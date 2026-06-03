@@ -1,6 +1,5 @@
 import {
   PublicFooter,
-  PublicHeader,
   PublicLandingMain,
   PublicShell,
 } from "@/components/landing/LandingSections";
@@ -23,7 +22,6 @@ export default async function HomePage() {
 
   return (
     <PublicShell>
-      <PublicHeader activePath="/" />
       <PublicLandingMain />
       <PublicFooter />
     </PublicShell>

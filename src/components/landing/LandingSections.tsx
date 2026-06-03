@@ -67,15 +67,15 @@ export function PublicFooter() {
 
 export function PublicLandingMain() {
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-16 lg:px-8 lg:py-24">
+    <main className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center lg:px-8">
       <section className="max-w-2xl">
         <p className="text-sm font-medium uppercase tracking-widest text-accent-light">
           Welcome
         </p>
         <h1 className="mt-4 text-4xl font-semibold leading-tight tracking-tight text-white sm:text-5xl">
           Bots Dashboard
-        </h1> 
-        <div className="mt-10 flex flex-wrap items-center gap-4">
+        </h1>
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
           <Link
             href="/login"
             prefetch={false}
