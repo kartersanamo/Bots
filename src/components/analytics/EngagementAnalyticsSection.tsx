@@ -11,6 +11,7 @@ import {
   kpi,
 } from "@/components/analytics/bind-metric-hints";
 import { AnalyticsKpiGrid } from "@/components/analytics/AnalyticsKpiGrid";
+import { MemberMessagesBackfillBanner } from "@/components/analytics/MemberMessagesBackfillBanner";
 import { AnalyticsUserCountTable } from "@/components/analytics/AnalyticsUserCountTable";
 import {
   DailyLineChart,
@@ -72,8 +73,15 @@ export function EngagementAnalyticsSection({
   return (
     <div className="space-y-6">
       <MigrationNotice ready={tablesReady} />
+      {tablesReady.memberMessages && <MemberMessagesBackfillBanner />}
       <AnalyticsKpiGrid
         items={[
+          kpi(
+            "Member messages",
+            formatNumber(kpis.memberMessagesInRange),
+            "engagement.memberMessages",
+            { hintSeries: data.memberMessagesPerDay }
+          ),
           kpi(
             "Total staff messages",
             formatNumber(kpis.totalStaffMessagesInRange),
@@ -102,6 +110,24 @@ export function EngagementAnalyticsSection({
       />
 
       <div className="grid gap-4 lg:grid-cols-2">
+        {data.memberMessagesPerDay.some((r) => r.count > 0) && (
+          <AnalyticsChartCard
+            title={chartTitleWithPeriod("Member messages (non-staff)", groupBy)}
+            dataHint={chartHint(
+              "engagement.chart.memberMessages",
+              data.memberMessagesPerDay
+            )}
+            exportHeaders={["date", "messages"]}
+            exportFilename={`engagement-member-msgs-${range}.csv`}
+            exportRows={data.memberMessagesPerDay.map((r) => ({
+              date: r.date,
+              messages: r.count,
+            }))}
+          >
+            <DailyLineChart data={data.memberMessagesPerDay} color="#a78bfa" />
+          </AnalyticsChartCard>
+        )}
+
         <AnalyticsChartCard
           title={chartTitleWithPeriod("Total staff messages", groupBy)}
           dataHint={chartHint(
@@ -222,6 +248,32 @@ export function EngagementAnalyticsSection({
           exportFilename={`engagement-voice-users-${range}.csv`}
           countLabel="Time"
           formatValue={(n) => formatDurationSeconds(n)}
+        />
+      )}
+
+      {data.topMembersByTotalMessages.length > 0 && (
+        <AnalyticsUserCountTable
+          title="Top members by messages (overall)"
+          dataHint={chartHint(
+            "engagement.table.topMembersOverall",
+            data.memberMessagesPerDay
+          )}
+          rows={data.topMembersByTotalMessages}
+          exportFilename={`engagement-top-members-overall.csv`}
+          countLabel="Messages"
+        />
+      )}
+
+      {data.topMembersByMessagesInRange.length > 0 && (
+        <AnalyticsUserCountTable
+          title="Top members by messages (range)"
+          dataHint={chartHint(
+            "engagement.table.topMembersRange",
+            data.memberMessagesPerDay
+          )}
+          rows={data.topMembersByMessagesInRange}
+          exportFilename={`engagement-top-members-${range}.csv`}
+          countLabel="Messages"
         />
       )}
 

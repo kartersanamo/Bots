@@ -25,7 +25,7 @@ BOT_ENTRIES: dict[str, BotEntry] = {
     "games": BotEntry(
         "games",
         "MinecadiaGames",
-        "bot.py",
+        "main.py",
         ("logs",),
         ("assets/Configs",),
         "Games",

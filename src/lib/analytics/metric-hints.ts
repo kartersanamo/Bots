@@ -204,9 +204,24 @@ const H: Record<string, AnalyticsDataMeta> = {
   },
 
   // —— Engagement ——
+  "engagement.memberMessages": {
+    description:
+      "Guild messages from members who are not on the active staff roster (analytics_member_messages_daily, excluding statistics).",
+  },
   "engagement.totalStaffMessages": {
     description:
       "Guild messages from users on the active staff roster (statistics join) rolled up from analytics_member_messages_daily.",
+  },
+  "engagement.chart.memberMessages": {
+    description: "Non-staff member guild messages per time bucket.",
+  },
+  "engagement.table.topMembersOverall": {
+    description:
+      "All-time message totals for non-staff members (sum of daily rollups).",
+  },
+  "engagement.table.topMembersRange": {
+    description:
+      "Non-staff members with the most guild messages in the selected range.",
   },
   "engagement.staffTicketMessages": {
     description:

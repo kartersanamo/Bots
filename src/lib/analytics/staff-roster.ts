@@ -13,3 +13,9 @@ export function activeStaffStatisticsJoin(alias: string): string {
 
 export const ACTIVE_STAFF_USER_IDS_SUBQUERY = `
   SELECT user_ID FROM statistics WHERE ${ACTIVE_STAFF_WHERE_STATISTICS}`;
+
+/** Exclude users on the active staff roster (statistics). */
+export function nonStaffMemberFilter(memberAlias = "m"): string {
+  const col = `${memberAlias}.user_id`;
+  return `${col} NOT IN (${ACTIVE_STAFF_USER_IDS_SUBQUERY})`;
+}

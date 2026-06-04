@@ -246,6 +246,8 @@ export interface EngagementAnalytics {
   kpis: {
     /** All guild messages from users in the staff roster (`statistics`). */
     totalStaffMessagesInRange: number;
+    /** Guild messages from non-staff members (`analytics_member_messages_daily`). */
+    memberMessagesInRange: number;
     /** Staff messages in channels with an active ticket. */
     staffMessagesInRange: number;
     /** Rows in the legacy `games` table (excludes test sessions). */
@@ -255,6 +257,11 @@ export interface EngagementAnalytics {
   };
   totalStaffMessagesPerDay: DailyCount[];
   topStaffByTotalMessages: UserCountRow[];
+  /** Non-staff members with the most guild messages in range. */
+  topMembersByMessagesInRange: UserCountRow[];
+  /** Non-staff members with the most guild messages (all time in rollup table). */
+  topMembersByTotalMessages: UserCountRow[];
+  memberMessagesPerDay: DailyCount[];
   staffMessagesPerDay: DailyCount[];
   totalGamesPerDay: DailyCount[];
   voiceSecondsPerDay: DailyCount[];

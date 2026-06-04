@@ -1,6 +1,9 @@
 import type { AnalyticsGroupBy } from "@/lib/analytics/group-by";
 import { rangeSinceUnix } from "@/lib/analytics/range";
-import { activeStaffStatisticsJoin } from "@/lib/analytics/staff-roster";
+import {
+  activeStaffStatisticsJoin,
+  nonStaffMemberFilter,
+} from "@/lib/analytics/staff-roster";
 import { getAnalyticsTrackingTableStatus } from "@/lib/analytics/table-check";
 import {
   bucketKeySqlFromDate,
@@ -42,6 +45,8 @@ function mapDaily(rows: { date: string | Date; count: number }[]): DailyCount[] 
 
 const STAFF_MEMBER_JOIN = `INNER JOIN statistics s ON s.user_ID = m.user_id
   AND ${activeStaffStatisticsJoin("s")}`;
+
+const NON_STAFF_WHERE = nonStaffMemberFilter("m");
 
 export async function getEngagementAnalytics(
   range: AnalyticsRange,
@@ -100,6 +105,9 @@ export async function getEngagementAnalytics(
     const [
       totalStaffPerDay,
       topTotalStaff,
+      membersPerDay,
+      topMembersInRange,
+      topMembersOverall,
       ticketStaffPerDay,
       gamesPerDay,
       voicePerDay,
@@ -126,6 +134,32 @@ export async function getEngagementAnalytics(
                WHERE 1=1${dayClause}
                GROUP BY m.user_id ORDER BY total DESC LIMIT 50`,
               dayParams
+            )
+          : [],
+        hasMemberMessages
+          ? query<{ date: string; count: number }>(
+              `SELECT ${dayBucket} AS date, SUM(m.message_count) AS count
+               FROM analytics_member_messages_daily m
+               WHERE ${NON_STAFF_WHERE}${dayClause}
+               GROUP BY date ORDER BY date`,
+              dayParams
+            )
+          : [],
+        hasMemberMessages
+          ? query<{ user_id: string; total: number }>(
+              `SELECT m.user_id, SUM(m.message_count) AS total
+               FROM analytics_member_messages_daily m
+               WHERE ${NON_STAFF_WHERE}${dayClause}
+               GROUP BY m.user_id ORDER BY total DESC LIMIT 50`,
+              dayParams
+            )
+          : [],
+        hasMemberMessages
+          ? query<{ user_id: string; total: number }>(
+              `SELECT m.user_id, SUM(m.message_count) AS total
+               FROM analytics_member_messages_daily m
+               WHERE ${NON_STAFF_WHERE}
+               GROUP BY m.user_id ORDER BY total DESC LIMIT 50`
             )
           : [],
         hasTickets
@@ -212,6 +246,11 @@ export async function getEngagementAnalytics(
       range,
       groupBy
     );
+    const memberMessagesPerDay = normalizeTimeSeries(
+      mapDaily(membersPerDay),
+      range,
+      groupBy
+    );
     const staffMessagesPerDay = normalizeTimeSeries(
       mapDaily(ticketStaffPerDay),
       range,
@@ -237,6 +276,10 @@ export async function getEngagementAnalytics(
           (s, r) => s + r.count,
           0
         ),
+        memberMessagesInRange: memberMessagesPerDay.reduce(
+          (s, r) => s + r.count,
+          0
+        ),
         staffMessagesInRange: staffMessagesPerDay.reduce(
           (s, r) => s + r.count,
           0
@@ -252,6 +295,15 @@ export async function getEngagementAnalytics(
         userId: String(r.user_id),
         count: Number(r.total),
       })),
+      topMembersByMessagesInRange: topMembersInRange.map((r) => ({
+        userId: String(r.user_id),
+        count: Number(r.total),
+      })),
+      topMembersByTotalMessages: topMembersOverall.map((r) => ({
+        userId: String(r.user_id),
+        count: Number(r.total),
+      })),
+      memberMessagesPerDay,
       staffMessagesPerDay,
       totalGamesPerDay,
       voiceSecondsPerDay,

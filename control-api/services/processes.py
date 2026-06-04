@@ -141,7 +141,18 @@ def _get_process_info_uncached(bot_id: str) -> ProcessInfo:
         uptime = _process_uptime(pid) if pid else None
         return ProcessInfo(bot_id, status, pid, uptime, unit, msg)
 
-    pid = _find_pid_by_cwd(root, entry.entry_script)
+    scripts = [entry.entry_script]
+    if entry.entry_script == "main.py":
+        scripts.append("bot.py")
+    elif entry.entry_script == "bot.py":
+        scripts.append("main.py")
+
+    pid = None
+    for script in scripts:
+        pid = _find_pid_by_cwd(root, script)
+        if pid:
+            break
+
     if pid:
         return ProcessInfo(
             bot_id,
@@ -151,6 +162,17 @@ def _get_process_info_uncached(bot_id: str) -> ProcessInfo:
             None,
             None,
         )
+
+    if tcx.uses_tmux(bot_id):
+        return ProcessInfo(
+            bot_id,
+            "online",
+            None,
+            None,
+            None,
+            "tmux pane active (process not matched)",
+        )
+
     return ProcessInfo(bot_id, "offline", None, None, None, None)
 
 
