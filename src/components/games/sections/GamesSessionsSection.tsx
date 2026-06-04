@@ -91,13 +91,13 @@ export function GamesSessionsSection({ userTier }: { userTier: PermissionTier })
             <tbody>
               {sessions.map((s) => {
                 const isDm = s.dm_game === 1 || s.dm_game === "1";
-                const isLiveChat = !isDm && s.active;
+                const isLive = !!s.active;
                 return (
                   <tr
                     key={s.game_id}
                     className={cn(
                       "cursor-pointer border-b border-border/50 hover:bg-surface-hover",
-                      isLiveChat &&
+                      isLive &&
                         "border-l-2 border-l-emerald-500/70 bg-emerald-500/[0.08] hover:bg-emerald-500/[0.12]"
                     )}
                     onClick={() => setSelectedId(s.game_id)}
@@ -105,7 +105,7 @@ export function GamesSessionsSection({ userTier }: { userTier: PermissionTier })
                     <td
                       className={cn(
                         "py-2 pr-4 font-mono",
-                        isLiveChat && "text-emerald-200"
+                        isLive && "text-emerald-200"
                       )}
                     >
                       {s.game_id}
@@ -113,7 +113,7 @@ export function GamesSessionsSection({ userTier }: { userTier: PermissionTier })
                     <td
                       className={cn(
                         "py-2 pr-4",
-                        isLiveChat && "font-medium text-emerald-100"
+                        isLive && "font-medium text-emerald-100"
                       )}
                     >
                       {s.game_name}
@@ -123,7 +123,7 @@ export function GamesSessionsSection({ userTier }: { userTier: PermissionTier })
                         <Badge variant={isDm ? "info" : "default"}>
                           {isDm ? "DM" : "Chat"}
                         </Badge>
-                        {isLiveChat && (
+                        {isLive && (
                           <Badge variant="success">Live</Badge>
                         )}
                       </div>

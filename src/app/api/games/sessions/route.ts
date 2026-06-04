@@ -1,7 +1,8 @@
 import { handleApiRoute, requireAction } from "@/lib/api/helpers";
-import { listGameSessions } from "@/lib/db/games";
+import { getCurrentDmGameId, listGameSessions } from "@/lib/db/games";
 import {
   getActiveChatGameIds,
+  getGamesBotStatus,
   isGamesBotApiConfigured,
 } from "@/lib/games-bot/client";
 import { isDbConfigured } from "@/lib/db/pool";
@@ -22,6 +23,7 @@ export const GET = handleApiRoute(async (request) => {
   const sessions = await listGameSessions({ limit, search, dm });
 
   let activeChatIds = new Set<number>();
+  let dmGamesRunning = false;
   if (isGamesBotApiConfigured()) {
     try {
       const { gameIds } = await getActiveChatGameIds();
@@ -29,13 +31,27 @@ export const GET = handleApiRoute(async (request) => {
     } catch {
       activeChatIds = new Set();
     }
+    try {
+      const status = await getGamesBotStatus();
+      dmGamesRunning = status.dmGamesRunning;
+    } catch {
+      dmGamesRunning = false;
+    }
   }
+
+  const currentDmGameId = await getCurrentDmGameId();
 
   const enriched = sessions.map((s) => {
     const isDm = s.dm_game === 1 || s.dm_game === "1";
+    const activeChat = !isDm && activeChatIds.has(Number(s.game_id));
+    const activeDm =
+      isDm &&
+      dmGamesRunning &&
+      currentDmGameId != null &&
+      Number(s.game_id) === currentDmGameId;
     return {
       ...s,
-      active: !isDm && activeChatIds.has(Number(s.game_id)),
+      active: activeChat || activeDm,
     };
   });
 

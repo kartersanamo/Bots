@@ -338,6 +338,17 @@ export async function listXpLogSources(limit = 80): Promise<string[]> {
   return rows.map((r) => r.source).filter(Boolean);
 }
 
+/** Most recent DM rotation session (matches MinecadiaGames GameRepository). */
+export async function getCurrentDmGameId(): Promise<number | null> {
+  if (!isDbConfigured()) return null;
+  const row = await queryOne<{ game_id: number }>(
+    `SELECT game_id FROM games
+     WHERE dm_game = 1 OR dm_game = TRUE OR dm_game = '1'
+     ORDER BY game_id DESC LIMIT 1`
+  );
+  return row?.game_id != null ? Number(row.game_id) : null;
+}
+
 export async function listGameSessions(opts: {
   limit?: number;
   dm?: "all" | "chat" | "dm";

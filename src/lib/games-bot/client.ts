@@ -134,6 +134,8 @@ export async function getSessionLiveState(gameId: number): Promise<{
   winners?: { user_id: string | null; xp: number }[];
   activityLog?: unknown[];
   answer?: string;
+  answerRevealed?: boolean;
+  staffAnswer?: string;
   revealed?: boolean;
 }> {
   return gamesFetch(`/session/${gameId}`);

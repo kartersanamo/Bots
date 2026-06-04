@@ -42,6 +42,7 @@ interface SessionDetail {
     gameType?: string;
     answer?: string;
     answerRevealed?: boolean;
+    staffAnswer?: string;
   } | null;
 }
 
@@ -117,18 +118,31 @@ export function GamesSessionDrawer({
       setMsg(data.error || "Action failed");
       return;
     }
-    if (action === "show_correct_answer" && data.answer) {
-      setRevealedAnswer(String(data.answer));
-    }
-    setMsg(action === "show_correct_answer" ? "Answer revealed" : "Done");
+    setMsg("Done");
     load();
     onUpdated();
   }
 
   async function showCorrectAnswer() {
     setRevealingAnswer(true);
+    setMsg(null);
     try {
-      await chatAction("show_correct_answer");
+      const res = await dashboardFetch(`/api/games/sessions/${gameId}`);
+      const data = await res.json();
+      if (!res.ok) {
+        setMsg(data.error || "Could not load session");
+        return;
+      }
+      const answer =
+        data.live?.staffAnswer ?? data.live?.answer ?? null;
+      if (answer) {
+        setRevealedAnswer(String(answer));
+        setMsg("Answer shown here only — not posted to Discord");
+      } else if (data.live?.active) {
+        setMsg("Answer not available for this game type");
+      } else {
+        setMsg("This chat session is not live in the bot registry");
+      }
     } finally {
       setRevealingAnswer(false);
     }
@@ -247,7 +261,7 @@ export function GamesSessionDrawer({
                       </p>
                       <p className="mt-1 text-sm text-white">{revealedAnswer}</p>
                       <p className="mt-1 text-xs text-muted">
-                        Posted to the game message in Discord.
+                        Staff view only — players still see the normal game message in Discord.
                       </p>
                     </div>
                   )}
@@ -267,6 +281,12 @@ export function GamesSessionDrawer({
               {!isDm && !detail.live?.active && canControl && (
                 <p className="text-xs text-muted">
                   This chat session is not in the bot&apos;s live registry (ended or bot restarted). End / 2x controls only work on active games.
+                </p>
+              )}
+
+              {isDm && detail.live?.active && (
+                <p className="text-xs text-emerald-300/90">
+                  Current DM rotation — players can start this game from the leveling channel.
                 </p>
               )}
 

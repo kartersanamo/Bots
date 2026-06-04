@@ -1,7 +1,12 @@
 import { handleApiRoute, requireAction } from "@/lib/api/helpers";
-import { getGameSession, listDmSessionEntries } from "@/lib/db/games";
+import {
+  getCurrentDmGameId,
+  getGameSession,
+  listDmSessionEntries,
+} from "@/lib/db/games";
 import { dmTableForGameName } from "@/lib/games/dm-tables";
 import {
+  getGamesBotStatus,
   getSessionLiveState,
   isGamesBotApiConfigured,
 } from "@/lib/games-bot/client";
@@ -38,11 +43,25 @@ export const GET = handleApiRoute(async (_request, ctx) => {
   }
 
   let live = null;
-  if (!isDm && isGamesBotApiConfigured()) {
-    try {
-      live = await getSessionLiveState(gameId);
-    } catch {
-      live = null;
+  if (isGamesBotApiConfigured()) {
+    if (!isDm) {
+      try {
+        live = await getSessionLiveState(gameId);
+      } catch {
+        live = null;
+      }
+    } else {
+      try {
+        const currentDmGameId = await getCurrentDmGameId();
+        const status = await getGamesBotStatus();
+        const active =
+          status.dmGamesRunning &&
+          currentDmGameId != null &&
+          currentDmGameId === gameId;
+        live = { active };
+      } catch {
+        live = null;
+      }
     }
   }
 
