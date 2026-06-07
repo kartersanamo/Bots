@@ -37,8 +37,8 @@ export async function enrichAuditTargets(
       type: string;
       name: string;
     }>(
-      `SELECT channelID, number, type, name FROM tickets
-       WHERE channelID IN (${placeholders})`,
+      `SELECT channel_id AS channelID, number, type, name FROM tickets
+       WHERE channel_id IN (${placeholders})`,
       snowflakes
     ).catch(() => []);
     for (const row of ticketRows) {

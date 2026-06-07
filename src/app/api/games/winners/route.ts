@@ -10,7 +10,7 @@ export const GET = handleApiRoute(async () => {
   }
 
   try {
-    const data = await getBotConfig("games", "assets/Configs/winners.json");
+    const data = await getBotConfig("games", "assets/configs/winners.json");
     const content = (data.content ?? {}) as {
       Months?: Record<string, Record<string, number>>;
     };

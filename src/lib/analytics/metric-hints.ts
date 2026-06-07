@@ -265,6 +265,94 @@ const H: Record<string, AnalyticsDataMeta> = {
   "engagement.table.topStaffMessages": {
     description: "Staff with the most guild messages in the selected range.",
   },
+  "engagement.joins": {
+    description:
+      "Member join events recorded by bots in analytics_member_events for the selected range.",
+  },
+  "engagement.leaves": {
+    description:
+      "Member leave events recorded by bots in analytics_member_events for the selected range.",
+  },
+  "engagement.netChange": {
+    description: "Joins minus leaves per range (net roster change from tracked events).",
+  },
+  "engagement.leaveRate": {
+    description:
+      "Leaves ÷ joins in range. Values above 100% mean more leaves than joins.",
+  },
+  "engagement.avgAccountAge": {
+    description:
+      "Average Discord account age in days when members joined (join events only).",
+  },
+  "engagement.serverSize": {
+    description:
+      "Latest average member count from daily analytics_server_snapshots in range.",
+  },
+  "engagement.onlineRatio": {
+    description:
+      "Average online ÷ total members from daily snapshots, expressed as a percentage.",
+  },
+  "engagement.boostCount": {
+    description: "Latest average server boost count from analytics_server_snapshots.",
+  },
+  "engagement.uniqueMessengers": {
+    description:
+      "Distinct non-staff members who sent at least one guild message in range.",
+  },
+  "engagement.characters": {
+    description:
+      "Sum of character_count from analytics_member_messages_daily (non-staff) in range.",
+  },
+  "engagement.ownerTicketMessages": {
+    description:
+      "Messages from ticket owners in open ticket channels (analytics_ticket_messages_daily.owner_messages).",
+  },
+  "engagement.chart.joinsLeaves": {
+    description: "Join and leave events per time bucket.",
+  },
+  "engagement.chart.netChange": {
+    description: "Net member change (joins − leaves) per time bucket.",
+  },
+  "engagement.chart.joinLeaveHours": {
+    description: "Join and leave events grouped by hour of day (UTC).",
+  },
+  "engagement.chart.joinLeaveWeekday": {
+    description: "Join and leave events grouped by day of week.",
+  },
+  "engagement.chart.accountAge": {
+    description:
+      "Distribution of Discord account age when members joined (bucketed).",
+  },
+  "engagement.chart.inviteSources": {
+    description: "Joins grouped by invite code (vanity / unknown when missing).",
+  },
+  "engagement.chart.onlineRatio": {
+    description: "Online members as a percentage of total members per snapshot day.",
+  },
+  "engagement.chart.boosts": {
+    description: "Average server boost count from daily snapshots.",
+  },
+  "engagement.chart.uniqueMessengers": {
+    description:
+      "Distinct non-staff members with at least one message per time bucket.",
+  },
+  "engagement.chart.characters": {
+    description: "Characters sent in guild chat by non-staff members per bucket.",
+  },
+  "engagement.chart.ownerTicketMessages": {
+    description: "Ticket owner messages in active ticket channels per bucket.",
+  },
+  "engagement.table.quickChurn": {
+    description:
+      "Members who both joined and left in range, sorted by shortest time in server.",
+  },
+  "engagement.table.repeatLeavers": {
+    description:
+      "Users with two or more leave events in range (rejoin churn signal).",
+  },
+  "engagement.table.topVoiceChannels": {
+    description: "Voice channels with the most connected time in range.",
+  },
 
   // —— Tickets ——
   "tickets.avgPerDay": {

@@ -24,7 +24,7 @@ export async function getModerationAnalytics(
 
   const since = rangeSinceUnix(range);
   const bucketSpec = buildTimeBucketSpec(range, groupBy);
-  const blBucket = bucketKeySqlFromUnix("whenToUnbl", bucketSpec);
+  const blBucket = bucketKeySqlFromUnix("unblacklist_at", bucketSpec);
 
   const tracking = await getAnalyticsTrackingTableStatus();
   const hasModActions = tracking.moderation === true;
@@ -49,22 +49,22 @@ export async function getModerationAnalytics(
           `SELECT
             (SELECT COUNT(*) FROM blacklists) AS totalBlacklists,
             (SELECT COUNT(*) FROM blacklists
-             WHERE TRIM(whenToUnbl) != '' AND CAST(whenToUnbl AS UNSIGNED) > 0) AS withExpiry`
+             WHERE unblacklist_at IS NOT NULL AND unblacklist_at > 0) AS withExpiry`
         ),
         fetchGuildBanCount().catch(() => null),
         fetchGuildTimeoutCount().catch(() => null),
         query<{ date: string; count: number }>(
           `SELECT ${blBucket} AS date, COUNT(*) AS count
            FROM blacklists
-           WHERE CAST(whenToUnbl AS UNSIGNED) > 0
-           ${since != null ? "AND CAST(whenToUnbl AS UNSIGNED) >= ?" : ""}
+           WHERE unblacklist_at IS NOT NULL AND unblacklist_at > 0
+           ${since != null ? "AND unblacklist_at >= ?" : ""}
            GROUP BY date ORDER BY date`,
           since != null ? [since] : []
         ).catch(() => []),
         query<{ staffID: string; count: number }>(
-          `SELECT staffID, COUNT(*) AS count FROM blacklists
-           WHERE TRIM(staffID) != ''
-           GROUP BY staffID ORDER BY count DESC LIMIT 15`
+          `SELECT staff_id AS staffID, COUNT(*) AS count FROM blacklists
+           WHERE staff_id IS NOT NULL AND staff_id > 0
+           GROUP BY staff_id ORDER BY count DESC LIMIT 15`
         ).catch(() => []),
         queryOne<{ total: number }>(`SELECT COUNT(*) AS total FROM media`).catch(
           () => ({ total: 0 })

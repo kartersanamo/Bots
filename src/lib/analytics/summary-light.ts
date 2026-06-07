@@ -14,9 +14,9 @@ import { getGamesOverview } from "@/lib/db/games";
 import { getTicketStats } from "@/lib/db/tickets";
 import { isDbConfigured, queryOne } from "@/lib/db/pool";
 import type { PermissionTier } from "@/lib/permissions";
+import { TICKET_VALID_CLOSED_SQL } from "@/lib/db/schema-aliases";
 
-const VALID_CLOSED =
-  "TRIM(closed_at) != '' AND closed_at IS NOT NULL AND closed_at NOT IN ('0', '00000000')";
+const VALID_CLOSED = TICKET_VALID_CLOSED_SQL;
 
 /** Lightweight KPIs — no full ticket analytics pass. */
 export async function getAnalyticsSummaryLight(
@@ -34,7 +34,7 @@ export async function getAnalyticsSummaryLight(
   const tsClause = since != null ? " AND CAST(timestamp AS UNSIGNED) >= ?" : "";
   const tsParams = since != null ? [since] : [];
 
-  const baseWhere = `WHERE CAST(opened_at AS UNSIGNED) > 0${priv.sql}`;
+  const baseWhere = `WHERE opened_at > 0${priv.sql}`;
   const baseParams = [...priv.params];
 
   const [
@@ -76,7 +76,7 @@ export async function getAnalyticsSummaryLight(
       ? queryOne<{ days: number }>(
           `SELECT GREATEST(
              1,
-             CEIL((UNIX_TIMESTAMP() - MIN(CAST(opened_at AS UNSIGNED))) / 86400)
+             CEIL((UNIX_TIMESTAMP() - MIN(opened_at)) / 86400)
            ) AS days
            FROM tickets ${baseWhere}`,
           baseParams

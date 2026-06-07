@@ -52,7 +52,7 @@ export async function getStaffTotalAnalytics(
         query<{ date: string; count: number }>(
           `SELECT ${dayBucket} AS date, SUM(d.message_count) AS count
            FROM analytics_staff_messages_daily d
-           INNER JOIN statistics s ON s.user_ID = d.user_id
+           INNER JOIN staff_statistics s ON s.user_id = d.user_id
              AND ${activeStaffStatisticsJoin("s")}
            WHERE 1=1${dayClause}
            GROUP BY date ORDER BY date`,
@@ -61,7 +61,7 @@ export async function getStaffTotalAnalytics(
         query<{ user_id: string; total: number }>(
           `SELECT d.user_id, SUM(d.message_count) AS total
            FROM analytics_staff_messages_daily d
-           INNER JOIN statistics s ON s.user_ID = d.user_id
+           INNER JOIN staff_statistics s ON s.user_id = d.user_id
              AND ${activeStaffStatisticsJoin("s")}
            WHERE 1=1${dayClause}
            GROUP BY d.user_id ORDER BY total DESC LIMIT 25`,

@@ -1,3 +1,10 @@
+import {
+  LEVELING_ACTIVE_SQL,
+  TICKET_COLUMNS,
+  TICKET_OPEN_SQL,
+  TICKET_CLOSED_SQL,
+} from "@/lib/db/schema-aliases";
+
 export interface OverviewStats {
   totalTickets: number;
   openTickets: number;
@@ -32,18 +39,18 @@ export async function getOverviewStats(): Promise<OverviewStats | null> {
       }>(
         `SELECT
           COUNT(*) AS totalTickets,
-          SUM(active = 'True') AS openTickets,
-          SUM(active IN ('False', '0')) AS closedTickets,
+          SUM(${TICKET_OPEN_SQL}) AS openTickets,
+          SUM(${TICKET_CLOSED_SQL}) AS closedTickets,
           SUM(
-            TRIM(opened_at) != ''
-            AND DATE(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED))) = CURDATE()
+            opened_at > 0
+            AND DATE(FROM_UNIXTIME(opened_at)) = CURDATE()
           ) AS ticketsToday
          FROM tickets`
       ),
       queryOne<{ totalLevelingUsers: number; activeLevelingUsers: number }>(
         `SELECT
           COUNT(*) AS totalLevelingUsers,
-          SUM(active = '1' OR active = 1) AS activeLevelingUsers
+          SUM(${LEVELING_ACTIVE_SQL}) AS activeLevelingUsers
          FROM leveling`
       ),
       queryOne<{ totalBlacklists: number }>(
@@ -75,18 +82,14 @@ export async function getRecentTickets(limit = 10): Promise<RecentTicket[]> {
   try {
     return query<RecentTicket>(
       `SELECT
-        channelID,
-        ownerID,
-        type,
-        FROM_UNIXTIME(CAST(opened_at AS UNSIGNED)) AS opened,
+        ${TICKET_COLUMNS},
+        FROM_UNIXTIME(opened_at) AS opened,
         CASE
-          WHEN TRIM(closed_at) = '' OR closed_at IS NULL THEN NULL
-          ELSE FROM_UNIXTIME(CAST(closed_at AS UNSIGNED))
-        END AS closed,
-        active,
-        transcript
+          WHEN closed_at IS NULL OR closed_at = 0 THEN NULL
+          ELSE FROM_UNIXTIME(closed_at)
+        END AS closed
        FROM tickets
-       ORDER BY CAST(opened_at AS UNSIGNED) DESC
+       ORDER BY opened_at DESC
        LIMIT ?`,
       [limit]
     );

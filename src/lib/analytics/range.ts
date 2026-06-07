@@ -55,11 +55,10 @@ export function closedAtRangeClause(range: AnalyticsRange): {
   params: number[];
 } {
   const since = rangeSinceUnix(range);
-  const base =
-    " AND TRIM(closed_at) != '' AND closed_at IS NOT NULL AND closed_at NOT IN ('0', '00000000')";
+  const base = " AND closed_at IS NOT NULL AND closed_at > 0";
   if (since === null) return { sql: base, params: [] };
   return {
-    sql: `${base} AND CAST(closed_at AS UNSIGNED) >= ?`,
+    sql: `${base} AND closed_at >= ?`,
     params: [since],
   };
 }

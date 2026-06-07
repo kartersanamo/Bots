@@ -14,7 +14,7 @@ const PERIOD_TOTALS_SQL = `
   SELECT
     ${staffStatSumSelectList()},
     COUNT(*) AS staff
-  FROM statistics
+  FROM staff_statistics
   WHERE ${ACTIVE_STAFF_WHERE_STATISTICS}`;
 
 function mapPeriodTotals(
@@ -32,7 +32,7 @@ export async function getStaffRecentAnalytics(): Promise<StaffRecentAnalytics | 
 
   try {
     const [rows, periodTotalsRow, lastWipedAt] = await Promise.all([
-      fetchStaffLeaderboardRows("statistics"),
+      fetchStaffLeaderboardRows("staff_statistics"),
       queryOne<Record<string, unknown>>(PERIOD_TOTALS_SQL).catch(() => null),
       getLastStaffStatisticsWipeAt(),
     ]);

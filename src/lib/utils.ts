@@ -5,8 +5,13 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function isTicketOpen(active: string | number): boolean {
-  return active === "True" || active === 1 || active === "1";
+export function isTicketOpen(active: string | number | boolean): boolean {
+  return (
+    active === "True" ||
+    active === 1 ||
+    active === "1" ||
+    active === true
+  );
 }
 
 /** Leveling / games `active` and similar 0/1 flags */

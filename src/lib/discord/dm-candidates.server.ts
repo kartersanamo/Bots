@@ -41,7 +41,7 @@ export async function getDmCandidateUserIds(botId: string): Promise<string[]> {
       }
       const active = await distinctUserIds(
         `SELECT DISTINCT user_id FROM games
-         WHERE dm_game = 1 OR dm_game = TRUE OR dm_game = '1'
+         WHERE is_dm = 1
          LIMIT ?`,
         [MAX_CANDIDATES]
       );
@@ -50,8 +50,8 @@ export async function getDmCandidateUserIds(botId: string): Promise<string[]> {
 
     if (botId === "tickets") {
       const owners = await query<{ ownerID: string }>(
-        `SELECT DISTINCT ownerID AS ownerID FROM tickets
-         WHERE ownerID IS NOT NULL AND TRIM(ownerID) != ''
+        `SELECT DISTINCT owner_id AS ownerID FROM tickets
+         WHERE owner_id IS NOT NULL AND owner_id > 0
          ORDER BY CAST(opened_at AS UNSIGNED) DESC
          LIMIT ?`,
         [MAX_CANDIDATES]

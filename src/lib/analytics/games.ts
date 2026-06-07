@@ -13,6 +13,10 @@ import type {
 } from "@/lib/analytics/types";
 import { getAllGamesLeaderboards, getGamesOverview } from "@/lib/db/games";
 import { query, queryOne, isDbConfigured } from "@/lib/db/pool";
+import {
+  GAMES_NOT_TEST_SQL,
+  LEVELING_ACTIVE_SQL,
+} from "@/lib/db/schema-aliases";
 import { env } from "@/lib/env";
 
 /** Matches MinecadiaGames `/daily` XP log entries. */
@@ -92,7 +96,7 @@ export async function getGamesAnalytics(
       query<{ date: string; count: number }>(
         `SELECT ${sessionBucket} AS date, COUNT(*) AS count
          FROM games
-         WHERE game_id != -999999${sessionClause}
+         WHERE ${GAMES_NOT_TEST_SQL}${sessionClause}
          GROUP BY date ORDER BY date`,
         sessionParams
       ),
@@ -137,7 +141,7 @@ export async function getGamesAnalytics(
           END AS name,
           COUNT(*) AS count
          FROM leveling
-         WHERE active = '1' OR active = 1
+         WHERE ${LEVELING_ACTIVE_SQL}
          GROUP BY name ORDER BY count DESC`
       ),
       query<{ date: string; count: number }>(
@@ -155,21 +159,21 @@ export async function getGamesAnalytics(
         achievementParams
       ),
       query<{ name: string; count: number }>(
-        `SELECT COALESCE(NULLIF(TRIM(game_name), ''), 'Unknown') AS name, COUNT(*) AS count
+        `SELECT COALESCE(NULLIF(TRIM(name), ''), 'Unknown') AS name, COUNT(*) AS count
          FROM games
-         WHERE game_id != -999999${sessionClause}
+         WHERE ${GAMES_NOT_TEST_SQL}${sessionClause}
          GROUP BY name ORDER BY count DESC LIMIT 14`,
         sessionParams
       ),
       query<{ name: string; count: number }>(
         `SELECT
           CASE
-            WHEN COALESCE(CAST(dm_game AS UNSIGNED), 0) = 1 THEN 'DM games'
+            WHEN COALESCE(CAST(is_dm AS UNSIGNED), 0) = 1 THEN 'DM games'
             ELSE 'Channel games'
           END AS name,
           COUNT(*) AS count
          FROM games
-         WHERE game_id != -999999${sessionClause}
+         WHERE ${GAMES_NOT_TEST_SQL}${sessionClause}
          GROUP BY name`,
         sessionParams
       ),

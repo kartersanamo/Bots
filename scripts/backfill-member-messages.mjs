@@ -199,24 +199,24 @@ async function updateState(pool, patch, { force = false } = {}) {
 
 async function loadStaffIds(pool) {
   const [rows] = await pool.query(`
-    SELECT user_ID FROM statistics WHERE (
-      COALESCE(CAST(tickets_closed AS UNSIGNED), 0) > 0 OR
-      COALESCE(CAST(messages_sent AS UNSIGNED), 0) > 0 OR
-      COALESCE(CAST(warnings AS UNSIGNED), 0) > 0 OR
-      COALESCE(CAST(mutes AS UNSIGNED), 0) > 0 OR
-      COALESCE(CAST(temp_bans AS UNSIGNED), 0) > 0 OR
-      COALESCE(CAST(bans AS UNSIGNED), 0) > 0 OR
-      COALESCE(CAST(screenshares AS UNSIGNED), 0) > 0 OR
-      COALESCE(CAST(manual_bans AS UNSIGNED), 0) > 0 OR
-      COALESCE(CAST(blacklists AS UNSIGNED), 0) > 0 OR
-      COALESCE(CAST(revives AS UNSIGNED), 0) > 0 OR
-      COALESCE(CAST(appeals AS UNSIGNED), 0) > 0 OR
-      COALESCE(CAST(threads_locked AS UNSIGNED), 0) > 0 OR
-      COALESCE(CAST(strike_team_votes AS UNSIGNED), 0) > 0 OR
-      COALESCE(CAST(characters_sent AS UNSIGNED), 0) > 0 OR
-      COALESCE(CAST(punishment_requests AS UNSIGNED), 0) > 0
+    SELECT user_id FROM staff_statistics WHERE (
+      COALESCE(tickets_closed, 0) > 0 OR
+      COALESCE(messages_sent, 0) > 0 OR
+      COALESCE(warnings, 0) > 0 OR
+      COALESCE(mutes, 0) > 0 OR
+      COALESCE(temp_bans, 0) > 0 OR
+      COALESCE(bans, 0) > 0 OR
+      COALESCE(screenshares, 0) > 0 OR
+      COALESCE(manual_bans, 0) > 0 OR
+      COALESCE(blacklists, 0) > 0 OR
+      COALESCE(revives, 0) > 0 OR
+      COALESCE(appeals, 0) > 0 OR
+      COALESCE(threads_locked, 0) > 0 OR
+      COALESCE(strike_team_votes, 0) > 0 OR
+      COALESCE(characters_sent, 0) > 0 OR
+      COALESCE(punishment_requests, 0) > 0
     )`);
-  return new Set(rows.map((r) => String(r.user_ID)));
+  return new Set(rows.map((r) => String(r.user_id)));
 }
 
 async function flushCounts(pool, counts, stats) {

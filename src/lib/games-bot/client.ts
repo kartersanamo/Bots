@@ -120,6 +120,26 @@ export async function reloadGamesConfig(): Promise<void> {
   await gamesFetch("/reload-config", { method: "POST" });
 }
 
+export type DmRotationState = {
+  rotation: string[];
+  vaulted: string[];
+  activeGame: string | null;
+};
+
+export async function getDmRotation(): Promise<DmRotationState> {
+  return gamesFetch("/dm-games/rotation");
+}
+
+export async function setDmVault(
+  game: string,
+  vaulted: boolean
+): Promise<{ ok: boolean; game: string; vaulted: boolean }> {
+  return gamesFetch("/dm-games/vault", {
+    method: "POST",
+    body: JSON.stringify({ game, vaulted }),
+  });
+}
+
 export async function getActiveChatGameIds(): Promise<{ gameIds: number[] }> {
   return gamesFetch("/sessions/active");
 }

@@ -5,13 +5,13 @@ import { Card } from "@/components/ui/Card";
 import Link from "next/link";
 
 const QUICK_CONFIGS = [
-  { path: "assets/Configs/games/chat.json", label: "Chat games" },
-  { path: "assets/Configs/games/dm.json", label: "DM games" },
-  { path: "assets/Configs/leveling.json", label: "Level thresholds" },
-  { path: "assets/Configs/rewards.json", label: "Rewards copy" },
-  { path: "assets/Configs/milestones.json", label: "Milestones" },
-  { path: "assets/Configs/games/trivia.json", label: "Trivia bank" },
-  { path: "assets/Configs/discord.json", label: "Discord IDs" },
+  { path: "assets/configs/games/chat.json", label: "Chat games" },
+  { path: "assets/configs/games/dm.json", label: "DM games" },
+  { path: "assets/configs/leveling.json", label: "Level thresholds" },
+  { path: "assets/configs/rewards.json", label: "Rewards copy" },
+  { path: "assets/configs/milestones.json", label: "Milestones" },
+  { path: "assets/configs/games/trivia.json", label: "Trivia bank" },
+  { path: "assets/configs/discord.json", label: "Discord IDs" },
 ];
 
 export function GamesConfigSection({

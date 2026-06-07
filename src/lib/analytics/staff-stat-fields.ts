@@ -102,11 +102,10 @@ export const STAFF_STAT_KEYS = STAFF_STAT_FIELDS.map(
   (f) => f.key
 ) as StaffStatKey[];
 
-export function staffStatSelectList(table: "statistics" | "total_statistics"): string {
-  if (table === "statistics") {
+export function staffStatSelectList(table: "staff_statistics" | "total_statistics"): string {
+  if (table === "staff_statistics") {
     return STAFF_STAT_FIELDS.map(
-      (f) =>
-        `COALESCE(CAST(${f.column} AS UNSIGNED), 0) AS ${f.key}`
+      (f) => `COALESCE(${f.column}, 0) AS ${f.key}`
     ).join(",\n            ");
   }
   return STAFF_STAT_FIELDS.map(

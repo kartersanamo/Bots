@@ -192,6 +192,80 @@ export function DailyPercentChart({
   );
 }
 
+export function DualNamedBarChart({
+  primary,
+  secondary,
+  primaryLabel = "Primary",
+  secondaryLabel = "Secondary",
+  primaryColor = "#34d399",
+  secondaryColor = "#f87171",
+}: {
+  primary: NamedCount[];
+  secondary: NamedCount[];
+  primaryLabel?: string;
+  secondaryLabel?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+}) {
+  const map = new Map<
+    string,
+    { name: string; primary: number; secondary: number }
+  >();
+  for (const r of primary) {
+    map.set(r.name, { name: r.name, primary: r.count, secondary: 0 });
+  }
+  for (const r of secondary) {
+    const cur = map.get(r.name) ?? { name: r.name, primary: 0, secondary: 0 };
+    cur.secondary = r.count;
+    map.set(r.name, cur);
+  }
+  const data =
+    primary.length > 0
+      ? primary.map((r) => map.get(r.name)!)
+      : [...map.values()];
+
+  if (!data.length || !data.some((d) => d.primary > 0 || d.secondary > 0)) {
+    return <p className="py-8 text-center text-sm text-muted">No data in range</p>;
+  }
+
+  return (
+    <ResponsiveContainer width="100%" height={240}>
+      <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+        <XAxis
+          dataKey="name"
+          tick={{ fill: "#94a3b8", fontSize: 9 }}
+          interval={0}
+          height={28}
+        />
+        <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} width={40} />
+        <Tooltip
+          contentStyle={{
+            background: "#1e293b",
+            border: "1px solid #334155",
+            borderRadius: 8,
+          }}
+        />
+        <Legend />
+        <Bar
+          dataKey="primary"
+          name={primaryLabel}
+          fill={primaryColor}
+          radius={[4, 4, 0, 0]}
+          isAnimationActive={false}
+        />
+        <Bar
+          dataKey="secondary"
+          name={secondaryLabel}
+          fill={secondaryColor}
+          radius={[4, 4, 0, 0]}
+          isAnimationActive={false}
+        />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
 export function DualDailyLineChart({
   opened,
   closed,

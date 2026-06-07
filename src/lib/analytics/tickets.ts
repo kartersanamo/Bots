@@ -31,6 +31,11 @@ import {
   cachedAnalytics,
 } from "@/lib/analytics/inflight-cache";
 import { query, queryOne, isDbConfigured } from "@/lib/db/pool";
+import {
+  TICKET_COLUMNS,
+  TICKET_OPEN_SQL,
+  TICKET_VALID_CLOSED_SQL,
+} from "@/lib/db/schema-aliases";
 import type { PermissionTier } from "@/lib/permissions";
 
 const EXCLUDED_OPENER_IDS = ["837793755838939157", "220576008372355072"];
@@ -49,10 +54,14 @@ function fillPrivatedSplit(
   }));
 }
 
-const VALID_CLOSED =
-  "TRIM(closed_at) != '' AND closed_at IS NOT NULL AND closed_at NOT IN ('0', '00000000')";
+const VALID_CLOSED = TICKET_VALID_CLOSED_SQL;
 
 const SAMPLE_TIMING_LIMIT = 25_000;
+
+/** Normalize UNION k1 columns to one collation (tickets.type vs CAST literals). */
+function unionKeyExpr(expr: string): string {
+  return `CAST(${expr} AS CHAR CHARACTER SET utf8mb4) COLLATE utf8mb4_unicode_ci`;
+}
 
 type SliceRow = {
   metric: string;
@@ -74,7 +83,7 @@ type TicketHeavySnapshot = {
 function baseWhere(tier: PermissionTier): { sql: string; params: (string | number)[] } {
   const priv = analyticsPrivatedClause(tier);
   return {
-    sql: `WHERE CAST(opened_at AS UNSIGNED) > 0${priv.sql}`,
+    sql: `WHERE opened_at > 0${priv.sql}`,
     params: [...priv.params],
   };
 }
@@ -121,7 +130,7 @@ export async function getTicketAnalytics(
         closedInRange: number;
       }>(
         `SELECT
-          (SELECT COUNT(*) FROM tickets ${base.sql} AND active = 'True') AS openCount,
+          (SELECT COUNT(*) FROM tickets ${base.sql} AND ${TICKET_OPEN_SQL}) AS openCount,
           (SELECT COUNT(*) FROM tickets ${rangeWhere}) AS openedInRange,
           (SELECT COUNT(*) FROM tickets ${base.sql}${closedRange.sql}) AS closedInRange`,
         [...base.params, ...rangeParams, ...base.params, ...closedRange.params]
@@ -133,19 +142,19 @@ export async function getTicketAnalytics(
         [...base.params, ...closedRange.params]
       ),
       query<{ ownerID: string; ticket_count: number }>(
-        `SELECT ownerID, COUNT(*) AS ticket_count FROM tickets ${rangeWhere}
-         GROUP BY ownerID ORDER BY ticket_count DESC LIMIT 20`,
+        `SELECT owner_id AS ownerID, COUNT(*) AS ticket_count FROM tickets ${rangeWhere}
+         GROUP BY owner_id ORDER BY ticket_count DESC LIMIT 20`,
         rangeParams
       ),
       query<{ ownerID: string; ticket_count: number }>(
-        `SELECT ownerID, COUNT(*) AS ticket_count FROM tickets ${base.sql}
-         GROUP BY ownerID ORDER BY ticket_count DESC LIMIT 20`,
+        `SELECT owner_id AS ownerID, COUNT(*) AS ticket_count FROM tickets ${base.sql}
+         GROUP BY owner_id ORDER BY ticket_count DESC LIMIT 20`,
         base.params
       ),
       query<{ closed_by: string; ticket_count: number }>(
-        `SELECT closed_by, COUNT(*) AS ticket_count FROM tickets ${closedWhere}
-         AND TRIM(closed_by) != ''
-         GROUP BY closed_by ORDER BY ticket_count DESC LIMIT 20`,
+        `SELECT closed_by_id AS closed_by, COUNT(*) AS ticket_count FROM tickets ${closedWhere}
+         AND closed_by_id IS NOT NULL AND closed_by_id > 0
+         GROUP BY closed_by_id ORDER BY ticket_count DESC LIMIT 20`,
         closedParams
       ),
       query<{ name: string; count: number }>(
@@ -274,12 +283,12 @@ async function getTicketHeavySnapshot(
         base.params
       ),
       query<{ ownerID: string; ticket_date: string; ticket_count: number }>(
-        `SELECT ownerID,
-          DATE(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED))) AS ticket_date,
+        `SELECT owner_id AS ownerID,
+          DATE(FROM_UNIXTIME(opened_at)) AS ticket_date,
           COUNT(*) AS ticket_count
          FROM tickets ${base.sql}
-         AND ownerID NOT IN (?, ?)
-         GROUP BY ownerID, ticket_date
+         AND owner_id NOT IN (?, ?)
+         GROUP BY owner_id, ticket_date
          ORDER BY ticket_count DESC LIMIT 10`,
         [...base.params, ...EXCLUDED_OPENER_IDS]
       ),
@@ -292,11 +301,8 @@ async function getTicketHeavySnapshot(
         closed_at: string;
         ticket_duration: number;
       }>(
-        `SELECT channelID, ownerID, type, number, opened_at, closed_at,
-          TIMESTAMPDIFF(SECOND,
-            FROM_UNIXTIME(CAST(opened_at AS UNSIGNED)),
-            FROM_UNIXTIME(CAST(closed_at AS UNSIGNED))
-          ) AS ticket_duration
+        `SELECT channel_id AS channelID, owner_id AS ownerID, type, number, opened_at, closed_at,
+          (closed_at - opened_at) AS ticket_duration
          FROM tickets ${base.sql} AND ${VALID_CLOSED}
          ORDER BY ticket_duration DESC LIMIT 5`,
         base.params
@@ -349,21 +355,25 @@ async function queryRangeSlices(
   );
   const rows = await query<SliceRow>(
     `SELECT 'day' AS metric,
-      ${bucket} AS k1,
+      ${unionKeyExpr(bucket)} AS k1,
       NULL AS k2,
       COUNT(*) AS val
      FROM tickets ${rangeWhere}
      GROUP BY k1
      UNION ALL
-     SELECT 'hour', CAST(HOUR(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED))) AS CHAR), NULL, COUNT(*)
+     SELECT 'hour', ${unionKeyExpr(
+       "HOUR(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED)))"
+     )}, NULL, COUNT(*)
      FROM tickets ${rangeWhere}
      GROUP BY HOUR(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED)))
      UNION ALL
-     SELECT 'dow', CAST(DAYOFWEEK(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED))) AS CHAR), NULL, COUNT(*)
+     SELECT 'dow', ${unionKeyExpr(
+       "DAYOFWEEK(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED)))"
+     )}, NULL, COUNT(*)
      FROM tickets ${rangeWhere}
      GROUP BY DAYOFWEEK(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED)))
      UNION ALL
-     SELECT 'type', type, NULL, COUNT(*)
+     SELECT 'type', ${unionKeyExpr("type")}, NULL, COUNT(*)
      FROM tickets ${rangeWhere}
      GROUP BY type`,
     [...rangeParams, ...rangeParams, ...rangeParams, ...rangeParams]
@@ -413,18 +423,22 @@ async function queryClosedSlices(
 }> {
   const rows = await query<SliceRow>(
     `SELECT 'hour' AS metric,
-      CAST(HOUR(FROM_UNIXTIME(CAST(closed_at AS UNSIGNED))) AS CHAR) AS k1,
+      ${unionKeyExpr(
+        "HOUR(FROM_UNIXTIME(CAST(closed_at AS UNSIGNED)))"
+      )} AS k1,
       NULL AS k2,
       COUNT(*) AS val
      FROM tickets ${closedWhere}
      GROUP BY HOUR(FROM_UNIXTIME(CAST(closed_at AS UNSIGNED)))
      UNION ALL
      SELECT 'dow',
-      CAST(DAYOFWEEK(FROM_UNIXTIME(CAST(closed_at AS UNSIGNED))) AS CHAR), NULL, COUNT(*)
+      ${unionKeyExpr(
+        "DAYOFWEEK(FROM_UNIXTIME(CAST(closed_at AS UNSIGNED)))"
+      )}, NULL, COUNT(*)
      FROM tickets ${closedWhere}
      GROUP BY DAYOFWEEK(FROM_UNIXTIME(CAST(closed_at AS UNSIGNED)))
      UNION ALL
-     SELECT 'type', type, NULL, COUNT(*)
+     SELECT 'type', ${unionKeyExpr("type")}, NULL, COUNT(*)
      FROM tickets ${closedWhere}
      GROUP BY type`,
     [...closedParams, ...closedParams, ...closedParams]
@@ -482,7 +496,7 @@ async function queryTimingStats(
   const since = rangeSinceUnix(range);
   const rangeTs =
     since != null
-      ? ` AND CAST(opened_at AS UNSIGNED) >= ${since}`
+      ? ` AND opened_at >= ${since}`
       : "";
   const useSample = range === "365d" || range === "all";
   const limitClause = useSample ? ` LIMIT ${SAMPLE_TIMING_LIMIT}` : "";
@@ -499,13 +513,13 @@ async function queryTimingStats(
       max_gap: number;
     }>(
       `WITH ordered AS (
-        SELECT channelID, CAST(opened_at AS UNSIGNED) AS ts
+        SELECT channel_id, opened_at AS ts
         FROM tickets ${base.sql}${rangeTs}
         ORDER BY ts${limitClause}
       ),
       gaps AS (
-        SELECT channelID AS current_channelID, ts AS current_opened_at,
-          LAG(channelID) OVER (ORDER BY ts) AS previous_channelID,
+        SELECT channel_id AS current_channelID, ts AS current_opened_at,
+          LAG(channel_id) OVER (ORDER BY ts) AS previous_channelID,
           LAG(ts) OVER (ORDER BY ts) AS previous_opened_at,
           ts - LAG(ts) OVER (ORDER BY ts) AS gap
         FROM ordered
@@ -517,7 +531,7 @@ async function queryTimingStats(
     ),
     queryOne<{ avg_between: number | null }>(
       `WITH ordered AS (
-        SELECT CAST(opened_at AS UNSIGNED) AS ts
+        SELECT opened_at AS ts
         FROM tickets ${base.sql}${rangeTs}
         ORDER BY ts${limitClause}
       )
@@ -529,10 +543,7 @@ async function queryTimingStats(
     query<{ bucket: number; cnt: number }>(
       `SELECT LEAST(FLOOR(dur / 60), 10080) AS bucket, COUNT(*) AS cnt
        FROM (
-         SELECT TIMESTAMPDIFF(SECOND,
-           FROM_UNIXTIME(CAST(opened_at AS UNSIGNED)),
-           FROM_UNIXTIME(CAST(closed_at AS UNSIGNED))
-         ) AS dur
+         SELECT (closed_at - opened_at) AS dur
          FROM tickets ${closedWhere}
        ) t
        WHERE dur > 0

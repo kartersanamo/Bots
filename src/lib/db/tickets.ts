@@ -1,4 +1,9 @@
 import { query, queryOne, isDbConfigured } from "@/lib/db/pool";
+import {
+  TICKET_COLUMNS,
+  TICKET_OPEN_SQL,
+  TICKET_CLOSED_SQL,
+} from "@/lib/db/schema-aliases";
 import type { PermissionTier } from "@/lib/permissions";
 import { hasMinimumTier } from "@/lib/permissions";
 import type {
@@ -46,7 +51,7 @@ const SORT_COLUMNS: Record<TicketSortField, string> = {
   closed_at: "CAST(NULLIF(TRIM(closed_at), '') AS UNSIGNED)",
   number: "CAST(number AS UNSIGNED)",
   type: "type",
-  ownerID: "ownerID",
+  ownerID: "owner_id",
 };
 
 function canViewPrivateTickets(tier: PermissionTier): boolean {
@@ -80,8 +85,8 @@ function privatedClause(
 }
 
 function statusClause(status: TicketStatusFilter): string {
-  if (status === "open") return " AND active = 'True'";
-  if (status === "closed") return " AND active IN ('False', '0')";
+  if (status === "open") return ` AND ${TICKET_OPEN_SQL}`;
+  if (status === "closed") return ` AND ${TICKET_CLOSED_SQL}`;
   return "";
 }
 
@@ -107,7 +112,7 @@ export async function listTickets(
     values.push(params.type);
   }
   if (params.ownerId) {
-    conditions.push("ownerID = ?");
+    conditions.push("owner_id = ?");
     values.push(params.ownerId);
   }
   if (params.number) {
@@ -127,7 +132,7 @@ export async function listTickets(
     values.push(params.closedBefore);
   }
   if (params.closedBy?.trim()) {
-    conditions.push("closed_by = ?");
+    conditions.push("closed_by_id = ?");
     values.push(params.closedBy.trim());
   }
   if (params.hasTranscript === true) {
@@ -142,7 +147,7 @@ export async function listTickets(
   if (params.q?.trim()) {
     const q = `%${params.q.trim()}%`;
     conditions.push(
-      "(channelID LIKE ? OR ownerID LIKE ? OR number LIKE ? OR type LIKE ? OR name LIKE ? OR reason LIKE ? OR closed_by LIKE ?)"
+      "(CAST(channel_id AS CHAR) LIKE ? OR CAST(owner_id AS CHAR) LIKE ? OR CAST(number AS CHAR) LIKE ? OR type LIKE ? OR name LIKE ? OR reason LIKE ? OR CAST(closed_by_id AS CHAR) LIKE ?)"
     );
     values.push(q, q, q, q, q, q, q);
   }
@@ -158,8 +163,7 @@ export async function listTickets(
     const total = countRow?.total ?? 0;
 
     const tickets = await query<TicketRow>(
-      `SELECT channelID, ownerID, type, name, number, active, opened_at, closed_at,
-              closed_by, reason, transcript, privated
+      `SELECT ${TICKET_COLUMNS}
        FROM tickets
        WHERE ${where}
        ORDER BY ${orderCol} ${order}
@@ -181,9 +185,8 @@ export async function getTicketByChannelId(
   if (!isDbConfigured()) return null;
 
   const row = await queryOne<TicketRow>(
-    `SELECT channelID, ownerID, type, name, number, active, opened_at, closed_at,
-            closed_by, reason, transcript, privated
-     FROM tickets WHERE channelID = ?`,
+    `SELECT ${TICKET_COLUMNS}
+     FROM tickets WHERE channel_id = ?`,
     [channelId]
   );
 
@@ -225,12 +228,12 @@ export async function getTicketStats(
         openedToday: number;
       }>(
         `SELECT
-          SUM(active = 'True') AS openCount,
-          SUM(active IN ('False', '0')) AS closedCount,
+          SUM(${TICKET_OPEN_SQL}) AS openCount,
+          SUM(${TICKET_CLOSED_SQL}) AS closedCount,
           SUM(
-            active = 'True'
-            AND TRIM(opened_at) != ''
-            AND DATE(FROM_UNIXTIME(CAST(opened_at AS UNSIGNED))) = CURDATE()
+            ${TICKET_OPEN_SQL}
+            AND opened_at > 0
+            AND DATE(FROM_UNIXTIME(opened_at)) = CURDATE()
           ) AS openedToday
          FROM tickets
          WHERE 1=1${privSql}`,
@@ -238,7 +241,7 @@ export async function getTicketStats(
       ),
       query<{ type: string; count: number }>(
         `SELECT type, COUNT(*) AS count FROM tickets
-         WHERE active = 'True'${privSql}
+         WHERE ${TICKET_OPEN_SQL}${privSql}
          GROUP BY type ORDER BY count DESC LIMIT 12`,
         privParams
       ),

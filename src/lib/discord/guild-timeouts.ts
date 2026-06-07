@@ -2,8 +2,19 @@ import type { DiscordAuditEntry } from "@/lib/discord/audit";
 import { fetchGuildAuditLogs } from "@/lib/discord/audit";
 import { guildBanAvatarUrl } from "@/lib/discord/guild-bans";
 import { env, envRequired } from "@/lib/env";
+import { getCached, setCached } from "@/lib/server-cache";
 
 const DISCORD_API = "https://discord.com/api/v10";
+const MEMBERS_CACHE_KEY = "discord:guild-timeouts:members";
+const FULL_CACHE_KEY = "discord:guild-timeouts:full";
+const TIMEOUTS_CACHE_MS = 90_000;
+const MEMBER_PAGE_DELAY_MS = 250;
+
+let inflightMembers: Promise<GuildTimeoutRow[] | null> | null = null;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 function isDiscordConfigured(): boolean {
   return !!(env("DISCORD_BOT_TOKEN") && env("DISCORD_GUILD_ID"));
@@ -107,12 +118,39 @@ async function fetchTimeoutAuditByUser(): Promise<
   return map;
 }
 
-/** Members with an active communication timeout. Requires Server Members Intent. */
-export async function fetchGuildTimeouts(): Promise<GuildTimeoutRow[] | null> {
+async function discordFetch(url: string, attempt = 0): Promise<Response> {
+  const res = await fetch(url, {
+    headers: botHeaders(),
+    cache: "no-store",
+  });
+
+  if (res.status === 429 && attempt < 6) {
+    const text = await res.text().catch(() => "");
+    let retryMs = 1500;
+    try {
+      const body = JSON.parse(text) as { retry_after?: number };
+      retryMs = Math.ceil((body.retry_after ?? 1) * 1000) + 150;
+    } catch {
+      retryMs = 1500 * (attempt + 1);
+    }
+    console.warn(
+      `[discord] rate limited, retrying in ${retryMs}ms (attempt ${attempt + 1})`
+    );
+    await sleep(retryMs);
+    return discordFetch(url, attempt + 1);
+  }
+
+  return res;
+}
+
+async function fetchTimedOutMembersUncached(): Promise<GuildTimeoutRow[] | null> {
   if (!isDiscordConfigured()) return null;
 
   const guildId = envRequired("DISCORD_GUILD_ID");
-  const auditByUser = await fetchTimeoutAuditByUser().catch(() => new Map());
+  const auditByUser = new Map<
+    string,
+    { reason: string | null; moderatedBy: string | null }
+  >();
   const rows: GuildTimeoutRow[] = [];
   let after: string | undefined;
 
@@ -121,10 +159,7 @@ export async function fetchGuildTimeouts(): Promise<GuildTimeoutRow[] | null> {
     url.searchParams.set("limit", "1000");
     if (after) url.searchParams.set("after", after);
 
-    const res = await fetch(url.toString(), {
-      headers: botHeaders(),
-      cache: "no-store",
-    });
+    const res = await discordFetch(url.toString());
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
@@ -144,12 +179,72 @@ export async function fetchGuildTimeouts(): Promise<GuildTimeoutRow[] | null> {
     const lastId = batch[batch.length - 1]?.user?.id;
     if (!lastId) break;
     after = lastId;
+    await sleep(MEMBER_PAGE_DELAY_MS);
   }
 
   return rows.sort((a, b) => a.timeoutUntilMs - b.timeoutUntilMs);
 }
 
+/** Paginated member scan shared by count + full timeout views. */
+async function fetchTimedOutMembers(
+  forceRefresh = false
+): Promise<GuildTimeoutRow[] | null> {
+  if (!forceRefresh) {
+    const cached = getCached<GuildTimeoutRow[] | null>(MEMBERS_CACHE_KEY);
+    if (cached !== undefined) return cached;
+  }
+
+  if (inflightMembers) return inflightMembers;
+
+  inflightMembers = fetchTimedOutMembersUncached()
+    .then((rows) => {
+      setCached(MEMBERS_CACHE_KEY, rows, TIMEOUTS_CACHE_MS);
+      return rows;
+    })
+    .finally(() => {
+      inflightMembers = null;
+    });
+
+  return inflightMembers;
+}
+
+function enrichWithAudit(
+  rows: GuildTimeoutRow[],
+  auditByUser: Map<string, { reason: string | null; moderatedBy: string | null }>
+): GuildTimeoutRow[] {
+  if (!auditByUser.size) return rows;
+  return rows.map((row) => {
+    const audit = auditByUser.get(row.userId);
+    if (!audit) return row;
+    return {
+      ...row,
+      reason: audit.reason,
+      moderatedBy: audit.moderatedBy,
+    };
+  });
+}
+
+/** Members with an active communication timeout. Requires Server Members Intent. */
+export async function fetchGuildTimeouts(options?: {
+  forceRefresh?: boolean;
+}): Promise<GuildTimeoutRow[] | null> {
+  if (!options?.forceRefresh) {
+    const cached = getCached<GuildTimeoutRow[] | null>(FULL_CACHE_KEY);
+    if (cached !== undefined) return cached;
+  }
+
+  const members = await fetchTimedOutMembers(options?.forceRefresh);
+  if (!members) return null;
+
+  const auditByUser = await fetchTimeoutAuditByUser().catch(
+    () => new Map<string, { reason: string | null; moderatedBy: string | null }>()
+  );
+  const enriched = enrichWithAudit(members, auditByUser);
+  setCached(FULL_CACHE_KEY, enriched, TIMEOUTS_CACHE_MS);
+  return enriched;
+}
+
 export async function fetchGuildTimeoutCount(): Promise<number | null> {
-  const rows = await fetchGuildTimeouts();
+  const rows = await fetchTimedOutMembers();
   return rows ? rows.length : null;
 }

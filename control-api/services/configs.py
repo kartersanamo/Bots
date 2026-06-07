@@ -16,12 +16,25 @@ def _resolve_config_path(bot_id: str, relative_path: str) -> Path:
     root = bot_root(bot_id)
     # Normalize: registry uses paths like Assets/config.json
     rel = relative_path.replace("\\", "/").lstrip("/")
-    full = (root / rel).resolve()
-    if not str(full).startswith(str(root.resolve())):
+    candidates = [rel]
+    if "assets/Configs/" in rel:
+        candidates.append(rel.replace("assets/Configs/", "assets/configs/"))
+    if "Assets/Configs/" in rel:
+        candidates.append(rel.replace("Assets/Configs/", "assets/configs/"))
+
+    for candidate in candidates:
+        full = (root / candidate).resolve()
+        if not str(full).startswith(str(root.resolve())):
+            raise ValueError("Path escapes bot directory")
+        if full.exists():
+            return full
+
+    last = (root / candidates[-1]).resolve()
+    if not str(last).startswith(str(root.resolve())):
         raise ValueError("Path escapes bot directory")
-    if not full.exists() and not full.parent.exists():
+    if not last.exists() and not last.parent.exists():
         raise FileNotFoundError(f"Config not found: {rel}")
-    return full
+    return last
 
 
 def read_config(bot_id: str, relative_path: str) -> dict:

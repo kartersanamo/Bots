@@ -1,4 +1,13 @@
 import { query, queryOne, isDbConfigured } from "@/lib/db/pool";
+import {
+  GAMES_CHAT_SQL,
+  GAMES_DM_SQL,
+  GAMES_NOT_TEST_SQL,
+  GAMES_SESSION_COLUMNS,
+  LEVELING_ACTIVE_SQL,
+  LEVELING_COLUMNS,
+  LEVELING_EVER_PLAYED_SQL,
+} from "@/lib/db/schema-aliases";
 import type {
   AllTimeLeaderboardType,
   CountingServerRow,
@@ -67,9 +76,9 @@ export async function getGamesOverview(): Promise<GamesOverview | null> {
       totalXpLogs: number;
     }>(
       `SELECT
-        (SELECT COUNT(*) FROM leveling WHERE active = '1' OR active = 1) AS activePlayers,
-        (SELECT COUNT(*) FROM leveling WHERE ever_played = '1' OR ever_played = 1) AS everPlayed,
-        (SELECT COUNT(*) FROM games WHERE game_id != -999999) AS openSessions,
+        (SELECT COUNT(*) FROM leveling WHERE ${LEVELING_ACTIVE_SQL}) AS activePlayers,
+        (SELECT COUNT(*) FROM leveling WHERE ${LEVELING_EVER_PLAYED_SQL}) AS everPlayed,
+        (SELECT COUNT(*) FROM games WHERE ${GAMES_NOT_TEST_SQL}) AS openSessions,
         (SELECT COUNT(*) FROM xp_logs) AS totalXpLogs`
     );
     return row;
@@ -90,7 +99,7 @@ export async function listMonthlyLeaderboard(opts: {
   const limit = Math.min(200, Math.max(1, opts.limit ?? 50));
   const offset = (page - 1) * limit;
 
-  const conditions = ["(active = 1 OR active = '1' OR active = 'True')"];
+  const conditions = [`(${LEVELING_ACTIVE_SQL})`];
   const params: string[] = [];
   if (opts.search?.trim()) {
     conditions.push("user_id LIKE ?");
@@ -103,7 +112,7 @@ export async function listMonthlyLeaderboard(opts: {
     params
   );
   const rows = await query<LevelingRow>(
-    `SELECT user_id, xp, level, active, ever_played
+    `SELECT ${LEVELING_COLUMNS}
      FROM leveling
      WHERE ${where}
      ORDER BY CAST(level AS UNSIGNED) DESC, CAST(xp AS UNSIGNED) DESC
@@ -342,9 +351,9 @@ export async function listXpLogSources(limit = 80): Promise<string[]> {
 export async function getCurrentDmGameId(): Promise<number | null> {
   if (!isDbConfigured()) return null;
   const row = await queryOne<{ game_id: number }>(
-    `SELECT game_id FROM games
-     WHERE dm_game = 1 OR dm_game = TRUE OR dm_game = '1'
-     ORDER BY game_id DESC LIMIT 1`
+    `SELECT id AS game_id FROM games
+     WHERE ${GAMES_DM_SQL}
+     ORDER BY id DESC LIMIT 1`
   );
   return row?.game_id != null ? Number(row.game_id) : null;
 }
@@ -356,23 +365,23 @@ export async function listGameSessions(opts: {
 } = {}): Promise<GameSessionRow[]> {
   if (!isDbConfigured()) return [];
   const limit = Math.min(200, Math.max(1, opts.limit ?? 50));
-  const conditions = ["game_id != -999999"];
+  const conditions = [GAMES_NOT_TEST_SQL];
   const params: (string | number)[] = [];
 
   if (opts.dm === "chat") {
-    conditions.push("(dm_game = 0 OR dm_game = FALSE OR dm_game = '0')");
+    conditions.push(GAMES_CHAT_SQL);
   } else if (opts.dm === "dm") {
-    conditions.push("(dm_game = 1 OR dm_game = TRUE OR dm_game = '1')");
+    conditions.push(GAMES_DM_SQL);
   }
 
   if (opts.search?.trim()) {
     const q = `%${opts.search.trim()}%`;
-    conditions.push("(CAST(game_id AS CHAR) LIKE ? OR game_name LIKE ?)");
+    conditions.push("(CAST(id AS CHAR) LIKE ? OR name LIKE ?)");
     params.push(q, q);
   }
 
   return query<GameSessionRow>(
-    `SELECT game_id, game_name, refreshed_at, dm_game
+    `SELECT ${GAMES_SESSION_COLUMNS}
      FROM games WHERE ${conditions.join(" AND ")}
      ORDER BY refreshed_at DESC LIMIT ?`,
     [...params, limit]
@@ -382,8 +391,8 @@ export async function listGameSessions(opts: {
 export async function getGameSession(gameId: number) {
   if (!isDbConfigured()) return null;
   const game = await queryOne<GameSessionRow>(
-    `SELECT game_id, game_name, refreshed_at, dm_game
-     FROM games WHERE game_id = ?`,
+    `SELECT ${GAMES_SESSION_COLUMNS}
+     FROM games WHERE id = ?`,
     [gameId]
   );
   if (!game) return null;
@@ -415,7 +424,7 @@ export async function getUserGamesProfile(userId: string) {
   if (!isDbConfigured()) return null;
 
   const leveling = await queryOne<LevelingRow>(
-    `SELECT user_id, xp, level, active, ever_played FROM leveling WHERE user_id = ?`,
+    `SELECT ${LEVELING_COLUMNS} FROM leveling WHERE user_id = ?`,
     [userId]
   );
   const daily = await queryOne<DailyClaimRow>(

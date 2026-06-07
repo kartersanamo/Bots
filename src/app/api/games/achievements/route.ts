@@ -10,7 +10,7 @@ export const GET = handleApiRoute(async () => {
   let definitions: unknown = {};
   if (isControlApiConfigured()) {
     try {
-      const data = await getBotConfig("games", "assets/Configs/milestones.json");
+      const data = await getBotConfig("games", "assets/configs/milestones.json");
       definitions = data.content ?? {};
     } catch {
       /* optional */

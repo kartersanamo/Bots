@@ -6,12 +6,13 @@ import {
 import { addBlacklist, removeBlacklist } from "@/lib/db/mutations";
 import { query } from "@/lib/db/pool";
 import { isDbConfigured } from "@/lib/db/pool";
+import { BLACKLIST_COLUMNS } from "@/lib/db/schema-aliases";
 
 export const GET = handleApiRoute(async () => {
   await requireAction("tickets.read");
   if (!isDbConfigured()) return Response.json({ blacklists: [] });
   const rows = await query<Record<string, unknown>>(
-    `SELECT * FROM blacklists ORDER BY userID DESC LIMIT 100`
+    `SELECT ${BLACKLIST_COLUMNS} FROM blacklists ORDER BY user_id DESC LIMIT 100`
   ).catch(() => []);
   return Response.json({ blacklists: rows });
 });

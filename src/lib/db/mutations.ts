@@ -11,16 +11,16 @@ export function assertWriteDb() {
 export async function closeTicket(channelId: string, closedBy: string) {
   assertWriteDb();
   await writeQuery(
-    `UPDATE tickets SET active = 'False', closed_by = ?, closed_at = UNIX_TIMESTAMP()
-     WHERE channelID = ?`,
+    `UPDATE tickets SET is_active = 0, closed_by_id = ?, closed_at = UNIX_TIMESTAMP()
+     WHERE channel_id = ?`,
     [closedBy, channelId]
   );
 }
 
 export async function setTicketActive(channelId: string, active: boolean) {
   assertWriteDb();
-  await writeQuery(`UPDATE tickets SET active = ? WHERE channelID = ?`, [
-    active ? "True" : "False",
+  await writeQuery(`UPDATE tickets SET is_active = ? WHERE channel_id = ?`, [
+    active ? 1 : 0,
     channelId,
   ]);
 }
@@ -32,19 +32,18 @@ export async function addBlacklist(
   staffId: string
 ) {
   assertWriteDb();
-  const whenToUnbl =
-    expiresAt != null ? String(expiresAt) : "";
+  const unblacklistAt = expiresAt != null ? expiresAt : null;
   await writeQuery(
-    `INSERT INTO blacklists (userID, reason, staffID, whenToUnbl)
-     VALUES (?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE reason = ?, staffID = ?, whenToUnbl = ?`,
-    [userId, reason, staffId, whenToUnbl, reason, staffId, whenToUnbl]
+    `INSERT INTO blacklists (user_id, reason, staff_id, unblacklist_at, created_at)
+     VALUES (?, ?, ?, ?, UNIX_TIMESTAMP())
+     ON DUPLICATE KEY UPDATE reason = ?, staff_id = ?, unblacklist_at = ?`,
+    [userId, reason, staffId, unblacklistAt, reason, staffId, unblacklistAt]
   );
 }
 
 export async function removeBlacklist(userId: string) {
   assertWriteDb();
-  await writeQuery(`DELETE FROM blacklists WHERE userID = ?`, [userId]);
+  await writeQuery(`DELETE FROM blacklists WHERE user_id = ?`, [userId]);
 }
 
 export async function setLevelingXp(userId: string, xp: number, level: number) {
@@ -87,7 +86,7 @@ export async function awardXpWithLog(
     ]
   );
   await writeQuery(
-    `UPDATE leveling SET active = 1, ever_played = 1 WHERE user_id = ?`,
+    `UPDATE leveling SET is_active = 1, ever_played = 1 WHERE user_id = ?`,
     [userId]
   );
   return result;
@@ -243,8 +242,8 @@ export async function adjustStatistics(
     throw new Error("Invalid statistics field");
   }
   await writeQuery(
-    `INSERT INTO statistics (user_ID, ${field}) VALUES (?, ?)
-     ON DUPLICATE KEY UPDATE ${field} = CAST(${field} AS SIGNED) + ?`,
+    `INSERT INTO staff_statistics (user_id, ${field}) VALUES (?, ?)
+     ON DUPLICATE KEY UPDATE ${field} = ${field} + ?`,
     [userId, delta, delta]
   );
 }

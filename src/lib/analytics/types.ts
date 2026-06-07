@@ -231,6 +231,31 @@ export interface MemberJoinLeaveEvent {
   createdAt: number;
 }
 
+export interface EngagementQuickChurnRow {
+  userId: string;
+  joinedAt: number;
+  leftAt: number;
+  secondsMember: number;
+}
+
+export interface EngagementRepeatLeaverRow {
+  userId: string;
+  leaveCount: number;
+}
+
+export interface EngagementVoiceChannelRow {
+  channelId: string;
+  seconds: number;
+}
+
+export interface EngagementServerSnapshotPoint {
+  date: string;
+  members: number;
+  online: number;
+  boostCount: number;
+  boostTier: number;
+}
+
 export interface EngagementAnalytics {
   range: AnalyticsRange;
   groupBy: AnalyticsGroupBy;
@@ -254,6 +279,17 @@ export interface EngagementAnalytics {
     totalGamesInRange: number;
     /** Voice channel seconds (`analytics_voice_daily`). */
     voiceSecondsInRange: number;
+    joinsInRange: number;
+    leavesInRange: number;
+    netMemberChange: number;
+    leaveRatePercent: number | null;
+    avgAccountAgeAtJoinDays: number | null;
+    uniqueMessengersInRange: number;
+    charactersInRange: number;
+    ownerTicketMessagesInRange: number;
+    avgOnlineRatioPercent: number | null;
+    latestMemberCount: number | null;
+    latestBoostCount: number | null;
   };
   totalStaffMessagesPerDay: DailyCount[];
   topStaffByTotalMessages: UserCountRow[];
@@ -267,9 +303,27 @@ export interface EngagementAnalytics {
   voiceSecondsPerDay: DailyCount[];
   topVoiceUsers: UserCountRow[];
   recentJoinLeaves: MemberJoinLeaveEvent[];
-  serverSnapshots: { date: string; members: number; online: number }[];
+  serverSnapshots: EngagementServerSnapshotPoint[];
   /** Average online members at each hour of day (combined across range). */
   playersOnlineByHour: NamedCount[];
+  joinsPerDay: DailyCount[];
+  leavesPerDay: DailyCount[];
+  netMemberChangePerDay: DailyCount[];
+  joinsByHour: NamedCount[];
+  leavesByHour: NamedCount[];
+  joinsByDayOfWeek: NamedCount[];
+  leavesByDayOfWeek: NamedCount[];
+  accountAgeAtJoin: NamedCount[];
+  topInviteCodes: NamedCount[];
+  uniqueMessengersPerDay: DailyCount[];
+  charactersPerDay: DailyCount[];
+  ownerTicketMessagesPerDay: DailyCount[];
+  onlineRatioPerDay: DailyCount[];
+  boostCountPerDay: DailyCount[];
+  membersOnlineByHour: NamedCount[];
+  topVoiceChannels: EngagementVoiceChannelRow[];
+  quickChurnMembers: EngagementQuickChurnRow[];
+  repeatLeavers: EngagementRepeatLeaverRow[];
 }
 
 export interface AnalyticsSummary {

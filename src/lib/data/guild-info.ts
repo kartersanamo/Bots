@@ -31,7 +31,7 @@ export async function getGuildInfoPayload(
     };
   }
 
-  const [guild, roles, channels] = await cached(
+  const [guild, rolesRaw, channelsRaw] = await cached(
     "discord:server-info",
     SERVER_INFO_CACHE_MS,
     () =>
@@ -41,6 +41,8 @@ export async function getGuildInfoPayload(
         fetchGuildChannels(),
       ])
   );
+  const roles = rolesRaw ?? [];
+  const channels = channelsRaw ?? [];
 
   return {
     configured: true,

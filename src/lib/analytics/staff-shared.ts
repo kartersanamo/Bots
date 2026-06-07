@@ -35,7 +35,7 @@ export function buildStaffLeaderboards(rows: StaffStatsRow[]): StaffLeaderboards
   };
 }
 
-type StaffStatsTable = "statistics" | "total_statistics";
+type StaffStatsTable = "staff_statistics" | "total_statistics";
 
 export async function fetchStaffLeaderboardRows(
   table: StaffStatsTable
@@ -51,11 +51,11 @@ export async function fetchStaffLeaderboardRows(
            LIMIT 50`
         ).catch(() => [])
       : await query<Record<string, unknown>>(
-          `SELECT user_ID AS user_id,
-            ${staffStatSelectList("statistics")}
-           FROM statistics
+          `SELECT user_id,
+            ${staffStatSelectList("staff_statistics")}
+           FROM staff_statistics
            WHERE ${ACTIVE_STAFF_WHERE_STATISTICS}
-           ORDER BY CAST(tickets_closed AS UNSIGNED) DESC
+           ORDER BY tickets_closed DESC
            LIMIT 50`
         ).catch(() => []);
 

@@ -23,7 +23,7 @@ export function ConfigEditor({ botId, canEdit, initialPath }: ConfigEditorProps)
   useEffect(() => {
     if (!initialPath) return;
     const known = bot?.configFiles.includes(initialPath);
-    if (known || initialPath.startsWith("assets/Configs/")) {
+    if (known || initialPath.startsWith("assets/configs/") || initialPath.startsWith("assets/Configs/")) {
       setSelectedPath(initialPath);
     }
   }, [initialPath, bot]);
