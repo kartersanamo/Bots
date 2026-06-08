@@ -32,6 +32,7 @@ import {
 } from "@/lib/analytics/inflight-cache";
 import { query, queryOne, isDbConfigured } from "@/lib/db/pool";
 import {
+  TICKET_CLOSE_DURATION_SEC_SQL,
   TICKET_COLUMNS,
   TICKET_OPEN_SQL,
   TICKET_VALID_CLOSED_SQL,
@@ -272,11 +273,7 @@ async function getTicketHeavySnapshot(
     const [closeByType, mostInDay, longestOpen, heavyStats] = await Promise.all([
       query<{ type: string; median_s: number; cnt: number }>(
         `SELECT type, AVG(dur) AS median_s, COUNT(*) AS cnt FROM (
-           SELECT type,
-             TIMESTAMPDIFF(SECOND,
-               FROM_UNIXTIME(CAST(opened_at AS UNSIGNED)),
-               FROM_UNIXTIME(CAST(closed_at AS UNSIGNED))
-             ) AS dur
+           SELECT type, ${TICKET_CLOSE_DURATION_SEC_SQL} AS dur
            FROM tickets ${base.sql} AND ${VALID_CLOSED}
          ) t WHERE dur > 0
          GROUP BY type ORDER BY cnt DESC LIMIT 12`,
@@ -302,7 +299,7 @@ async function getTicketHeavySnapshot(
         ticket_duration: number;
       }>(
         `SELECT channel_id AS channelID, owner_id AS ownerID, type, number, opened_at, closed_at,
-          (closed_at - opened_at) AS ticket_duration
+          ${TICKET_CLOSE_DURATION_SEC_SQL} AS ticket_duration
          FROM tickets ${base.sql} AND ${VALID_CLOSED}
          ORDER BY ticket_duration DESC LIMIT 5`,
         base.params
@@ -521,12 +518,12 @@ async function queryTimingStats(
         SELECT channel_id AS current_channelID, ts AS current_opened_at,
           LAG(channel_id) OVER (ORDER BY ts) AS previous_channelID,
           LAG(ts) OVER (ORDER BY ts) AS previous_opened_at,
-          ts - LAG(ts) OVER (ORDER BY ts) AS gap
+          CAST(ts AS SIGNED) - CAST(LAG(ts) OVER (ORDER BY ts) AS SIGNED) AS gap
         FROM ordered
       )
       SELECT current_channelID, current_opened_at, previous_channelID,
         previous_opened_at, gap AS max_gap
-      FROM gaps WHERE gap IS NOT NULL ORDER BY gap DESC LIMIT 1`,
+      FROM gaps WHERE gap IS NOT NULL AND gap > 0 ORDER BY gap DESC LIMIT 1`,
       base.params
     ),
     queryOne<{ avg_between: number | null }>(
@@ -535,15 +532,15 @@ async function queryTimingStats(
         FROM tickets ${base.sql}${rangeTs}
         ORDER BY ts${limitClause}
       )
-      SELECT AVG(ts - prev_ts) AS avg_between FROM (
+      SELECT AVG(CAST(ts AS SIGNED) - CAST(prev_ts AS SIGNED)) AS avg_between FROM (
         SELECT ts, LAG(ts) OVER (ORDER BY ts) AS prev_ts FROM ordered
-      ) d WHERE prev_ts IS NOT NULL`,
+      ) d WHERE prev_ts IS NOT NULL AND ts >= prev_ts`,
       base.params
     ),
     query<{ bucket: number; cnt: number }>(
       `SELECT LEAST(FLOOR(dur / 60), 10080) AS bucket, COUNT(*) AS cnt
        FROM (
-         SELECT (closed_at - opened_at) AS dur
+         SELECT ${TICKET_CLOSE_DURATION_SEC_SQL} AS dur
          FROM tickets ${closedWhere}
        ) t
        WHERE dur > 0

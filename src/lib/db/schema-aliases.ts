@@ -21,7 +21,12 @@ export const TICKET_OPEN_SQL = "is_active = 1";
 export const TICKET_CLOSED_SQL = "is_active = 0";
 
 export const TICKET_VALID_CLOSED_SQL =
-  "closed_at IS NOT NULL AND closed_at > 0";
+  "closed_at IS NOT NULL AND closed_at > 0 AND closed_at >= opened_at";
+
+/** Elapsed seconds from open to close; negative when closed_at < opened_at. */
+export const TICKET_CLOSE_DURATION_SEC_SQL = `TIMESTAMPDIFF(SECOND,
+  FROM_UNIXTIME(CAST(opened_at AS UNSIGNED)),
+  FROM_UNIXTIME(CAST(closed_at AS UNSIGNED)))`;
 
 export const LEVELING_ACTIVE_SQL = "is_active = 1";
 export const LEVELING_EVER_PLAYED_SQL = "ever_played = 1";
