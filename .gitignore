@@ -54,3 +54,6 @@ next-env.d.ts
 # ephemeral SQL migrations (create → run → delete; never commit)
 *.sql
 .tmp/
+
+# cursor rules
+.cursor/rules/
