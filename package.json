@@ -10,6 +10,7 @@
     "build": "next build --webpack",
     "deploy": "bash scripts/deploy.sh",
     "backfill:member-messages": "nice -n 19 ionice -c 3 node --max-old-space-size=192 scripts/backfill-member-messages.mjs",
+    "backfill:member-messages:reset": "node scripts/reset-member-messages-analytics.mjs",
     "start": "next start",
     "lint": "eslint .",
     "control-api": "cd control-api && .venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8787",

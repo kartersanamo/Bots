@@ -45,6 +45,7 @@ export const POST = handleApiRoute(async () => {
           process.env.BACKFILL_SKIP_ARCHIVED_THREADS ?? "1",
         BACKFILL_MAX_ARCHIVED_THREAD_PAGES:
           process.env.BACKFILL_MAX_ARCHIVED_THREAD_PAGES || "2",
+        BACKFILL_MAX_CHANNELS_PER_RUN: "0",
       },
     }
   );

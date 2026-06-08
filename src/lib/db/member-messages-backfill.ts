@@ -15,6 +15,8 @@ export interface MemberMessagesBackfillState {
   currentChannelName: string | null;
   messagesScanned: number;
   rowsUpserted: number;
+  messagesCounted: number;
+  messagesSkippedDup: number;
   errorMessage: string | null;
   startedAt: number | null;
   updatedAt: number | null;
@@ -30,6 +32,8 @@ CREATE TABLE IF NOT EXISTS analytics_member_messages_backfill (
   current_channel_name VARCHAR(255) NULL,
   messages_scanned BIGINT NOT NULL DEFAULT 0,
   rows_upserted BIGINT NOT NULL DEFAULT 0,
+  messages_counted BIGINT NOT NULL DEFAULT 0,
+  messages_skipped_dup BIGINT NOT NULL DEFAULT 0,
   error_message TEXT NULL,
   started_at BIGINT NULL,
   updated_at BIGINT NULL
@@ -47,6 +51,8 @@ function mapRow(
       currentChannelName: null,
       messagesScanned: 0,
       rowsUpserted: 0,
+      messagesCounted: 0,
+      messagesSkippedDup: 0,
       errorMessage: null,
       startedAt: null,
       updatedAt: null,
@@ -64,6 +70,8 @@ function mapRow(
       : null,
     messagesScanned: Number(row.messages_scanned ?? 0),
     rowsUpserted: Number(row.rows_upserted ?? 0),
+    messagesCounted: Number(row.messages_counted ?? 0),
+    messagesSkippedDup: Number(row.messages_skipped_dup ?? 0),
     errorMessage: row.error_message ? String(row.error_message) : null,
     startedAt:
       row.started_at != null ? Number(row.started_at) : null,
@@ -83,6 +91,7 @@ export async function getMemberMessagesBackfillState(): Promise<MemberMessagesBa
     const rows = await query<Record<string, unknown>>(
       `SELECT status, channels_total, channels_done, current_channel_id,
               current_channel_name, messages_scanned, rows_upserted,
+              messages_counted, messages_skipped_dup,
               error_message, started_at, updated_at
        FROM analytics_member_messages_backfill WHERE id = 1 LIMIT 1`
     );

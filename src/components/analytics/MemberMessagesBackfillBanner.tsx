@@ -67,8 +67,9 @@ export function MemberMessagesBackfillBanner() {
         <div className="min-w-0">
           <p className="font-medium text-white">Member message history backfill</p>
           <p className="mt-1 text-xs text-muted">
-            Scans guild channels in ultra-slow mode (nice/ionice, load-aware pauses,
-            bots and staff excluded). Expect hours or days; safe to stop with{" "}
+            Rebuilds guild message counts from Discord history (one count per message
+            ID, bots and staff excluded). Runs at low priority until finished; safe
+            to stop with{" "}
             <code className="text-accent-light">pkill -f backfill-member-messages</code>.
           </p>
           {running && (
@@ -77,12 +78,13 @@ export function MemberMessagesBackfillBanner() {
                 ? `Channel: ${state.currentChannelName}`
                 : "Starting…"}{" "}
               · {state.channelsDone}/{state.channelsTotal} ({pct}%) ·{" "}
-              {formatNumber(state.messagesScanned)} messages scanned
+              {formatNumber(state.messagesCounted)} counted ·{" "}
+              {formatNumber(state.messagesScanned)} scanned this run
             </p>
           )}
           {state.status === "completed" && (
             <p className="mt-2 text-xs text-emerald-300">
-              Completed — {formatNumber(state.messagesScanned)} messages processed.
+              Completed — {formatNumber(state.messagesCounted)} unique messages counted.
             </p>
           )}
           {state.status === "error" && state.errorMessage && (
